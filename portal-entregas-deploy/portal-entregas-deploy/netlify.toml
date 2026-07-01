@@ -1,0 +1,10 @@
+# Configuração do Netlify para o Portal das Entregas
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# roteia /.netlify/functions/* para as funções (padrão, explicitado por clareza)
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
