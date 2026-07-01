@@ -1,0 +1,98 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   PORTAL DAS ENTREGAS — PUBLICAR COM IA OPERANTE (passo a passo)   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Este guia publica o portal COM o chatbot e o "Enquadrar com IA" funcionando,
+usando o banco completo (31.241 entregas). Tempo estimado: ~20 minutos.
+
+A IA precisa de um "backend" (uma função no Netlify) que guarda sua chave da
+API em segredo. Por isso a publicação é via GitHub — o método "arrastar
+arquivos" NÃO sobe funções.
+
+────────────────────────────────────────────────────────────────────
+CONTEÚDO DESTA PASTA
+────────────────────────────────────────────────────────────────────
+  index.html                     página do portal
+  bundle.js                      portal compilado
+  banco.json                     31.241 entregas (navegação)
+  banco-detalhes.json            fluxo/fonte de cada entrega
+  netlify.toml                   configuração do Netlify
+  netlify/functions/claude.js    o backend que protege sua chave da API
+
+
+════════════════════════════════════════════════════════════════════
+PARTE 1 — Sua chave da API do Claude (5 min)
+════════════════════════════════════════════════════════════════════
+  1. Acesse  https://console.anthropic.com
+  2. Crie a conta (ou entre) e vá em "Billing" -> adicione alguns créditos
+     (US$ 5 já cobrem MUITO teste — ver custos no fim).
+  3. Vá em "API Keys" -> "Create Key" -> copie a chave (começa com sk-ant-...).
+     Guarde-a num lugar seguro. NÃO a coloque em nenhum arquivo desta pasta.
+
+
+════════════════════════════════════════════════════════════════════
+PARTE 2 — Subir para o GitHub (5 min)
+════════════════════════════════════════════════════════════════════
+  1. Crie conta em https://github.com (se não tiver).
+  2. Clique em "New repository". Nome: portal-das-entregas.
+     Deixe "Private" se quiser restringir. Clique "Create repository".
+  3. Na página do repositório vazio, clique em "uploading an existing file".
+  4. Arraste TODO o conteúdo desta pasta (index.html, bundle.js, os dois
+     banco*.json, netlify.toml e a pasta netlify/).
+  5. Clique em "Commit changes".
+
+
+════════════════════════════════════════════════════════════════════
+PARTE 3 — Conectar ao Netlify e publicar (5 min)
+════════════════════════════════════════════════════════════════════
+  1. Acesse  https://app.netlify.com  e entre (pode logar com o GitHub).
+  2. "Add new site" -> "Import an existing project" -> "Deploy with GitHub".
+  3. Autorize e escolha o repositório portal-das-entregas.
+  4. Deixe o "build command" em branco e confirme "Publish directory" = "."
+     (um ponto). Clique "Deploy".
+  5. Aguarde terminar — sai um link https://SEU-SITE.netlify.app
+
+
+════════════════════════════════════════════════════════════════════
+PARTE 4 — Ligar a chave da API (3 min)  *** PASSO ESSENCIAL ***
+════════════════════════════════════════════════════════════════════
+  1. No painel do site no Netlify: "Site configuration" ->
+     "Environment variables" -> "Add a variable".
+  2. Key:    ANTHROPIC_API_KEY
+     Value:   (cole a sua chave sk-ant-... da Parte 1)
+     Salve.
+  3. Vá em "Deploys" -> "Trigger deploy" -> "Deploy site" (para a função
+     recarregar já com a chave).
+
+  Pronto. Abra o site, clique em "Assistente de Entregas" ou no "Conversor
+  PGD" e teste o "Enquadrar com IA" — agora responde de verdade, com
+  correspondência no banco completo.
+
+
+════════════════════════════════════════════════════════════════════
+COMO O CUSTO FICA BAIXO (e é baixo mesmo)
+════════════════════════════════════════════════════════════════════
+O portal NÃO manda as 31 mil entregas para a IA. Ele faz uma busca local no
+seu navegador (custo zero) e envia à IA apenas ~50 entregas candidatas, as
+mais relevantes ao que foi digitado. A IA usada é a Haiku (a mais barata).
+Resultado: cada enquadramento custa fração de centavo de dólar.
+Centenas de usos ficam na casa de poucos dólares/mês. Você controla o teto
+pelos créditos no console da Anthropic.
+
+
+════════════════════════════════════════════════════════════════════
+SEGURANÇA
+════════════════════════════════════════════════════════════════════
+• A chave fica SÓ na variável de ambiente do Netlify, nunca no site.
+• O link é público por padrão. Para restringir, o Netlify tem proteção por
+  senha (recurso pago) ou mantenha o link não divulgado.
+• Antes de abrir para muita gente: o banco tem órgão/unidade reais de toda a
+  administração — vale confirmar internamente se há restrição de divulgação.
+
+
+════════════════════════════════════════════════════════════════════
+ATUALIZAR NO FUTURO
+════════════════════════════════════════════════════════════════════
+• Banco novo: substitua banco.json / banco-detalhes.json no GitHub — o
+  Netlify republica sozinho.
+• Código novo: substitua bundle.js.
