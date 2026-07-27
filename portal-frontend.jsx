@@ -246,6 +246,8 @@ export default function PortalEntregas(){
   const [natF,setNatF]=useState(null);
   const [macroF,setMacroF]=useState(null);
   const [catF,setCatF]=useState(null);
+  const [servF,setServF]=useState(null);
+  const [orgF,setOrgF]=useState(null);
   const [mode,setMode]=useState("lista");
   const [exp,setExp]=useState(null);
   const [sel,setSel]=useState([]);
@@ -258,10 +260,9 @@ export default function PortalEntregas(){
   const [flags,setFlags]=useState([]);
   const [flagFor,setFlagFor]=useState(null);
   const [novaFor,setNovaFor]=useState(null);     // propor nova entrega (texto)
-  const [qualidadeOpen,setQualidadeOpen]=useState(false);
   const [onboard,setOnboard]=useState(false);    // boas-vindas antiga (desativada — Início assume)
-  const [secao,setSecao]=useState("inicio");     // navegação principal: inicio · catalogo · organizacoes · conversor · revisao
-  const [navOpen,setNavOpen]=useState(false);    // menu lateral de macroprocesso
+  const [secao,setSecao]=useState("inicio");     // navegação principal: inicio · catalogo
+  const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
   const [descDrawer,setDescDrawer]=useState(false);
   const [descView,setDescView]=useState("lista");
   const [objUnidade,setObjUnidade]=useState(SEED_OBJ_UNIDADE);
@@ -295,11 +296,18 @@ export default function PortalEntregas(){
     return ()=>{vivo=false;};
   },[]);
 
-  const chooseNat=id=>{ setNatF(id); setMacroF(null); setCatF(null); };
-  const pickMacro=(nat,mac)=>{ setNatF(nat); setMacroF(mac); setCatF(null); setMode("lista"); };
+  const chooseNat=id=>{ setNatF(id); setMacroF(null); setCatF(null); setServF(null); setOrgF(null); };
+  const pickMacro=(nat,mac)=>{ setNatF(nat); setMacroF(mac); setCatF(null); setServF(null); setOrgF(null); setMode("lista"); };
+  const pickCategoria=cat=>{ setCatF(cat); setServF(null); setMode("lista"); };
+  const pickServico=serv=>{ setServF(serv); setMode("lista"); };
+  const pickOrgao=org=>{ setOrgF(org); setMode("lista"); };
 
   const macroOpts=useMemo(()=>{ const s=new Set(); ENTREGAS.forEach(e=>{ if(!natF||e.natureza===natF) s.add(e.macro); }); return [...s].sort((a,b)=>a.localeCompare(b)); },[natF,bancoN]);
   const catOpts=useMemo(()=>{ const s=new Set(); ENTREGAS.forEach(e=>{ if((!natF||e.natureza===natF)&&(!macroF||e.macro===macroF)) s.add(e.categoria); }); return [...s].sort((a,b)=>a.localeCompare(b)); },[natF,macroF,bancoN]);
+  // opções para os painéis de filtro por categoria/serviço/órgão (mesmo padrão do MacroNav)
+  const categoriaOpts=useMemo(()=>{ const m=new Map(); ENTREGAS.forEach(e=>{ if((!natF||e.natureza===natF)&&(!macroF||e.macro===macroF)) m.set(e.categoria,(m.get(e.categoria)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([valor,n])=>({valor,n})); },[natF,macroF,bancoN]);
+  const servicoOpts=useMemo(()=>{ const m=new Map(); ENTREGAS.forEach(e=>{ if(e.servico&&(!natF||e.natureza===natF)&&(!macroF||e.macro===macroF)&&(!catF||e.categoria===catF)) m.set(e.servico,(m.get(e.servico)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([valor,n])=>({valor,n})); },[natF,macroF,catF,bancoN]);
+  const orgaoOpts=useMemo(()=>{ const m=new Map(); ENTREGAS.forEach(e=>{ if(e.orgao) m.set(e.orgao,(m.get(e.orgao)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([valor,n])=>({valor,n})); },[bancoN]);
 
   // números do banco para o painel do topo — recalculados quando o banco carrega
   const stats=useMemo(()=>{
@@ -321,12 +329,14 @@ export default function PortalEntregas(){
     if(natF) r=r.filter(e=>e.natureza===natF);
     if(macroF) r=r.filter(e=>e.macro===macroF);
     if(catF) r=r.filter(e=>e.categoria===catF);
+    if(servF) r=r.filter(e=>e.servico===servF);
+    if(orgF) r=r.filter(e=>e.orgao===orgF);
     if(dquery.trim()){ const q=norm(dquery); r=r.filter(e=>norm([e.codigo,e.entrega,e.atividade,e.servico,e.categoria,e.macro].join(" ")).includes(q)); }
     return r;
-  },[dquery,natF,macroF,catF,bancoN]);
+  },[dquery,natF,macroF,catF,servF,orgF,bancoN]);
 
   const total=ENTREGAS.length;
-  const searching=!!(dquery.trim()||natF||macroF||catF);
+  const searching=!!(dquery.trim()||natF||macroF||catF||servF||orgF);
   const modes=[["lista","Lista",LayoutGrid],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow]];
 
   const docHeader=(<DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>);
@@ -342,27 +352,25 @@ export default function PortalEntregas(){
           <div><div className="px-logo-w">Catálogo de Serviços</div><div className="px-logo-s">SIGEPE · SISDIP / DFT</div></div>
         </div>
         <nav className="px-nav" aria-label="Seções do portal">
-          {[["inicio","Início",Home],["catalogo","Catálogo",LayoutGrid],["pgd","Importar PGD",Upload],["revisao","Revisão",ShieldCheck]].map(([id,lbl,Ic])=>(
-            <button key={id} className={`px-nav-item ${(id==="pgd"?(secao==="catalogo"&&mode==="pgd"):(secao===id&&!(id==="catalogo"&&mode==="pgd")))?"on":""}`}
-              onClick={()=>{ if(id==="pgd"){setSecao("catalogo");setMode("pgd");} else {setSecao(id); if(id==="catalogo"&&mode==="pgd") setMode("lista");} }}><Ic size={14}/><span>{lbl}</span></button>
+          {[["inicio","Início",Home],["catalogo","Catálogo",LayoutGrid]].map(([id,lbl,Ic])=>(
+            <button key={id} className={`px-nav-item ${secao===id?"on":""}`}
+              onClick={()=>setSecao(id)}><Ic size={14}/><span>{lbl}</span></button>
           ))}
+          <button className="px-nav-item" onClick={()=>{ if(typeof window!=="undefined") window.location.href="./organizacoes.html"; }}><Building2 size={14}/><span>Órgãos</span></button>
         </nav>
         <div className="px-head-r">
-          <button className="px-flagchip" onClick={()=>setQualidadeOpen(true)} title="Sinalizações de qualidade ao banco"><Flag size={13}/> {flags.length}</button>
-          {(orgao||unidade)
-            ? <div className="px-org"><Building2 size={13}/> {unidade||orgao}</div>
-            : <button className="px-org vazio" onClick={()=>{setSecao("catalogo");setDescDrawer(true);}} title="Definir órgão e unidade"><Building2 size={13}/> Definir órgão/unidade</button>}
+          {(orgao||unidade) && <div className="px-org"><Building2 size={13}/> {unidade||orgao}</div>}
         </div>
       </header>
 
-      {!loading && (secao==="inicio"||secao==="catalogo") && <PainelNumeros stats={stats} bancoStatus={bancoStatus}/>}
+      {!loading && secao==="inicio" && <PainelNumeros stats={stats} bancoStatus={bancoStatus}/>}
 
       {secao==="inicio" && !loading && <SecaoInicio stats={stats}
         onCatalogo={()=>setSecao("catalogo")}
         onOrgaos={()=>{ if(typeof window!=="undefined") window.location.href="./organizacoes.html"; }}
         onChat={()=>{setSecao("catalogo");setMode("assistente");}}
         onConversor={()=>{setSecao("catalogo");setMode("conversor");}}
-        onRevisao={()=>setSecao("revisao")}
+        onRevisao={()=>{setSecao("catalogo");setMode("revisao");}}
         onPGD={()=>{setSecao("catalogo");setMode("pgd");}}/>}
       {secao==="inicio" && loading && <BancoLoading/>}
 
@@ -372,12 +380,54 @@ export default function PortalEntregas(){
       {secao==="catalogo" && <div className="px-wrap">
         <div className="px-toolbar">
         <div className="px-controls">
-          <button className={`px-navtoggle ${navOpen?"on":""}`} onClick={()=>setNavOpen(o=>!o)} title="Navegar por macroprocesso"><Menu size={17}/></button>
-          <div className="px-search">
+          <button className={`px-navtoggle ${navPanel==="macro"?"on":""}`} onClick={()=>setNavPanel(p=>p==="macro"?null:"macro")} title="Navegar por macroprocesso"><Menu size={17}/></button>
+          <div className="px-search full">
             <Search size={18} color={C.faint}/>
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por entrega, atividade, serviço ou código…"/>
             {query && <button className="px-clear" onClick={()=>setQuery("")}><X size={15}/></button>}
           </div>
+        </div>
+
+        <div className="px-fbar">
+          <button className={`px-fbar-stat total ${!natF&&!macroF&&!catF&&!servF&&!orgF?"on":""}`} onClick={()=>{setNavPanel(null);setNatF(null);setMacroF(null);setCatF(null);setServF(null);setOrgF(null);}}>
+            <b>{total.toLocaleString("pt-BR")}</b> entregas
+          </button>
+          <button className={`px-fbar-stat ${navPanel==="macro"?"on":""} ${macroF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="macro"?null:"macro")} title="Filtrar por macroprocesso">
+            <GitBranch size={13}/> <b>{stats.macros.toLocaleString("pt-BR")}</b> macroprocessos
+          </button>
+          <button className={`px-fbar-stat ${navPanel==="categoria"?"on":""} ${catF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="categoria"?null:"categoria")} title="Filtrar por categoria">
+            <PieChart size={13}/> <b>{stats.cats.toLocaleString("pt-BR")}</b> categorias
+          </button>
+          <button className={`px-fbar-stat ${navPanel==="servico"?"on":""} ${servF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="servico"?null:"servico")} title="Filtrar por serviço">
+            <Sparkles size={13}/> <b>{stats.servs.toLocaleString("pt-BR")}</b> serviços
+          </button>
+          <button className={`px-fbar-stat ${navPanel==="orgao"?"on":""} ${orgF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="orgao"?null:"orgao")} title="Filtrar por órgão">
+            <Building2 size={13}/> <b>{stats.orgs.toLocaleString("pt-BR")}</b> órgãos
+          </button>
+          <span className="px-fbar-sep"/>
+          <span className="px-facets-l">Natureza:</span>
+          <button className={`px-chip ${!natF?"on":""}`} onClick={()=>chooseNat(null)}>Todas <b>{total}</b></button>
+          {Object.entries(NAT).map(([id,n])=>{
+            const ct=ENTREGAS.filter(e=>e.natureza===id).length;
+            return <button key={id} className={`px-chip ${natF===id?"on":""}`} style={natF===id?{background:n.cor,borderColor:n.cor,color:"#fff"}:{borderColor:n.cor,color:n.cor}} onClick={()=>chooseNat(natF===id?null:id)}>{n.rot} <b>{ct}</b></button>;
+          })}
+          <span className={`px-count ${searching?"filt":""}`}>{searching?`${res.length.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`:`${total.toLocaleString("pt-BR")} entregas`}</span>
+        </div>
+        {(natF||macroF||catF||servF||orgF||dquery) && (
+          <div className="px-filtros-ativos">
+            <div className="px-fa-tags">
+              {dquery && <span className="px-fa-tag">"{dquery.length>22?dquery.slice(0,21)+"…":dquery}"<button onClick={()=>setQuery("")}><X size={9}/></button></span>}
+              {natF && NAT[natF] && <span className="px-fa-tag" style={{background:NAT[natF].soft,color:NAT[natF].cor,borderColor:NAT[natF].cor}}>{NAT[natF].rot}<button onClick={()=>chooseNat(null)} style={{color:NAT[natF].cor}}><X size={9}/></button></span>}
+              {macroF && <span className="px-fa-tag">{macroF.length>38?macroF.slice(0,37)+"…":macroF}<button onClick={()=>setMacroF(null)}><X size={9}/></button></span>}
+              {catF && <span className="px-fa-tag">{catF.length>38?catF.slice(0,37)+"…":catF}<button onClick={()=>setCatF(null)}><X size={9}/></button></span>}
+              {servF && <span className="px-fa-tag">{servF.length>38?servF.slice(0,37)+"…":servF}<button onClick={()=>setServF(null)}><X size={9}/></button></span>}
+              {orgF && <span className="px-fa-tag">{orgF.length>38?orgF.slice(0,37)+"…":orgF}<button onClick={()=>setOrgF(null)}><X size={9}/></button></span>}
+            </div>
+            <button className="px-fa-limpar" onClick={()=>{setNatF(null);setMacroF(null);setCatF(null);setServF(null);setOrgF(null);setQuery("");}}>Limpar tudo</button>
+          </div>
+        )}
+
+        <div className="px-modes-row">
           <div className="px-modes">
             {modes.filter(([id])=>id!=="cadeia").map(([id,lbl,Ic])=>(
               <button key={id} className={`px-mode ${mode===id?"on":""}`} onClick={()=>setMode(id)} title={lbl}><Ic size={15}/> <span className="px-mode-lbl">{lbl}</span></button>
@@ -393,38 +443,25 @@ export default function PortalEntregas(){
             <Tip pos="bottom" text="Conversor: traga seu PGD, regimento interno ou planejamento estratégico — a IA enquadra cada item no catálogo e você inclui direto na descrição da área.">
               <button className={`px-mode cta-conv ${mode==="conversor"?"on":""}`} onClick={()=>setMode("conversor")}><Wand2 size={15}/> <span className="px-mode-lbl">Conversor</span></button>
             </Tip>
+            <span className="px-modes-sep"/>
+            <Tip pos="bottom" text="Central de Revisão: console do curador para tratar entregas similares ou sem serviço vinculado.">
+              <button className={`px-mode ${mode==="revisao"?"on":""}`} onClick={()=>setMode("revisao")}><ShieldCheck size={15}/> <span className="px-mode-lbl">Revisão</span></button>
+            </Tip>
+            <Tip pos="bottom" text="Qualidade do banco: entregas sinalizadas pelo uso do portal, aguardando curadoria.">
+              <button className={`px-mode ${mode==="qualidade"?"on":""}`} onClick={()=>setMode("qualidade")}><Flag size={15}/> <span className="px-mode-lbl">Sinalizações</span>{flags.length>0 && <span className="px-mode-badge">{flags.length}</span>}</button>
+            </Tip>
+            <Tip pos="bottom" text="Descrição da área em tela cheia: veja com mais espaço a lista de entregas que você já está descrevendo.">
+              <button className={`px-mode ${mode==="descricao"?"on":""}`} onClick={()=>{setMode("descricao");setDescCollapsed(true);}}><ClipboardList size={15}/> <span className="px-mode-lbl">Descrição</span>{sel.length>0 && <span className="px-mode-badge">{sel.length}</span>}</button>
+            </Tip>
           </div>
         </div>
-
-        <div className="px-facets">
-          <span className="px-facets-l">Natureza:</span>
-          <button className={`px-chip ${!natF?"on":""}`} onClick={()=>chooseNat(null)}>Todas <b>{total}</b></button>
-          {Object.entries(NAT).map(([id,n])=>{
-            const ct=ENTREGAS.filter(e=>e.natureza===id).length;
-            return <button key={id} className={`px-chip ${natF===id?"on":""}`} style={natF===id?{background:n.cor,borderColor:n.cor,color:"#fff"}:{borderColor:n.cor,color:n.cor}} onClick={()=>chooseNat(natF===id?null:id)}>{n.rot} <b>{ct}</b></button>;
-          })}
-          <button className={`px-chip-macro ${macroF?"ativo":""}`} onClick={()=>macroF?setMacroF(null):setNavOpen(true)} title={macroF||"Filtrar por macroprocesso"}>
-            {macroF
-              ? <><span>{macroF.length>30?macroF.slice(0,29)+"…":macroF}</span><em onClick={ev=>{ev.stopPropagation();setMacroF(null);}}><X size={11}/></em></>
-              : <><GitBranch size={13}/> Macroprocesso</>}
-          </button>
-          <span className={`px-count ${searching?"filt":""}`}>{searching?`${res.length.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`:`${total.toLocaleString("pt-BR")} entregas`}</span>
-        </div>
-        {(natF||macroF||catF||dquery) && (
-          <div className="px-filtros-ativos">
-            <div className="px-fa-tags">
-              {dquery && <span className="px-fa-tag">"{dquery.length>22?dquery.slice(0,21)+"…":dquery}"<button onClick={()=>setQuery("")}><X size={9}/></button></span>}
-              {natF && NAT[natF] && <span className="px-fa-tag" style={{background:NAT[natF].soft,color:NAT[natF].cor,borderColor:NAT[natF].cor}}>{NAT[natF].rot}<button onClick={()=>chooseNat(null)} style={{color:NAT[natF].cor}}><X size={9}/></button></span>}
-              {macroF && <span className="px-fa-tag">{macroF.length>38?macroF.slice(0,37)+"…":macroF}<button onClick={()=>setMacroF(null)}><X size={9}/></button></span>}
-              {catF && <span className="px-fa-tag">{catF.length>38?catF.slice(0,37)+"…":catF}<button onClick={()=>setCatF(null)}><X size={9}/></button></span>}
-            </div>
-            <button className="px-fa-limpar" onClick={()=>{setNatF(null);setMacroF(null);setCatF(null);setQuery("");}}>Limpar tudo</button>
-          </div>
-        )}
         </div>
 
-        <div className={`px-body ${navOpen||descCollapsed?"solo":""} ${navOpen?"nav":""}`}>
-          {navOpen && <MacroNav natF={natF} macroF={macroF} onPick={pickMacro} onClear={()=>setMacroF(null)} onClose={()=>setNavOpen(false)}/>}
+        <div className={`px-body ${navPanel||descCollapsed?"solo":""} ${navPanel?"nav":""}`}>
+          {navPanel==="macro" && <MacroNav natF={natF} macroF={macroF} onPick={pickMacro} onClear={()=>setMacroF(null)} onClose={()=>setNavPanel(null)}/>}
+          {navPanel==="categoria" && <ListaFiltroNav titulo="Categorias" icon={PieChart} itens={categoriaOpts} valorAtual={catF} onPick={pickCategoria} onClear={()=>setCatF(null)} onClose={()=>setNavPanel(null)}/>}
+          {navPanel==="servico" && <ListaFiltroNav titulo="Serviços" icon={Sparkles} itens={servicoOpts} valorAtual={servF} onPick={pickServico} onClear={()=>setServF(null)} onClose={()=>setNavPanel(null)}/>}
+          {navPanel==="orgao" && <ListaFiltroNav titulo="Órgãos" icon={Building2} itens={orgaoOpts} valorAtual={orgF} onPick={pickOrgao} onClear={()=>setOrgF(null)} onClose={()=>setNavPanel(null)}/>}
           <main className="px-main">
             {loading ? <BancoLoading/> : <>
               {bancoStatus==="fallback" && <div className="px-banco-aviso"><AlertTriangle size={14}/> Banco completo (<b>banco.json</b>) não encontrado — exibindo amostra de demonstração. Em produção, publique o arquivo junto ao portal para as 31.241 entregas.</div>}
@@ -435,10 +472,17 @@ export default function PortalEntregas(){
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
+              {mode==="revisao" && <CentralRevisao embutido onClose={()=>setMode("lista")}/>}
+              {mode==="qualidade" && <QualidadePanel embutido flags={flags} onClose={()=>setMode("lista")}/>}
+              {mode==="descricao" && <div className="px-desc-expandida">
+                <div className="px-doc-h"><div className="px-doc-t"><ClipboardList size={16}/> Descrição da Área</div><span className="px-doc-badge">{sel.length}</span></div>
+                {docHeader}
+                <DescPanel sel={sel} notes={notes} setNote={setNote} rem={rem} onInject={()=>sel.length&&setPreview(true)} orgao={orgao} unidade={unidade}/>
+              </div>}
             </>}
           </main>
 
-          {!navOpen && !descCollapsed && <aside className="px-doc">
+          {!navPanel && !descCollapsed && <aside className="px-doc">
             <div className="px-doc-h"><div className="px-doc-t"><ClipboardList size={16}/> Descrição da Área</div><span className="px-doc-badge">{sel.length}</span>
               <div className="px-doc-view">
                 <button className={descView==="lista"?"on":""} onClick={()=>setDescView("lista")} title="Ver como lista"><ClipboardList size={13}/></button>
@@ -455,8 +499,8 @@ export default function PortalEntregas(){
       </div>}
 
       {/* botões flutuantes (apenas na seção Catálogo) */}
-      {secao==="catalogo" && navOpen && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
-      {secao==="catalogo" && !navOpen && <button className="px-descfab pxdesc" data-collapsed={descCollapsed?1:0} onClick={openDesc} title="Abrir a Descrição da Área"><ClipboardList size={16}/> Descrição <span>{sel.length}</span></button>}
+      {secao==="catalogo" && navPanel && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
+      {secao==="catalogo" && !navPanel && <button className="px-descfab pxdesc" data-collapsed={descCollapsed?1:0} onClick={openDesc} title="Abrir a Descrição da Área"><ClipboardList size={16}/> Descrição <span>{sel.length}</span></button>}
       {secao==="catalogo" && compare.length>0 && <button className="px-cmpfab" onClick={()=>setCompareOpen(true)}><Columns size={16}/> Comparar <span>{compare.length}</span></button>}
 
       {descDrawer && <div className="px-drawer-bg" onClick={()=>setDescDrawer(false)}>
@@ -473,8 +517,7 @@ export default function PortalEntregas(){
       {preview && <PreviewDFT sel={sel} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={()=>{setPreview(false);flash("Descrição enviada ao DFT (demonstração).");}}/>}
       {flagFor && <FlagModal entrega={flagFor} onClose={()=>setFlagFor(null)} onSubmit={(f)=>{setFlags(s=>[...s,f]);setFlagFor(null);flash("Sinalização enviada à curadoria do banco.");}}/>}
       {novaFor!==null && <FlagModal nova proposta={novaFor} onClose={()=>setNovaFor(null)} onSubmit={(f)=>{setFlags(s=>[...s,f]);setNovaFor(null);flash("Proposta de nova entrega enviada à curadoria.");}}/>}
-      {qualidadeOpen && <QualidadePanel flags={flags} onClose={()=>setQualidadeOpen(false)}/>}
-      {secao==="revisao" && <CentralRevisao onClose={()=>setSecao("catalogo")}/>}
+      {/* Revisão e Qualidade do banco agora são visualizações (mode==="revisao"/"qualidade") dentro do Catálogo, não overlays/seções próprias. */}
       {/* Organizações agora é um app próprio (organizacoes.html) — ver OrganizacoesApp exportado no fim deste arquivo */}
       {toast && <div className="px-toast">{toast}</div>}
     </div>
@@ -786,6 +829,27 @@ function MacroNav({natF,macroF,onPick,onClear,onClose}){
             ))}
           </div>}
         </div>); })}
+    </div>
+  </aside>);
+}
+
+/* ---------- painel genérico de filtro por lista (categoria/serviço/órgão) ---------- */
+function ListaFiltroNav({titulo,icon:Icon,itens,valorAtual,onPick,onClear,onClose}){
+  const [busca,setBusca]=useState("");
+  const filtrados=useMemo(()=>{ const q=norm(busca); return q?itens.filter(it=>norm(it.valor).includes(q)):itens; },[itens,busca]);
+  return (<aside className="px-mnav">
+    <div className="px-mnav-h"><span><Icon size={15}/> {titulo}</span><button onClick={onClose}><X size={16}/></button></div>
+    <button className={`px-mnav-all ${!valorAtual?"on":""}`} onClick={onClear}>Todos</button>
+    <div className="px-mnav-search"><Search size={13} color={C.faint}/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar…"/></div>
+    <div className="px-mnav-body">
+      <div className="px-mnav-list">
+        {filtrados.map(it=>(
+          <button key={it.valor} className={`px-mnav-item ${valorAtual===it.valor?"on":""}`} onClick={()=>onPick(it.valor)} title={it.valor}>
+            <span>{it.valor}</span><b>{it.n}</b>
+          </button>
+        ))}
+        {filtrados.length===0 && <div className="px-mnav-empty">Nada encontrado.</div>}
+      </div>
     </div>
   </aside>);
 }
@@ -2412,16 +2476,17 @@ function FlagModal({entrega,nova,proposta,onClose,onSubmit}){
     </div>
   </div>);
 }
-function QualidadePanel({flags,onClose}){
-  return (<div className="px-modal-bg" onClick={onClose}>
-    <div className="px-qual" onClick={e=>e.stopPropagation()}>
-      <div className="px-flagm-h"><div><Flag size={17} color="#B86E00"/> <b>Qualidade do banco · sinalizações</b></div><button onClick={onClose}><X size={17}/></button></div>
+function QualidadePanel({flags,onClose,embutido}){
+  const corpo=(
+    <div className={embutido?"px-qual px-qual-embutido":"px-qual"} onClick={e=>e.stopPropagation()}>
+      <div className="px-flagm-h"><div><Flag size={17} color="#B86E00"/> <b>Qualidade do banco · sinalizações</b></div>{!embutido && <button onClick={onClose}><X size={17}/></button>}</div>
       <p className="px-flagm-sub">As entregas sinalizadas passam por uma curadoria do banco, que avalia e trata cada apontamento levantado pelo uso do portal.</p>
       {flags.length===0
         ? <div className="px-qual-empty">Nenhuma sinalização ainda. Abra os detalhes de uma entrega e use “Sinalizar problema ao banco”.</div>
         : <div className="px-qual-list">{flags.map((f,i)=>(<div className="px-qual-item" key={i}><span className="px-conv-conf" style={{background:"#FBEEDB",color:"#B86E00"}}>{f.tipo}</span><div className="px-qual-body"><div className="px-qual-row"><code>{f.codigo}</code> <b>{f.entrega}</b></div>{f.obs&&<p>{f.obs}</p>}</div></div>))}</div>}
     </div>
-  </div>);
+  );
+  return embutido ? corpo : <div className="px-modal-bg" onClick={onClose}>{corpo}</div>;
 }
 
 /* ---------- css ---------- */
@@ -2571,6 +2636,20 @@ const css=`
 .px-chip-macro em:hover{background:${C.primary};color:#fff;}
 .px-count{margin-left:auto;font-size:12px;color:${C.faint};white-space:nowrap;}
 .px-count.filt{color:${C.primaryDark};font-weight:700;}
+.px-search.full{padding:13px 16px;border-radius:12px;}
+.px-search.full input{font-size:15px;}
+.px-fbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;padding-bottom:2px;}
+.px-fbar-stat{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:7px 13px;line-height:1.15;border-radius:20px;border:1.5px solid ${C.line};background:#fff;color:${C.sub};cursor:pointer;font-family:inherit;transition:.14s;}
+.px-fbar-stat b{font-weight:800;color:${C.navy};}
+.px-fbar-stat:hover{border-color:${C.primary};color:${C.primaryDark};}
+.px-fbar-stat.on{background:${C.bg};border-color:${C.navy};}
+.px-fbar-stat.ativo{background:${C.primarySoft};border-color:${C.primary};color:${C.primaryDark};}
+.px-fbar-stat.ativo b{color:${C.primaryDark};}
+.px-fbar-stat.total.on{background:${C.navy};border-color:${C.navy};color:#fff;}
+.px-fbar-stat.total.on b{color:#fff;}
+.px-fbar-sep{width:1px;align-self:stretch;background:${C.line};margin:0 4px;}
+.px-modes-row{display:flex;margin-top:4px;}
+.px-mode-badge{margin-left:2px;font-size:10px;font-weight:800;background:${C.primary};color:#fff;border-radius:10px;padding:1px 6px;line-height:1.4;}
 .px-filtros-ativos{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px;background:${C.primarySoft};border:1px solid ${C.line};border-radius:10px;padding:8px 12px;}
 .px-fa-tags{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
 .px-fa-tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:3px 8px 3px 10px;border-radius:20px;background:#fff;border:1px solid ${C.line};color:${C.ink};max-width:260px;overflow:hidden;}
@@ -3026,6 +3105,9 @@ const css=`
 .px-qual-row{font-size:12.5px;color:${C.ink};}
 .px-qual-row code{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${C.primaryDark};}
 .px-qual-item p{font-size:12px;color:${C.sub};margin:5px 0 0;line-height:1.45;}
+.px-qual-embutido{width:100%;max-width:820px;margin:0 auto;box-shadow:none;border:1px solid ${C.line};max-height:none;}
+.px-desc-expandida{max-width:820px;margin:0 auto;background:#fff;border:1px solid ${C.line};border-radius:14px;padding:16px 18px;}
+.px-desc-expandida .px-doc-h{margin-bottom:12px;}
 
 /* header ghost btn */
 .px-ghostbtn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:${C.sub};background:#fff;border:1px solid ${C.line};border-radius:20px;padding:5px 12px;cursor:pointer;}
@@ -3114,6 +3196,9 @@ const css=`
 .px-mnav-h button{border:none;background:${C.bg};border-radius:7px;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;color:${C.sub};}
 .px-mnav-all{margin:10px 12px 4px;text-align:left;border:1px solid ${C.line};background:#fff;border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:700;color:${C.sub};cursor:pointer;}
 .px-mnav-all.on{border-color:${C.primary};color:${C.primary};background:${C.primarySoft};}
+.px-mnav-search{display:flex;align-items:center;gap:8px;margin:0 12px 8px;border:1.5px solid ${C.line};border-radius:9px;padding:7px 10px;background:#fff;}
+.px-mnav-search input{flex:1;border:none;outline:none;font-size:12.5px;background:transparent;}
+.px-mnav-empty{font-size:12px;color:${C.faint};text-align:center;padding:16px;}
 .px-mnav-body{overflow-y:auto;padding:6px 8px 10px;}
 .px-mnav-grp{margin-bottom:2px;}
 .px-mnav-nat{display:flex;align-items:center;gap:7px;width:100%;text-align:left;border:none;background:transparent;padding:8px 8px;cursor:pointer;font-size:12.5px;font-weight:800;color:${C.navy};}
@@ -3679,7 +3764,7 @@ const COLS_EXPORT = ["Código","Entrega","MacroProcesso","Categoria de Serviço"
   "Texto Mesclado","Serviço Sugerido IA","Justificativa IA","Revisor","Aba","Registrado em"];
 
 /* ============================================================ */
-function CentralRevisao({ onClose }){
+function CentralRevisao({ onClose, embutido }){
   const [aba,setAba]=useState("similares");
   const [revisor,setRevisor]=useState("");
   const [banco,setBanco]=useState(SAMPLE.corpus);           // corpus p/ similaridade
@@ -3743,9 +3828,9 @@ function CentralRevisao({ onClose }){
   ];
 
   return (
-    <div className="cr-root">
+    <div className={embutido?"cr-root cr-embutido":"cr-root"}>
       <style>{CSS}</style>
-      <div className="cr-stripe"><span style={{background:C.green}}/><span style={{background:C.yellow}}/><span style={{background:C.primary}}/></div>
+      {!embutido && <div className="cr-stripe"><span style={{background:C.green}}/><span style={{background:C.yellow}}/><span style={{background:C.primary}}/></div>}
 
       <header className="cr-head">
         <div className="cr-title">
@@ -4216,6 +4301,7 @@ function Vazio({icon:Ic,titulo,texto}){
 const CSS = `
 .cr-root{position:fixed;inset:60px 0 0 0;z-index:60;background:${C.bg};display:flex;flex-direction:column;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${C.ink};overflow:hidden;}
+.cr-embutido{position:static;inset:auto;z-index:auto;height:auto;min-height:640px;border:1px solid ${C.line};border-radius:14px;overflow:hidden;}
 .cr-stripe{display:flex;height:4px;flex-shrink:0;} .cr-stripe span{flex:1;}
 .cr-head{background:#fff;border-bottom:1px solid ${C.line};padding:12px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;flex-shrink:0;}
 .cr-title{display:flex;align-items:center;gap:12px;}
