@@ -388,23 +388,20 @@ export default function PortalEntregas(){
           </div>
         </div>
 
+        <PainelNumeros stats={stats} bancoStatus={bancoStatus} filtro={{
+          ativoTotal: !natF&&!macroF&&!catF&&!servF&&!orgF,
+          onTotal: ()=>{setNavPanel(null);setNatF(null);setMacroF(null);setCatF(null);setServF(null);setOrgF(null);},
+          ativoMacro: navPanel==="macro"||!!macroF,
+          onMacro: ()=>setNavPanel(p=>p==="macro"?null:"macro"),
+          ativoCategoria: navPanel==="categoria"||!!catF,
+          onCategoria: ()=>setNavPanel(p=>p==="categoria"?null:"categoria"),
+          ativoServico: navPanel==="servico"||!!servF,
+          onServico: ()=>setNavPanel(p=>p==="servico"?null:"servico"),
+          ativoOrgao: navPanel==="orgao"||!!orgF,
+          onOrgao: ()=>setNavPanel(p=>p==="orgao"?null:"orgao"),
+        }}/>
+
         <div className="px-fbar">
-          <button className={`px-fbar-stat total ${!natF&&!macroF&&!catF&&!servF&&!orgF?"on":""}`} onClick={()=>{setNavPanel(null);setNatF(null);setMacroF(null);setCatF(null);setServF(null);setOrgF(null);}}>
-            <b>{total.toLocaleString("pt-BR")}</b> entregas
-          </button>
-          <button className={`px-fbar-stat ${navPanel==="macro"?"on":""} ${macroF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="macro"?null:"macro")} title="Filtrar por macroprocesso">
-            <GitBranch size={13}/> <b>{stats.macros.toLocaleString("pt-BR")}</b> macroprocessos
-          </button>
-          <button className={`px-fbar-stat ${navPanel==="categoria"?"on":""} ${catF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="categoria"?null:"categoria")} title="Filtrar por categoria">
-            <PieChart size={13}/> <b>{stats.cats.toLocaleString("pt-BR")}</b> categorias
-          </button>
-          <button className={`px-fbar-stat ${navPanel==="servico"?"on":""} ${servF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="servico"?null:"servico")} title="Filtrar por serviço">
-            <Sparkles size={13}/> <b>{stats.servs.toLocaleString("pt-BR")}</b> serviços
-          </button>
-          <button className={`px-fbar-stat ${navPanel==="orgao"?"on":""} ${orgF?"ativo":""}`} onClick={()=>setNavPanel(p=>p==="orgao"?null:"orgao")} title="Filtrar por órgão">
-            <Building2 size={13}/> <b>{stats.orgs.toLocaleString("pt-BR")}</b> órgãos
-          </button>
-          <span className="px-fbar-sep"/>
           <span className="px-facets-l">Natureza:</span>
           <button className={`px-chip ${!natF?"on":""}`} onClick={()=>chooseNat(null)}>Todas <b>{total}</b></button>
           {Object.entries(NAT).map(([id,n])=>{
@@ -700,7 +697,7 @@ function SecaoInicio({stats,onCatalogo,onOrgaos,onChat,onConversor,onRevisao,onP
     <section className="px-home">
       <div className="px-home-hero">
         <h1>O trabalho do serviço público federal,<br/>organizado em um só lugar.</h1>
-        <p>Catálogo oficial de entregas, dimensionamento da força de trabalho e as ferramentas para conectar os dois — consultar, descrever, converter e decidir.</p>
+        <p>Catálogo oficial</p>
         <div className="px-home-nums">
           <span><b>{fmt(stats.total)}</b> entregas</span><i/>
           <span><b>{fmt(stats.servs)}</b> serviços</span><i/>
@@ -913,10 +910,16 @@ function EntregaDetalhe({e,inCmp,toggleCompare,onFlag}){
 }
 
 /* ---------- painel de números (topo) ---------- */
-function PainelNumeros({stats,bancoStatus}){
+function PainelNumeros({stats,bancoStatus,filtro}){
   const fmt=n=>Number(n||0).toLocaleString("pt-BR");
   const {total,macros,cats,servs,orgs,pctServ,dist}=stats;
   const seg=k=> total? (dist[k]/total*100):0;
+  const Big = filtro
+    ? <button className={`px-mx-big px-mx-btn ${filtro.ativoTotal?"on":""}`} onClick={filtro.onTotal} title="Ver todas as entregas">{fmt(total)} <em>entregas</em></button>
+    : <span className="px-mx-big">{fmt(total)} <em>entregas</em></span>;
+  const Mini = ({onClick,active,title,children}) => filtro
+    ? <button className={`px-mx-mini px-mx-btn ${active?"on":""}`} onClick={onClick} title={title}>{children}</button>
+    : <span className="px-mx-mini">{children}</span>;
   return (
     <section className="px-mx" aria-label="Números do banco de entregas">
       <div className="px-mx-lead">
@@ -925,11 +928,11 @@ function PainelNumeros({stats,bancoStatus}){
           <div className="px-mx-nums">
             <span className="px-mx-eyebrow">Banco de entregas</span>
             <div className="px-mx-row">
-              <span className="px-mx-big">{fmt(total)} <em>entregas</em></span>
-              <span className="px-mx-mini"><b>{fmt(macros)}</b> macroprocessos</span>
-              <span className="px-mx-mini"><b>{fmt(cats)}</b> categorias</span>
-              <span className="px-mx-mini"><b>{fmt(servs)}</b> serviços</span>
-              {orgs>0 && <span className="px-mx-mini"><b>{fmt(orgs)}</b> órgãos</span>}
+              {Big}
+              <Mini onClick={filtro&&filtro.onMacro} active={filtro&&filtro.ativoMacro} title="Filtrar por macroprocesso"><b>{fmt(macros)}</b> macroprocessos</Mini>
+              <Mini onClick={filtro&&filtro.onCategoria} active={filtro&&filtro.ativoCategoria} title="Filtrar por categoria"><b>{fmt(cats)}</b> categorias</Mini>
+              <Mini onClick={filtro&&filtro.onServico} active={filtro&&filtro.ativoServico} title="Filtrar por serviço"><b>{fmt(servs)}</b> serviços</Mini>
+              {orgs>0 && <Mini onClick={filtro&&filtro.onOrgao} active={filtro&&filtro.ativoOrgao} title="Filtrar por órgão"><b>{fmt(orgs)}</b> órgãos</Mini>}
             </div>
           </div>
           <div className="px-mx-bar" role="img" aria-label="Distribuição por natureza">
@@ -2639,15 +2642,6 @@ const css=`
 .px-search.full{padding:13px 16px;border-radius:12px;}
 .px-search.full input{font-size:15px;}
 .px-fbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;padding-bottom:2px;}
-.px-fbar-stat{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:7px 13px;line-height:1.15;border-radius:20px;border:1.5px solid ${C.line};background:#fff;color:${C.sub};cursor:pointer;font-family:inherit;transition:.14s;}
-.px-fbar-stat b{font-weight:800;color:${C.navy};}
-.px-fbar-stat:hover{border-color:${C.primary};color:${C.primaryDark};}
-.px-fbar-stat.on{background:${C.bg};border-color:${C.navy};}
-.px-fbar-stat.ativo{background:${C.primarySoft};border-color:${C.primary};color:${C.primaryDark};}
-.px-fbar-stat.ativo b{color:${C.primaryDark};}
-.px-fbar-stat.total.on{background:${C.navy};border-color:${C.navy};color:#fff;}
-.px-fbar-stat.total.on b{color:#fff;}
-.px-fbar-sep{width:1px;align-self:stretch;background:${C.line};margin:0 4px;}
 .px-modes-row{display:flex;margin-top:4px;}
 .px-mode-badge{margin-left:2px;font-size:10px;font-weight:800;background:${C.primary};color:#fff;border-radius:10px;padding:1px 6px;line-height:1.4;}
 .px-filtros-ativos{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px;background:${C.primarySoft};border:1px solid ${C.line};border-radius:10px;padding:8px 12px;}
@@ -3437,6 +3431,11 @@ const css=`
 .px-mx-big em{font-style:normal;font-size:11.5px;font-weight:600;color:${C.faint};letter-spacing:0;}
 .px-mx-mini{font-size:12px;color:${C.sub};font-weight:500;}
 .px-mx-mini b{font-weight:800;color:${C.ink};}
+.px-mx-btn{border:none;background:transparent;font-family:inherit;cursor:pointer;padding:4px 8px;border-radius:8px;transition:.14s;margin:-4px -8px;}
+.px-mx-btn:hover{background:#fff;box-shadow:0 1px 3px rgba(19,81,180,.12);}
+.px-mx-btn.on{background:${C.navy};color:#fff;}
+.px-mx-btn.on b{color:#fff;}
+.px-mx-btn.on em{color:#dbe4f7;}
 .px-mx-bar{display:flex;height:5px;border-radius:4px;overflow:hidden;background:${C.line};margin-top:9px;}
 .px-mx-bar span{height:100%;}
 .px-mx-acts{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;}
@@ -3669,6 +3668,8 @@ table.cpd-tab tr.nova td:first-child{box-shadow:inset 3px 0 0 var(--cpd-green);}
 .px-toolbar{position:sticky;top:0;z-index:20;background:${C.bg};padding-top:10px;padding-bottom:4px;margin-bottom:10px;box-shadow:0 6px 8px -8px rgba(13,49,111,.18);}
 .px-toolbar .px-controls{margin-bottom:8px;}
 .px-toolbar .px-facets{margin-bottom:8px;}
+.px-toolbar .px-mx{margin:0 0 8px;padding:0;max-width:none;}
+.px-toolbar .px-fbar{margin-bottom:8px;}
 .px-toolbar .px-filtros-ativos{margin-bottom:2px;}
 .px-mode-lbl{display:inline;}
 @media(max-width:720px){.px-mode-lbl{display:none;}.px-mode{padding:8px 10px;}}
