@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório da Unidade — DFT · Protótipo v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FCFCFD;--surface:#fff;--ink:#171B21;--sub:#4E5866;--faint:#98A1AD;--hair:#E7EAEE;--hair2:#F1F3F6;
+  --navy:#12305B;--blue:#1351B4;--blue-2:#7B99C9;--blue-3:#C7D4E8;
+  --coral:#C2410C;--coral-soft:#FBEDE4;--green:#1B7F3A;--green-soft:#E9F4EC;--purple:#5B3A9B;--purple-soft:#F0EBF8;
+  --amber:#9A6A00;
+  --num:"Archivo",-apple-system,sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Archivo",-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
+b{font-weight:700}
+svg text{font-family:var(--num)}
+.tnum{font-family:var(--num);font-variant-numeric:tabular-nums}
+
+.gov-bar{height:3px;background:linear-gradient(90deg,#168821 0 33%,#FFCD07 33% 66%,#1351B4 66% 100%)}
+
+/* ============ cabeçalho editorial ============ */
+.hero{background:var(--surface);border-bottom:1px solid var(--hair)}
+.hero-in{max-width:1140px;margin:0 auto;padding:26px 34px 0}
+.kicker{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:44px;align-items:end;padding-bottom:22px}
+@media(max-width:920px){.hero-grid{grid-template-columns:1fr}}
+.t-sig{font-family:var(--serif);font-size:34px;font-weight:700;color:var(--navy);letter-spacing:-.01em;line-height:1.08;margin-top:8px}
+.t-nome{font-size:13px;color:var(--sub);font-weight:500;margin-top:6px;max-width:460px}
+.t-meta{display:flex;gap:0;margin-top:16px;font-size:10.5px;color:var(--faint);font-weight:600;flex-wrap:wrap}
+.t-meta span{padding:0 14px;border-left:1px solid var(--hair)}
+.t-meta span:first-child{padding-left:0;border-left:0}
+.t-meta b{color:var(--sub);font-weight:700}
+.status-line{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--green);margin-top:10px}
+.status-line.off{color:var(--faint)}
+.status-line i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* balanço de capacidade — bloco aprovado, tratamento editorial */
+.gap-block{padding-bottom:6px}
+.gap-stats{display:flex;gap:0;align-items:baseline;border-bottom:1px solid var(--hair);padding-bottom:12px;margin-bottom:13px}
+.gs{padding:0 22px}
+.gs:first-child{padding-left:0}
+.gs+.gs{border-left:1px solid var(--hair)}
+.gs .v{font-family:var(--num);font-weight:700;font-size:24px;color:var(--navy);letter-spacing:-.01em;line-height:1}
+.gs .v.gap{color:var(--coral)}
+.gs .l{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-top:5px}
+.gs .d{font-size:10px;color:var(--sub);font-weight:500;margin-top:2px}
+.cap-bar{height:14px;border-radius:7px;background:var(--hair2);position:relative;overflow:hidden}
+.cap-bar .gapz{position:absolute;inset:0;background:repeating-linear-gradient(135deg,transparent,transparent 5px,#EFC5AC 5px,#EFC5AC 8px)}
+.cap-bar .fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--navy),var(--blue));border-radius:7px}
+.cap-cap{display:flex;justify-content:space-between;font-size:9.5px;color:var(--faint);font-weight:600;margin-top:6px}
+.cap-cap b{color:var(--navy)}
+
+/* nav */
+.subnav{position:sticky;top:0;z-index:30;background:rgba(252,252,253,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--hair)}
+.subnav-in{max-width:1140px;margin:0 auto;padding:0 34px;display:flex;align-items:stretch;gap:26px}
+.tab{border:0;background:none;color:var(--faint);font-family:inherit;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:14px 2px 12px;cursor:pointer;border-bottom:2px solid transparent;display:flex;gap:8px;align-items:center}
+.tab .k{font-size:10px;color:var(--blue-2)}
+.tab:hover{color:var(--sub)}
+.tab.on{color:var(--navy);border-bottom-color:var(--navy)}
+.tab.on .k{color:var(--blue)}
+.nav-right{margin-left:auto;display:flex;gap:9px;align-items:center;padding:9px 0}
+.mini-btn{border:1px solid var(--hair);background:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;color:var(--sub);cursor:pointer;font-family:inherit}
+
+/* ============ corpo: exhibits ============ */
+.wrap{max-width:1140px;margin:0 auto;padding:8px 34px 80px}
+.section-kick{display:flex;align-items:baseline;gap:12px;margin:36px 0 4px}
+.section-kick .no{font-family:var(--num);font-size:11px;font-weight:700;color:var(--blue-2);letter-spacing:.05em}
+.section-kick .t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.exh{padding:22px 0 26px;border-top:1px solid var(--hair)}
+.exh:first-of-type{border-top:0}
+.exh-head{max-width:760px;margin-bottom:18px}
+.exh-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-2);font-weight:700}
+.exh-title{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--ink);line-height:1.3;margin-top:5px}
+.exh-title em{font-style:normal;color:var(--coral)}
+.exh-sub{font-size:11.5px;color:var(--sub);margin-top:6px;font-weight:500}
+.exh-src{font-size:9.5px;color:var(--faint);margin-top:14px;font-weight:500}
+.cols{display:grid;gap:38px}
+.c2{grid-template-columns:1fr 1fr}.c53{grid-template-columns:1.5fr 1fr}.c35{grid-template-columns:1fr 1.5fr}.c3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:920px){.c2,.c53,.c35,.c3{grid-template-columns:1fr}}
+.subhead{font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.02em;margin-bottom:10px}
+.subhead .cap{display:block;font-size:9.5px;color:var(--faint);font-weight:500;letter-spacing:0;margin-top:1px}
+
+/* tabelas editorais */
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;text-align:left;padding:6px 8px 7px;border-bottom:1px solid var(--ink)}
+td{padding:9px 8px;border-bottom:1px solid var(--hair2);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right}
+td.num{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums}
+.row-hl td{background:#F5F8FC}
+.row-hl td:first-child{font-weight:700;color:var(--navy);box-shadow:inset 3px 0 0 var(--blue)}
+.tag{font-size:9px;font-weight:700;border-radius:5px;padding:2.5px 8px;white-space:nowrap;letter-spacing:.02em}
+.tag.p{background:var(--purple-soft);color:var(--purple)}
+.tag.g{background:var(--green-soft);color:var(--green)}
+.tag.b{background:#EAF0FA;color:var(--blue)}
+.tag.k{background:var(--hair2);color:var(--sub)}
+.tag.c{background:var(--coral-soft);color:var(--coral)}
+
+/* fit de carreiras (aprovado) — refinado */
+.fit-row{display:grid;grid-template-columns:66px 1fr 118px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hair2)}
+.fit-row:last-child{border-bottom:0}
+.fit-row .cn{font-weight:700;color:var(--navy);font-size:12px;text-align:right;font-family:var(--num)}
+.fit-row .tr{height:7px;border-radius:4px;background:var(--hair2);overflow:hidden}
+.fit-row .tr i{display:block;height:100%;border-radius:4px}
+.fit-row .rec{font-size:9.5px;font-weight:600;color:var(--faint)}
+.fit-row .rec .in{color:var(--green);font-weight:700}
+
+/* mix statement */
+.mix-line{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:14px 0 2px;font-family:var(--num)}
+.mix-line .q{font-size:26px;font-weight:700;color:var(--navy);letter-spacing:-.01em}
+.mix-line .c{font-size:12px;font-weight:700;color:var(--sub);margin-right:8px}
+.mix-line .op{font-size:16px;color:var(--faint);font-weight:600}
+.mix-line .res{color:var(--green)}
+
+/* plano numerado */
+.acts{counter-reset:act}
+.act{display:grid;grid-template-columns:52px 1fr auto;gap:16px;padding:15px 0;border-bottom:1px solid var(--hair2);align-items:start}
+.act:last-child{border-bottom:0}
+.act .no{font-family:var(--num);font-size:20px;font-weight:700;color:var(--blue-3);line-height:1.15}
+.act .no.p1{color:var(--coral)}
+.act h6{font-size:13px;font-weight:700;color:var(--navy)}
+.act p{font-size:11.5px;color:var(--sub);margin-top:3px;max-width:560px}
+.act .side{text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.act .side .h{font-size:10px;color:var(--faint);font-weight:600}
+
+.callout{border-left:2px solid var(--navy);padding:4px 0 4px 16px;margin-top:16px;font-size:12px;color:var(--sub);max-width:640px}
+.callout b{color:var(--navy)}
+.callout.r{border-left-color:var(--coral)}
+.callout.r b{color:var(--coral)}
+
+.strategy{display:grid;grid-template-columns:1fr 1fr auto;gap:30px;padding:18px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);margin-top:14px}
+@media(max-width:920px){.strategy{grid-template-columns:1fr}}
+.strategy h6{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.strategy p{font-size:11.5px;color:var(--ink);font-weight:500;margin-top:4px;line-height:1.5}
+.strategy .hit{font-family:var(--num);font-size:30px;font-weight:700;color:var(--green);line-height:1;text-align:right}
+.strategy .hitlb{font-size:9px;color:var(--faint);font-weight:600;text-transform:uppercase;letter-spacing:.06em;text-align:right;margin-top:4px}
+
+/* ============ 03 · Carreiras ============ */
+.seg{display:inline-flex;border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:#fff;margin:4px 0 4px}
+.seg button{border:0;background:none;font-family:inherit;font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--faint);padding:8px 15px;cursor:pointer;border-left:1px solid var(--hair);display:flex;gap:7px;align-items:center;transition:color .15s}
+.seg button:first-child{border-left:0}
+.seg button:hover{color:var(--sub)}
+.seg button.on{background:var(--navy);color:#fff}
+.seg button .n{font-family:var(--num);font-size:9.5px;opacity:.65}
+
+.comp-bar{display:flex;height:30px;border-radius:9px;overflow:hidden;gap:2px;margin:16px 0 12px}
+.comp-bar span{display:flex;align-items:center;justify-content:center;min-width:3px;position:relative;transition:filter .15s}
+.comp-bar span:hover{filter:brightness(1.14)}
+.comp-bar span i{font-style:normal;font-family:var(--num);font-size:11px;font-weight:700;color:#fff;opacity:.95}
+.leg{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px}
+.leg .li{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:600;color:var(--sub)}
+.leg .li i{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.leg .li b{color:var(--navy);font-family:var(--num)}
+.leg .li .pc{color:var(--faint);font-weight:600;font-size:9.5px}
+
+.vaga{display:grid;grid-template-columns:56px 1fr auto;gap:16px;padding:13px 0;border-bottom:1px solid var(--hair2);align-items:center}
+.vaga:last-child{border-bottom:0}
+.vaga .no{font-family:var(--num);font-size:19px;font-weight:700;color:var(--blue-3);line-height:1.1}
+.vaga .no.p1{color:var(--coral)}
+.vaga .no small{font-size:9px;color:var(--faint);display:block;font-weight:600;letter-spacing:.04em}
+.vaga h6{font-size:12.5px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
+.vaga h6 i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.vaga p{font-size:11px;color:var(--sub);margin-top:2px}
+.vaga p .sg{color:var(--faint);font-weight:600}
+.vaga .side{text-align:right}
+.vaga .side .h{font-family:var(--num);font-size:13px;font-weight:700;color:var(--navy)}
+.vaga .side .l{font-size:9px;color:var(--faint);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+
+.carr-row{display:grid;grid-template-columns:150px 1fr 96px;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair2)}
+.carr-row:last-child{border-bottom:0}
+.carr-row .cl{font-size:11.5px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px;justify-content:flex-end;text-align:right}
+.carr-row .cl i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.carr-row .tr{height:9px;border-radius:5px;background:var(--hair2);overflow:hidden;position:relative}
+.carr-row .tr i{display:block;height:100%;border-radius:5px}
+.carr-row .vv{font-family:var(--num);font-size:11px;font-weight:700;color:var(--navy);white-space:nowrap}
+.carr-row .vv small{color:var(--faint);font-weight:600;font-size:9.5px}
+.carr-sub{grid-column:2/4;font-size:9.5px;color:var(--faint);font-weight:500;margin-top:-4px;padding-bottom:6px}
+
+table.heat th{text-align:center;white-space:nowrap}
+table.heat th:first-child{text-align:left}
+table.heat td.hc{text-align:center;font-family:var(--num);font-weight:600;font-size:10.5px;padding:6px 4px}
+table.heat td.hc span{display:inline-block;min-width:42px;padding:4px 6px;border-radius:6px}
+table.heat td.cat{font-size:10.5px;font-weight:600;color:var(--sub);max-width:210px}
+
+.empty-state{text-align:center;padding:44px 20px;color:var(--faint)}
+.empty-state p{font-size:12px;max-width:420px;margin:8px auto 0;line-height:1.6}
+.footer-note{max-width:1140px;margin:0 auto;padding:0 34px 46px;font-size:9px;color:var(--faint);line-height:1.6;border-top:1px solid var(--hair);padding-top:14px}
+@media print{.subnav,.nav-right{display:none}.exh{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="gov-bar"></div>
+
+<div class="hero"><div class="hero-in">
+  <div class="hero-grid">
+    <div>
+      <div class="kicker" id="hCrumb">—</div>
+      <div class="t-sig" id="hSig">—</div>
+      <div class="t-nome" id="hNome">—</div>
+      <div class="status-line" id="hSt"><i></i><span>—</span></div>
+      <div class="t-meta" id="hMeta"></div>
+    </div>
+    <div class="gap-block" id="gapHero"></div>
+  </div>
+</div></div>
+
+<div class="subnav"><div class="subnav-in">
+  <div style="display:flex;gap:26px" id="tabs"></div>
+  <div class="nav-right">
+    <button class="mini-btn" onclick="window.print()">Exportar</button>
+  </div>
+</div></div>
+
+<div class="wrap" id="content"></div>
+<div class="footer-note">
+  Relatório da unidade — Portal das Entregas / SISDIP · Estrutura e indicadores derivados dos Resumos Executivos de DFT,
+  dos painéis SISDIP e das análises da Frente 4.
+</div>
+
+<script>
+/* ============================================================ */
+const UNITS = {};
+
+/* ============================================================
+   gráficos v4 — traço fino, rótulos diretos, zero chartjunk
+============================================================ */
+const fmt=n=>n==null?"—":n.toLocaleString("pt-BR");
+const fmt1=n=>n==null?"—":n.toLocaleString("pt-BR",{maximumFractionDigits:1});
+const NS=(s,a={},kids="")=>{let at=Object.entries(a).map(([k,v])=>`${k}="${v}"`).join(" ");return `<${s} ${at}>${kids}</${s}>`};
+function wrap2(t,max){ if(t.length<=max)return[t]; const i=t.lastIndexOf(" ",max); return i<4?[t.slice(0,max),t.slice(max)]:[t.slice(0,i),t.slice(i+1)]; }
+
+/* Pareto horizontal-label clean: barras finas, acumulado como marcadores discretos */
+function pareto(rows){
+  const W=680,H=232,padL=8,padR=52,padT=26,padB=40;
+  const iw=(W-padL-padR)/rows.length;
+  const maxV=Math.max(...rows.map(r=>r[1]));
+  let acc=0,out="",line="";
+  const pts=[];
+  rows.forEach(([l,v],i)=>{
+    const x=padL+i*iw, bw=Math.min(26,iw*0.34), cx=x+iw/2;
+    const bh=(v/maxV)*(H-padT-padB);
+    acc+=v;
+    out+=NS("rect",{x:(cx-bw/2).toFixed(1),y:(H-padB-bh).toFixed(1),width:bw,height:bh.toFixed(1),rx:3,fill:i===0?"var(--navy)":"var(--blue-3)"});
+    out+=NS("text",{x:cx.toFixed(1),y:(H-padB-bh-7).toFixed(1),"text-anchor":"middle","font-size":10,"font-weight":700,fill:i===0?"var(--navy)":"var(--sub)"},v+"%");
+    pts.push([cx,padT+(1-acc/100)*(H-padT-padB),acc]);
+    wrap2(l,14).forEach((seg,li)=>{
+      out+=NS("text",{x:cx.toFixed(1),y:H-padB+13+li*10,"text-anchor":"middle","font-size":8.3,"font-weight":600,fill:"var(--faint)"},seg);
+    });
+  });
+  line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const mark=pts.map((p,i)=>
+    NS("circle",{cx:p[0].toFixed(1),cy:p[1].toFixed(1),r:2.4,fill:"var(--coral)"})+
+    (i===1||i===pts.length-1?NS("text",{x:(p[0]+7).toFixed(1),y:(p[1]-5).toFixed(1),"font-size":8.8,"font-weight":700,fill:"var(--coral)"},Math.round(p[2])+"%"):"")
+  ).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">
+    ${NS("line",{x1:padL,y1:H-padB,x2:W-padR,y2:H-padB,stroke:"var(--hair)","stroke-width":1.2})}
+    ${out}
+    ${NS("path",{d:line,fill:"none",stroke:"var(--coral)","stroke-width":1.4,opacity:.85})}
+    ${mark}
+    ${NS("text",{x:W-padR+6,y:padT+4,"font-size":8.3,"font-weight":600,fill:"var(--coral)"},"acum.")}
+  </svg>`;
+}
+
+/* ponte v4: sóbria, conectores discretos, rótulos diretos */
+function bridge(u){
+  const steps=[["Hoje",u.kpis.efet,"base"]];
+  u.mix.forEach(([c,q,_])=>steps.push([c,q,"add"]));
+  if(u.autoEq>0)steps.push(["Automação",u.autoEq,"auto"]);
+  steps.push(["Estimado",u.kpis.estim,"total"]);
+  const W=680,H=224,padL=10,padR=10,padT=28,padB=34;
+  const iw=(W-padL-padR)/steps.length;
+  const maxV=u.kpis.estim*1.05;
+  const y=v=>padT+(1-v/maxV)*(H-padT-padB);
+  let run=0,out="";
+  steps.forEach(([l,v,tp],i)=>{
+    const x=padL+i*iw,bw=Math.min(46,iw*0.5),bx=x+iw/2-bw/2,cx=x+iw/2;
+    if(tp==="base"){
+      out+=NS("rect",{x:bx.toFixed(1),y:y(v).toFixed(1),width:bw,height:(H-padB-y(v)).toFixed(1),rx:4,fill:"var(--navy)"});
+      out+=NS("text",{x:cx.toFixed(1),y:(y(v)-8).toFixed(1),"text-anchor":"middle","font-size":13,"font-weight":700,fill:"var(--navy)"},v);
+      run=v;
+    } else if(tp==="total"){
+      out+=NS("rect",{x:bx.toFixed(1),y:y(v).toFixed(1),width:bw,height:(H-padB-y(v)).toFixed(1),rx:4,fill:"none",stroke:"var(--coral)","stroke-width":1.3,"stroke-dasharray":"4 3"});
+      out+=NS("rect",{x:bx.toFixed(1),y:y(run).toFixed(1),width:bw,height:(H-padB-y(run)).toFixed(1),rx:4,fill:"#EAF0FA"});
+      out+=NS("text",{x:cx.toFixed(1),y:(y(v)-8).toFixed(1),"text-anchor":"middle","font-size":13,"font-weight":700,fill:"var(--coral)"},v);
+    } else {
+      const y0=y(run),y1=y(run+v);
+      out+=NS("rect",{x:bx.toFixed(1),y:y1.toFixed(1),width:bw,height:Math.max(3,y0-y1).toFixed(1),rx:3,
+        fill:tp==="auto"?"var(--purple)":"var(--blue)",opacity:tp==="auto"?.8:.9});
+      out+=NS("text",{x:cx.toFixed(1),y:(y1-7).toFixed(1),"text-anchor":"middle","font-size":10.5,"font-weight":700,fill:"var(--sub)"},"+"+v);
+      if(i<steps.length-1)out+=NS("line",{x1:(bx+bw+2).toFixed(1),y1:y1.toFixed(1),x2:(x+iw+iw/2-Math.min(46,iw*0.5)/2-2).toFixed(1),y2:y1.toFixed(1),stroke:"var(--hair)","stroke-width":1});
+      run+=v;
+    }
+    wrap2(l,13).forEach((seg,li)=>{
+      out+=NS("text",{x:cx.toFixed(1),y:H-padB+14+li*10,"text-anchor":"middle","font-size":8.6,"font-weight":600,fill:"var(--faint)"},seg);
+    });
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">
+    ${NS("line",{x1:padL,y1:H-padB,x2:W-padR,y2:H-padB,stroke:"var(--hair)","stroke-width":1.2})}${out}</svg>`;
+}
+
+/* slope v4 */
+function slope(u){
+  const W=560,H=210,padL=64,padR=150,padT=18,padB=28;
+  const vals=u.cen30,base=u.kpis.efet;
+  const all=[...vals,base,u.kpis.estim].filter(x=>x!=null);
+  const mn=Math.min(...all)*0.94,mx=Math.max(...all)*1.05;
+  const y=v=>padT+(1-(v-mn)/(mx-mn))*(H-padT-padB);
+  const x0=padL,x1=W-padR;
+  const cores=["var(--coral)","var(--amber)","var(--green)"];
+  const nomes=["conservador","tendencial","acelerado"];
+  let out="";
+  vals.forEach((v,i)=>{
+    if(v==null)return;
+    out+=NS("line",{x1:x0,y1:y(u.kpis.estim).toFixed(1),x2:x1,y2:y(v).toFixed(1),stroke:cores[i],"stroke-width":1.7,"stroke-linecap":"round"});
+    out+=NS("circle",{cx:x1,cy:y(v).toFixed(1),r:3.2,fill:cores[i]});
+    out+=NS("text",{x:x1+10,y:(y(v)+3.5).toFixed(1),"font-size":10,"font-weight":700,fill:cores[i]},v);
+    out+=NS("text",{x:x1+34,y:(y(v)+3.5).toFixed(1),"font-size":9,"font-weight":600,fill:"var(--faint)"},nomes[i]);
+  });
+  out+=NS("circle",{cx:x0,cy:y(u.kpis.estim).toFixed(1),r:3.6,fill:"var(--navy)"});
+  out+=NS("text",{x:x0-9,y:(y(u.kpis.estim)+3.5).toFixed(1),"text-anchor":"end","font-size":10.5,"font-weight":700,fill:"var(--navy)"},u.kpis.estim);
+  out+=NS("line",{x1:x0,y1:y(base).toFixed(1),x2:x1,y2:y(base).toFixed(1),stroke:"var(--hair)","stroke-width":1,"stroke-dasharray":"3 4"});
+  out+=NS("text",{x:x0-9,y:(y(base)+3.5).toFixed(1),"text-anchor":"end","font-size":8.8,"font-weight":600,fill:"var(--faint)"},base+" hoje");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">
+    ${NS("text",{x:x0,y:H-4,"text-anchor":"middle","font-size":8.8,"font-weight":600,fill:"var(--faint)"},"necessidade 2025")}
+    ${NS("text",{x:x1,y:H-4,"text-anchor":"middle","font-size":8.8,"font-weight":600,fill:"var(--faint)"},"2030")}
+    ${out}</svg>`;
+}
+
+/* dispersão v4: midlines pontilhadas, sem preenchimentos */
+function scatter(items){
+  const W=1060,H=310,pad=44;
+  const x=v=>pad+(v/100)*(W-2*pad),y=v=>H-pad-(v/100)*(H-2*pad);
+  const midx=x(50),midy=y(50);
+  let pts="";
+  items.forEach(([l,imp,esf,rec])=>{
+    const cx=x(esf),cy=y(imp);
+    pts+=`<g>
+      ${NS("circle",{cx:cx.toFixed(1),cy:cy.toFixed(1),r:4.4,fill:rec?"var(--green)":"#fff",stroke:rec?"var(--green)":"var(--faint)","stroke-width":1.4})}
+      ${NS("text",{x:cx.toFixed(1),y:(cy-11).toFixed(1),"text-anchor":"middle","font-size":10,"font-weight":rec?700:600,fill:rec?"var(--green)":"var(--sub)"},l.length>38?l.slice(0,36)+"…":l)}
+    </g>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">
+    ${NS("line",{x1:pad,y1:H-pad,x2:W-pad,y2:H-pad,stroke:"var(--hair)","stroke-width":1.2})}
+    ${NS("line",{x1:pad,y1:pad-8,x2:pad,y2:H-pad,stroke:"var(--hair)","stroke-width":1.2})}
+    ${NS("line",{x1:midx,y1:pad-8,x2:midx,y2:H-pad,stroke:"var(--hair)","stroke-width":1,"stroke-dasharray":"2 5"})}
+    ${NS("line",{x1:pad,y1:midy,x2:W-pad,y2:midy,stroke:"var(--hair)","stroke-width":1,"stroke-dasharray":"2 5"})}
+    ${NS("text",{x:pad-4,y:pad-16,"font-size":8.8,"font-weight":700,fill:"var(--faint)"},"IMPACTO ↑")}
+    ${NS("text",{x:W-pad,y:H-pad+20,"text-anchor":"end","font-size":8.8,"font-weight":700,fill:"var(--faint)"},"ESFORÇO →")}
+    ${NS("text",{x:pad+8,y:pad-2,"font-size":8.4,"font-weight":700,fill:"var(--green)",opacity:.75},"fazer já")}
+    ${NS("text",{x:W-pad-8,y:pad-2,"text-anchor":"end","font-size":8.4,"font-weight":700,fill:"#C4CBD6"},"planejar")}
+    ${NS("text",{x:pad+8,y:H-pad-8,"font-size":8.4,"font-weight":700,fill:"#C4CBD6"},"ganho rápido")}
+    ${NS("text",{x:W-pad-8,y:H-pad-8,"text-anchor":"end","font-size":8.4,"font-weight":700,fill:"#C4CBD6"},"evitar")}
+    ${pts}</svg>`;
+}
+
+function pyramid(idade){
+  const max=Math.max(...idade.map(x=>x[1]),1);
+  return idade.slice().reverse().map(([f,v])=>{
+    const w=Math.max(2,Math.round(v/max*100));
+    return `<div style="display:grid;grid-template-columns:42px 1fr 26px;gap:10px;align-items:center;margin:6px 0;font-size:10px">
+      <span style="color:var(--faint);font-weight:600;text-align:right">${f}</span>
+      <span style="height:6px;border-radius:3px;background:var(--hair2);overflow:hidden"><i style="display:block;width:${w}%;height:100%;border-radius:3px;background:var(--blue)"></i></span>
+      <span class="tnum" style="font-weight:700;color:var(--navy);font-size:10px">${v}</span></div>`;
+  }).join("");
+}
+function vbars(rows,color){
+  const max=Math.max(...rows.map(r=>r[1]),1),h=58;
+  return `<div style="display:flex;gap:8px;align-items:flex-end;height:${h+30}px;padding-top:2px">`+rows.map(([l,v])=>
+    `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+      <span class="tnum" style="font-size:10px;font-weight:700;color:${color}">${v}</span>
+      <div style="width:100%;max-width:26px;height:${Math.max(3,Math.round(v/max*h))}px;border-radius:3px;background:${color};opacity:.75"></div>
+      <span style="font-size:8.8px;color:var(--faint);font-weight:600">${l}</span></div>`).join("")+`</div>`;
+}
+
+const API_BASE = "https://portal-backend-bftz.onrender.com";
+
+/* Converte a resposta de /api/esforco-demanda/por-macroprocesso em pares
+   [label, percentual] ordenados por horas_mes desc, para o gráfico de Pareto. */
+function montarEsforcoMacro(dados){
+  if(!dados || !dados.length) return [];
+  const porMacro = {};
+  dados.forEach(d=>{ porMacro[d.macroprocesso] = (porMacro[d.macroprocesso]||0) + (parseFloat(d.horas_mes)||0); });
+  const total = Object.values(porMacro).reduce((s,v)=>s+v,0);
+  if(total<=0) return [];
+  return Object.entries(porMacro)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,6)
+    .map(([nome,horas])=>[nome, Math.round(1000*horas/total)/10]);
+}
+
+/* Converte a resposta de /api/esforco-demanda/demanda-reprimida-por-entrega
+   no formato [[nome, macroprocesso, qtd, unidade, necessidadeRateada],...] */
+function montarDemanda(dados){
+  if(!dados || !dados.length) return [];
+  return dados.slice(0,8).map(d=>[
+    d.nome_entrega || d.codigo_entrega || "Entrega",
+    d.macroprocesso || "—",
+    d.qt_demanda_reprimida,
+    "un.",
+    d.necessidade_demanda_reprimida,
+  ]);
+}
+
+async function buscarJSON(path){
+  const r = await fetch(`${API_BASE}${path}`);
+  if(!r.ok) throw new Error(`HTTP ${r.status} em ${path}`);
+  return r.json();
+}
+
+async function carregarUnidadeReal(info){
+  $("hSig").textContent = info.sig || "…";
+  $("content").innerHTML = `<div class="empty-state"><p>Carregando dados reais desta unidade…</p></div>`;
+  try{
+    const [detalhe, esforco, demandaResp, carreirasResp] = await Promise.all([
+      info.codigo ? buscarJSON(`/api/organograma-agregado/${encodeURIComponent(info.codigo)}`) : Promise.resolve(null),
+      info.codigo ? buscarJSON(`/api/esforco-demanda/por-macroprocesso?codigoOrganograma=${encodeURIComponent(info.codigo)}`).catch(()=>({dados:[]})) : Promise.resolve({dados:[]}),
+      info.codigo ? buscarJSON(`/api/esforco-demanda/demanda-reprimida-por-entrega?codigoOrganograma=${encodeURIComponent(info.codigo)}&limite=8`).catch(()=>({dados:[]})) : Promise.resolve({dados:[]}),
+      info.codigo ? buscarJSON(`/api/carreiras/alocacao?codigoOrganograma=${encodeURIComponent(info.codigo)}`).catch(()=>null) : Promise.resolve(null),
+    ]);
+    const agg = detalhe ? detalhe.agregado : null;
+    const efet = agg ? agg.qt_media_pessoas_efetiva : null;
+    const estim = agg ? agg.qt_media_pessoas_estimada : null;
+    const temDados = agg && (efet!=null || estim!=null);
+
+    const unidadeReal = {
+      crumb: info.crumb || (detalhe ? detalhe.nome : info.nome || ""),
+      sig: info.sig || (detalhe ? detalhe.sigla : "") || "—",
+      orgao: info.orgaoSig || "",
+      nome: info.nome || (detalhe ? detalhe.nome : "") || "",
+      status: info.temDFT ? "DFT concluído" : "—",
+      periodo: "",
+      nivel: "",
+      semDFT: !info.temDFT,
+      dadosReais: true,
+      kpis: {
+        efet: efet, estim: estim, apoio: agg?agg.qt_pessoas_apoio:null, abono:0,
+        adequacao: (efet!=null && estim>0) ? Math.round(100*efet/estim) : null,
+        entregas: agg?agg.qt_entrega:null, macros: null, cats: null, servs: null,
+      },
+      esforcoMacro: montarEsforcoMacro(esforco.dados),
+      demanda: montarDemanda(demandaResp.dados),
+      carreiras: carreirasResp,
+    };
+
+    if(!temDados) unidadeReal.semDFT = true;
+
+    UNITS["__real"] = unidadeReal;
+    cur = "__real";
+    render();
+  }catch(err){
+    console.error("[relatório] falha ao carregar dados reais:", err);
+    $("content").innerHTML = `<div class="empty-state"><p><b>Não foi possível carregar os dados desta unidade.</b><br>${err.message}<br><br>Os dados podem levar alguns segundos para responder na primeira consulta (o servidor "acorda" sob demanda) — tente recarregar em instantes.</p></div>`;
+  }
+}
+
+/* ============================================================ */
+const TABS=[["01","Diagnóstico"],["02","Alavancas"],["03","Carreiras"],["04","Decisão"]];
+let cur="__real",curTab=0;
+const $=id=>document.getElementById(id);
+
+function init(){
+  let infoReal = { codigo:null, idU:null, sig:null, nome:null, crumb:null, orgaoSig:null, temDFT:false };
+  try{
+    const hash = location.hash||"";
+    const pega = (chave)=>{ const m=hash.match(new RegExp(chave+"=([^&]*)")); return m?decodeURIComponent(m[1]):null; };
+    infoReal = {
+      codigo: pega("codigo"), idU: pega("idU"), sig: pega("sig"),
+      nome: pega("nome"), crumb: pega("crumb"), orgaoSig: pega("orgaoSig"),
+      temDFT: pega("temDFT")==="1",
+    };
+  }catch(e){}
+
+  if(infoReal.codigo){
+    $("tabs").innerHTML=TABS.map(([k,t],i)=>
+      `<button class="tab ${i===0?'on':''}" onclick="setTab(${i})"><span class="k">${k}</span>${t}</button>`).join("");
+    carregarUnidadeReal(infoReal);
+  } else {
+    $("hSig").textContent = infoReal.sig || "—";
+    $("content").innerHTML = `<div class="empty-state"><p><b>Esta unidade ainda não tem um código de organograma associado.</b><br>Não é possível carregar o relatório sem essa referência — confirme a integração desta unidade no SISDIP.</p></div>`;
+  }
+}
+function setTab(i){curTab=i;syncTabs();render();window.scrollTo({top:0})}
+function syncTabs(){document.querySelectorAll(".tab").forEach((b,j)=>b.classList.toggle("on",j===curTab))}
+
+function render(){
+  const u=UNITS[cur];
+  if(!u){ return; }
+  const k=u.kpis;
+  $("hCrumb").textContent="Relatório da unidade · "+u.crumb;
+  $("hSig").textContent=u.sig;
+  $("hNome").textContent=u.nome;
+  $("hSt").className="status-line"+(u.semDFT?" off":"");
+  $("hSt").innerHTML=`<i></i><span>${u.semDFT?"Sem DFT concluído":u.status+" · "+u.periodo}</span>`;
+  $("hMeta").innerHTML=`<span>${u.nivel}</span>`+
+    (k.entregas?`<span><b>${k.entregas}</b> entregas</span><span><b>${k.macros}</b> macroprocessos</span>`:"")+
+    (k.adequacao!=null?`<span>adequação <b>${k.adequacao}%</b></span>`:"");
+  if(u.semDFT){
+    $("gapHero").innerHTML=`<div class="gap-stats">
+      <div class="gs"><div class="v">${fmt(k.efet)}</div><div class="l">Efetivo</div><div class="d">único dado disponível</div></div>
+      <div class="gs"><div class="v" style="color:var(--faint)">—</div><div class="l">Estimado</div><div class="d">após o DFT</div></div>
+      <div class="gs"><div class="v" style="color:var(--faint)">—</div><div class="l">Gap</div><div class="d">após o DFT</div></div>
+    </div>
+    <div style="font-size:10.5px;color:var(--faint);font-weight:500">Coleta de esforços em andamento no SISDIP — o balanço de capacidade aparece aqui quando o dimensionamento for publicado.</div>`;
+  } else {
+    const deficit=k.estim-k.efet,pct=Math.round(k.efet/k.estim*100);
+    $("gapHero").innerHTML=`<div class="gap-stats">
+      <div class="gs"><div class="v">${fmt(k.efet)}</div><div class="l">Efetivo</div><div class="d">${k.apoio} em apoio exclusivo</div></div>
+      <div class="gs"><div class="v">${fmt(k.estim)}</div><div class="l">Estimado</div><div class="d">para zerar a fila</div></div>
+      <div class="gs"><div class="v gap">−${fmt(deficit)}</div><div class="l">Gap · FTE</div><div class="d">${u.horasGap?fmt(u.horasGap)+" h/mês descobertas":"déficit oficial"}</div></div>
+    </div>
+    <div class="cap-bar"><span class="gapz"></span><span class="fill" style="width:${pct}%"></span></div>
+    <div class="cap-cap"><span>efetivo <b class="tnum">${fmt(k.efet)}</b> · ${pct}% da necessidade</span><span>estimado <b class="tnum">${fmt(k.estim)}</b></span></div>`;
+  }
+  $("content").innerHTML=[tabDiag,tabAlav,tabCarr,tabDec][curTab](u);
+}
+
+function kick(no,t){return `<div class="section-kick"><span class="no">${no}</span><span class="t">${t}</span></div>`}
+function exh(label,title,sub,body,src){
+  return `<div class="exh"><div class="exh-head">
+    <div class="exh-label">${label}</div>
+    <div class="exh-title">${title}</div>
+    ${sub?`<div class="exh-sub">${sub}</div>`:""}</div>${body}
+    ${src?`<div class="exh-src">${src}</div>`:""}</div>`;
+}
+function strat(u){
+  if(!u.objOrgao) return "";
+  const m=(u.contrib.match(/(\d+)%/)||[])[1];
+  return `<div class="strategy">
+    <div><h6>Objetivo do órgão · ${u.orgao}</h6><p>${u.objOrgao}</p></div>
+    <div><h6>Objetivo da unidade</h6><p>${u.semDFT?'<span style="color:var(--faint)">ainda não mapeado — depende do DFT</span>':u.objUnidade}</p></div>
+    ${m?`<div><div class="hit">${m}%</div><div class="hitlb">das entregas servem<br>ao objetivo do órgão</div></div>`:"<div></div>"}
+  </div>`;
+}
+function emptyExh(t,d){return `<div class="exh"><div class="empty-state"><div style="font-family:var(--num);font-size:30px;font-weight:700;color:var(--hair)">—</div><p><b>${t}</b><br>${d}</p></div></div>`}
+
+/* ---------- 01 · DIAGNÓSTICO — apenas os dois gráficos prontos ----------
+   Página 1 concentra os dois exhibits já validados com dado real:
+   (1) Pareto de esforço por macroprocesso; (2) gap efetivo × estimado.
+   As demais análises migraram para a aba Alavancas (em desenvolvimento). */
+function tabDiag(u){
+  if(!u.dadosReais) return kick("01","Diagnóstico")+emptyExh("Sem dados carregados","Não foi possível preparar o diagnóstico desta unidade.");
+
+  const temEsforco = u.esforcoMacro && u.esforcoMacro.length>0;
+  let exPareto;
+  if(temEsforco){
+    const top=u.esforcoMacro[0], two=u.esforcoMacro.length>1?u.esforcoMacro[0][1]+u.esforcoMacro[1][1]:top[1];
+    exPareto = exh("Exhibit 1",
+      `${top[0]} consome <em>${top[1]}%</em> do tempo da equipe${u.esforcoMacro.length>1?` — dois macroprocessos explicam ${two}%`:""}`,
+      "Pareto de esforço · % das horas mensais registradas no SISDIP · linha = acumulado",
+      pareto(u.esforcoMacro),
+      "Fonte: SISDIP · esforços por entrega, agregados por macroprocesso (dado real)");
+  } else {
+    exPareto = emptyExh("Sem esforços por macroprocesso ainda", "Esta unidade tem DFT, mas o detalhamento por macroprocesso não retornou dados — pode ser uma unidade recém-integrada ao pipeline.");
+  }
+
+  const gap=(u.kpis.estim||0)-(u.kpis.efet||0);
+  let exGap;
+  if(u.kpis.estim>0){
+    exGap = exh("Exhibit 2",
+      gap>0 ? `O gap oficial desta unidade é de <em>${gap} FTE</em>` : "Esta unidade não tem gap de pessoal na visão atual",
+      "efetivo atual até a necessidade estimada · dado direto do DFT, sem alocação de carreiras (ainda não integrada)",
+      bridge({kpis:u.kpis, mix:[], autoEq:0}),
+      "Fonte: GET /api/organograma-agregado/:codigo (dado real)");
+  } else {
+    exGap = emptyExh("Balanço de capacidade após o DFT", "O gráfico de gap (efetivo × necessidade estimada) aparece aqui quando o dimensionamento desta unidade for publicado no SISDIP.");
+  }
+
+  return kick("01","Diagnóstico")+exPareto+exGap;
+}
+
+/* ---------- 02 · ALAVANCAS — demais análises (em desenvolvimento) ----------
+   Concentra tudo que ficou de fora da página 1: a tabela de demanda
+   reprimida (já com dado real) e os exhibits ainda a desenvolver, que
+   entram aqui à medida que forem integrados ao pipeline. */
+function tabAlav(u){
+  if(!u.dadosReais) return kick("02","Alavancas")+emptyExh("Sem dados carregados","Não foi possível preparar as alavancas desta unidade.");
+
+  const temDemanda = u.demanda && u.demanda.length>0;
+  const exDemanda = temDemanda ? exh("Exhibit 3",
+      "A fila que sustenta o déficit desta unidade",
+      "demanda reprimida registrada no DFT, com a necessidade de pessoal já rateada por entrega",
+      `<table><thead><tr><th>Entrega</th><th>Macroprocesso</th><th class="num">Qtd. demanda reprimida</th><th class="num">Necessidade rateada</th></tr></thead>
+      <tbody>${u.demanda.map(([l,c,v,un,nec])=>`<tr><td>${l}</td><td style="color:var(--sub);font-size:10.5px">${c}</td>
+        <td class="num"><b style="color:var(--coral)">${fmt(v)}</b> <span style="color:var(--faint);font-size:9px">${un}</span></td>
+        <td class="num">${nec!=null?fmt1(nec):"—"}</td></tr>`).join("")}</tbody></table>`,
+      "Fonte: GET /api/esforco-demanda/demanda-reprimida-por-entrega (dado real)")
+    : emptyExh("Sem demanda reprimida registrada", "Esta unidade não tem entregas com demanda reprimida > 0 na visão atual, ou a tabela ainda não foi migrada para esta unidade.");
+
+  return kick("02","Alavancas")+
+    `<div class="exh-sub" style="margin:2px 0 8px">Demais análises do relatório — ainda em desenvolvimento. Entram aqui à medida que forem integradas ao pipeline real.</div>`+
+    exDemanda+
+    emptyExh("Matriz impacto × esforço — em desenvolvimento", "O cardápio de soluções priorizadas (contratar/realocar/automatizar/simplificar/eliminar) depende de um modelo de pontuação que ainda não está integrado ao pipeline real.")+
+    emptyExh("Benchmarking entre pares — em desenvolvimento", "A comparação com unidades pares ainda não tem uma fonte de dados integrada ao pipeline real.")+
+    emptyExh("Demografia e risco de conhecimento tácito — em desenvolvimento", "Pirâmide etária, vínculos e projeção de aposentadorias dependem da integração das tabelas de pessoal (tb_cargo, tb_pessoa_*), ainda pendente.")+
+    emptyExh("Automação: tarefa → tecnologia — em desenvolvimento", "A classificação de suscetibilidade à automação por tarefa (metodologia Frente 4/UFRJ) ainda não está integrada ao pipeline real.")+
+    emptyExh("Plano de ação e cenários prospectivos — em desenvolvimento", "As recomendações priorizadas e os cenários de necessidade em 2030 (Frente 4) ainda não têm uma fonte de dados automatizada — seguem como narrativa manual até esse modelo ser integrado.");
+}
+
+/* ---------- 03 · CARREIRAS — sugestão de alocação por carreira ----------
+   Consome GET /api/carreiras/alocacao (pré-computado pelo pipeline a partir
+   da matriz de aderência categoria × carreira). Três visões comutáveis:
+   fila de contratação · distribuição por carreira · carreira × categoria. */
+
+/* paleta institucional por carreira — tons contidos, específica em navy
+   para reforçar a leitura "núcleo do órgão vs. transversais" */
+const CARR_COR={
+  "Carreira Específica do Órgão":"#12305B",
+  "ATA":"#1351B4","EPPGG":"#5B3A9B","ATI":"#0E7490",
+  "ACE":"#9A6A00","AIE/EIS":"#4E5866","ATPS":"#1B7F3A",
+  "ATJD":"#7F1D3A","ATDS":"#C2410C"};
+const CARR_ABREV={"Carreira Específica do Órgão":"Específica"};
+const cnome=c=>CARR_ABREV[c]||c;
+const ccor=c=>CARR_COR[c]||"#7B99C9";
+let carrView=0;
+function setCarrView(i){carrView=i;render();}
+
+/* barra de composição 100%: uma visão instantânea do mix de vagas */
+function compBar(mix,total){
+  const seg=mix.map(m=>{
+    const w=100*m.vagas/total;
+    return `<span style="width:${w}%;background:${ccor(m.carreira)}" title="${cnome(m.carreira)} · ${m.vagas} ${m.vagas===1?'vaga':'vagas'}">${w>=8?`<i>${m.vagas}</i>`:""}</span>`;
+  }).join("");
+  const leg=mix.map(m=>{
+    const pc=Math.round(100*m.vagas/total);
+    return `<span class="li"><i style="background:${ccor(m.carreira)}"></i>${cnome(m.carreira)} <b>${m.vagas}</b> <span class="pc">${pc}%</span></span>`;
+  }).join("");
+  return `<div class="comp-bar">${seg}</div><div class="leg">${leg}</div>`;
+}
+
+/* visão 1 — fila de contratação, na ordem em que as lacunas mandam */
+function carrFila(c){
+  const MAX=12, agregado=c.unidades>1;
+  const linhas=c.fila.slice(0,MAX).map(v=>`
+    <div class="vaga">
+      <div class="no ${v.posicao===1?'p1':''}">${v.posicao}º<small>de ${c.totalVagas}</small></div>
+      <div>
+        <h6><i style="background:${ccor(v.carreira)}"></i>${cnome(v.carreira)}</h6>
+        <p>Foco da vaga: <b>${v.categoria}</b>${v.natureza?` · <span class="sg">${v.natureza}</span>`:""}${agregado&&v.sig?` · <span class="sg">${v.sig}</span>`:""}</p>
+      </div>
+      <div class="side">
+        <div class="h tnum">${v.horasGap!=null?fmt1(v.horasGap):"—"}</div>
+        <div class="l">h/mês descobertas</div>
+      </div>
+    </div>`).join("");
+  const resto=c.fila.length>MAX?`<div style="font-size:10px;color:var(--faint);font-weight:600;padding-top:12px">… e mais ${c.fila.length-MAX} vagas na fila completa (exportável).</div>`:"";
+  return linhas+resto;
+}
+
+/* visão 2 — distribuição por carreira: barra = share de horas contínuas,
+   número = vagas inteiras; a diferença entre os dois é didática */
+function carrDist(c){
+  const mix=c.mixCarreira.filter(m=>m.horas>0||m.vagas>0);
+  const maxH=Math.max(...mix.map(m=>m.horas),1);
+  const focoPorCarreira={};
+  c.fila.forEach(v=>{ if(!focoPorCarreira[v.carreira]) focoPorCarreira[v.carreira]=v.categoria; });
+  return mix.map(m=>{
+    const w=Math.max(2,Math.round(100*m.horas/maxH));
+    const foco=focoPorCarreira[m.carreira];
+    return `<div class="carr-row">
+      <div class="cl"><i style="background:${ccor(m.carreira)}"></i>${cnome(m.carreira)}</div>
+      <div class="tr"><i style="width:${w}%;background:${ccor(m.carreira)};opacity:.85"></i></div>
+      <div class="vv">${m.vagas>0?`${m.vagas} ${m.vagas===1?"vaga":"vagas"}`:`<small>sem vaga inteira</small>`}<br><small>${fmt(Math.round(m.horas))} h/mês</small></div>
+    </div>${foco?`<div class="carr-row" style="border-bottom:0;padding:0"><div></div><div class="carr-sub">frente principal: ${foco}</div></div>`:""}`;
+  }).join("");
+}
+
+/* visão 3 — matriz carreira × categoria: de onde vem a necessidade */
+function carrMatriz(c){
+  const porCat={},porCarr={};
+  c.matriz.forEach(m=>{
+    porCat[m.categoria]=(porCat[m.categoria]||0)+m.horas;
+    porCarr[m.carreira]=(porCarr[m.carreira]||0)+m.horas;
+  });
+  const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+  const carrs=Object.entries(porCarr).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  const cel={};
+  c.matriz.forEach(m=>{cel[m.categoria+"|"+m.carreira]=m.horas});
+  const maxCel=Math.max(...cats.flatMap(ct=>carrs.map(cr=>cel[ct+"|"+cr]||0)),1);
+  const head=`<tr><th>Categoria de serviço</th>${carrs.map(cr=>`<th>${cnome(cr)}</th>`).join("")}<th class="num">Total</th></tr>`;
+  const body=cats.map(ct=>{
+    const cells=carrs.map(cr=>{
+      const v=cel[ct+"|"+cr]||0;
+      if(v<=0) return `<td class="hc"><span style="color:var(--hair)">·</span></td>`;
+      const a=(0.08+0.55*v/maxCel).toFixed(2);
+      const escuro=v/maxCel>0.62;
+      return `<td class="hc"><span style="background:rgba(19,81,180,${a});color:${escuro?"#fff":"var(--navy)"}">${fmt(Math.round(v))}</span></td>`;
+    }).join("");
+    return `<tr><td class="cat">${ct}</td>${cells}<td class="num">${fmt(Math.round(porCat[ct]))}</td></tr>`;
+  }).join("");
+  const nota=Object.keys(porCat).length>8?`<div style="font-size:9.5px;color:var(--faint);font-weight:500;margin-top:10px">Mostrando as 8 categorias com maior necessidade, de ${Object.keys(porCat).length} no total.</div>`:"";
+  return `<div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>${nota}`;
+}
+
+function tabCarr(u){
+  const k=kick("03","Carreiras");
+  if(!u.dadosReais) return k+emptyExh("Sem dados carregados","Não foi possível preparar a sugestão de carreiras desta unidade.");
+  if(u.semDFT) return k+emptyExh("Sugestão de carreiras depende do DFT","Esta unidade ainda não tem dimensionamento concluído — quando o DFT for publicado, o perfil de carreiras recomendado aparece aqui.");
+  const c=u.carreiras;
+  if(!c||!c.fila||!c.fila.length){
+    const gap=(u.kpis.estim||0)-(u.kpis.efet||0);
+    if(gap<=0) return k+emptyExh("Sem necessidade a alocar","Esta unidade não tem gap de pessoal na visão atual do DFT — não há vagas para sugerir distribuição de carreiras.");
+    return k+emptyExh("Sugestão de carreiras ainda não calculada","A matriz de aderência e a alocação desta unidade ainda não foram processadas pelo pipeline (calcular_sugestao_alocacao.py). Rode o pipeline e recarregue.");
+  }
+  const lider=c.mixCarreira[0];
+  const pctLider=Math.round(100*lider.vagas/c.totalVagas);
+  const agregado=c.unidades>1;
+
+  const exMix=exh("Exhibit C1",
+    `${cnome(lider.carreira)} deve receber <em>${lider.vagas} das ${c.totalVagas} vagas</em> (${pctLider}%) recomendadas${agregado?` — agregado de ${c.unidades} unidades`:""}`,
+    "mix recomendado para fechar o gap · derivado da matriz de aderência categoria × carreira aplicada às horas reais da unidade",
+    compBar(c.mixCarreira,c.totalVagas),
+    "Fonte: GET /api/carreiras/alocacao · matriz de aderência (LLM + revisão) × horas do DFT (dado real)");
+
+  const views=[["Fila de contratação",carrFila],["Por carreira",carrDist],["Carreira × categoria",carrMatriz]];
+  const segBtns=views.map((v,i)=>`<button class="${i===carrView?'on':''}" onclick="setCarrView(${i})">${v[0]}</button>`).join("");
+  const tituloView=[
+    "A ordem de contratação que as lacunas justificam",
+    "Quanto de cada carreira a necessidade contínua pede",
+    "De onde vem a necessidade de cada carreira",
+  ][carrView];
+  const subView=[
+    "cada vaga ataca a maior lacuna de horas ainda descoberta · a 1ª posição é a mais urgente",
+    "barra = horas-alvo mensais contínuas · número = vagas inteiras da fila (a diferença mostra frações que não fecham 1 FTE)",
+    "horas-alvo mensais por categoria de serviço × carreira · tons mais fortes = maior concentração",
+  ][carrView];
+
+  const exViews=`<div class="exh"><div class="exh-head">
+      <div class="exh-label">Exhibit C2</div>
+      <div class="exh-title">${tituloView}</div>
+      <div class="exh-sub">${subView}</div></div>
+    <div class="seg">${segBtns}</div>
+    <div style="margin-top:14px">${views[carrView][1](c)}</div>
+    <div class="exh-src">A sugestão é apoio à decisão — parte da matriz de aderência (revisável) e do algoritmo de maior lacuna. Não substitui o julgamento do gestor.</div></div>`;
+
+  return k+exMix+exViews;
+}
+
+/* ---------- 04 · DECISÃO — conexão direta com o Power BI ----------
+   Embute o painel de produção publicado no Power BI. O embed fica
+   responsivo (proporção ~600×373.5 preservada por padding-top). O
+   iframe externo do relatório não usa sandbox, então o PBI carrega
+   normalmente aqui dentro. */
+function tabDec(u){
+  return kick("04","Decisão")+
+    `<div class="exh"><div class="exh-head">
+      <div class="exh-label">Power BI</div>
+      <div class="exh-title">Painel de produção — SISDIP</div>
+      <div class="exh-sub">visão consolidada publicada no Power BI · use o controle do próprio painel para tela cheia</div>
+    </div>
+    <div style="position:relative;width:100%;padding-top:62.25%;margin-top:6px;border:1px solid var(--hair);border-radius:8px;overflow:hidden;background:#F7F9FC">
+      <iframe title="BI - produção" loading="lazy"
+        style="position:absolute;inset:0;width:100%;height:100%;border:0"
+        src="https://app.powerbi.com/view?r=eyJrIjoiZjQ2YmQwNTctZmNhOC00NTE1LTkyYzctOTY5ZDdiODY0YTcyIiwidCI6IjQ1NjIxM2NmLTcwNzMtNDdjNi1iZjQ5LTQxYjY1NGFkNDQ5YiJ9"
+        frameborder="0" allowfullscreen="true"></iframe>
+    </div>
+    <div class="exh-src">Fonte: Power BI — Portal das Entregas / SISDIP (publicação web)</div></div>`;
+}
+
+init();
+</script></body></html>
