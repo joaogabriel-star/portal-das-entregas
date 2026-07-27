@@ -191,6 +191,39 @@ table.heat td.cat{font-size:10.5px;font-weight:600;color:var(--sub);max-width:21
 .empty-state{text-align:center;padding:44px 20px;color:var(--faint)}
 .empty-state p{font-size:12px;max-width:420px;margin:8px auto 0;line-height:1.6}
 .footer-note{max-width:1140px;margin:0 auto;padding:0 34px 46px;font-size:9px;color:var(--faint);line-height:1.6;border-top:1px solid var(--hair);padding-top:14px}
+
+/* ============ protótipo Frente 4 (exemplos em Alavancas + aba Rede) ============ */
+.itl-selrow{display:flex;gap:6px;flex-wrap:wrap}
+.itl-selrow button{border:1px solid var(--hair);background:#fff;border-radius:8px;padding:6px 11px;font-family:inherit;font-size:11px;font-weight:700;color:var(--sub);cursor:pointer}
+.itl-selrow button:hover{border-color:var(--blue);color:var(--navy)}
+.itl-selrow button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.itl-note{font-size:11px;color:var(--sub);background:var(--hair2);border-left:2px solid var(--navy);border-radius:0 8px 8px 0;padding:9px 13px;margin-top:14px;line-height:1.55}
+.itl-note b{color:var(--navy)}
+.itl-kpis{display:flex;gap:0;border-top:1px solid var(--hair2);margin-top:10px;padding-top:12px;flex-wrap:wrap}
+.itl-kpi{padding:0 20px;border-left:1px solid var(--hair2)}
+.itl-kpi:first-child{padding-left:0;border-left:0}
+.itl-kpi .v{font-family:var(--num);font-size:22px;font-weight:700;color:var(--navy);line-height:1.1}
+.itl-kpi .v.c{color:var(--coral)}
+.itl-kpi .l{font-size:8.8px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.itl-dbar-row{display:grid;grid-template-columns:minmax(140px,210px) 1fr 56px auto;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--hair2)}
+.itl-dbar-row:last-child{border-bottom:0}
+.itl-dbar{position:relative;height:14px;background:var(--hair2);border-radius:7px;overflow:hidden}
+.itl-dbar .dem{position:absolute;inset:0 auto 0 0;background:var(--blue-3)}
+.itl-dbar .ofe{position:absolute;inset:0 auto 0 0;background:var(--navy);border-radius:7px}
+.itl-pesos{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px 22px;margin:14px 0 6px}
+.itl-peso{display:grid;grid-template-columns:1fr 100px 38px;gap:9px;align-items:center;font-size:11px;font-weight:600;color:var(--sub)}
+.itl-peso .n{display:flex;align-items:center;gap:7px}
+.itl-peso .n i{width:8px;height:8px;border-radius:3px;flex:none}
+.itl-peso input{accent-color:var(--navy);width:100%}
+.itl-peso b{color:var(--navy);text-align:right;font-family:var(--num)}
+.itl-fila{display:grid;grid-template-columns:40px 60px 1fr 60px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--hair2)}
+.itl-fila:last-child{border-bottom:0}
+.itl-fila .no{font-family:var(--num);font-size:16px;font-weight:700;color:var(--blue-3)}
+.itl-fila .no.p1{color:var(--coral)}
+.itl-fila .bar{display:flex;height:10px;border-radius:5px;background:var(--hair2);overflow:hidden}
+.itl-fila .bar i{display:block;height:100%}
+.itl-fila .esc{font-family:var(--num);font-size:11px;font-weight:700;color:var(--navy);text-align:right}
+.itl-fila .just{grid-column:1/-1;font-size:9.5px;color:var(--faint);padding-left:52px;margin-top:-4px;line-height:1.5}
 @media print{.subnav,.nav-right{display:none}.exh{break-inside:avoid}}
 </style>
 </head>
@@ -459,8 +492,261 @@ async function carregarUnidadeReal(info){
   }
 }
 
+/* ============================================================
+   PROTÓTIPO FRENTE 4 — dados fictícios das unidades de demonstração
+   (CGGP, CGLC, CGTI, CGSD, CGAT, CGNP, CGBE, CGPQ). Usado como exemplo
+   ilustrativo dentro da aba Alavancas e na aba Rede: mostra o FORMATO
+   que essas análises terão quando ligadas ao dado real desta unidade —
+   por isso nunca aparece como se fosse o número real de quem está
+   vendo o relatório (selo "PROTÓTIPO" em todo exhibit que usa isso).
+============================================================ */
+const ITL_SIGS=["CGGP","CGLC","CGTI","CGSD","CGAT","CGNP","CGBE","CGPQ"];
+const ITL_UN={
+  CGGP:{nome:"Coordenação-Geral de Gestão de Pessoas",gap:9,efet:38,nec:47,saidas:[3,11,16],crit:.85,orc:.70,tacito:.80,autoFTE:1.1,efetiv:72,
+    serie:[["2023.2",4],["2024.1",5],["2024.2",7],["2025.1",8],["2025.2",8],["2026.1",9]],
+    comp:[["Concessão previdenciária",8,4],["Análise processual",7,5],["Dados de pessoal",5,2],["Legislação de pessoal",6,5],["Atendimento consultivo",4,4]]},
+  CGLC:{nome:"Coordenação-Geral de Licitações e Contratos",gap:4,efet:29,nec:33,saidas:[1,4,6],crit:.55,orc:.80,tacito:.45,autoFTE:0.9,efetiv:81,
+    serie:[["2023.2",6],["2024.1",6],["2024.2",5],["2025.1",4],["2025.2",4],["2026.1",4]],
+    comp:[["Instrução de licitações",6,5],["Fiscalização contratual",7,6],["Análise de riscos",4,2],["Execução financeira",3,3]]},
+  CGTI:{nome:"Coordenação-Geral de Tecnologia da Informação",gap:13,efet:41,nec:54,saidas:[1,3,5],crit:.90,orc:.55,tacito:.35,autoFTE:2.4,efetiv:64,
+    serie:[["2023.2",8],["2024.1",9],["2024.2",11],["2025.1",12],["2025.2",13],["2026.1",13]],
+    comp:[["Engenharia de dados",8,3],["Desenvolvimento de sistemas",9,5],["Segurança da informação",5,3],["Gestão de produtos digitais",6,2]]},
+  CGSD:{nome:"Coordenação-Geral de Serviços Digitais",gap:7,efet:33,nec:40,saidas:[2,5,8],crit:.95,orc:.60,tacito:.50,autoFTE:1.6,efetiv:78,
+    serie:[["2023.2",3],["2024.1",4],["2024.2",5],["2025.1",6],["2025.2",7],["2026.1",7]],
+    comp:[["Design de serviços",7,4],["Automação de processos",6,2],["Análise de dados de uso",5,3],["Gestão de mudanças",4,3]]},
+  CGAT:{nome:"Coordenação-Geral de Atendimento ao Cidadão",gap:-3,efet:55,nec:52,saidas:[2,6,10],crit:.60,orc:.75,tacito:.30,autoFTE:3.2,efetiv:69,
+    serie:[["2023.2",2],["2024.1",1],["2024.2",0],["2025.1",-1],["2025.2",-2],["2026.1",-3]],
+    comp:[["Atendimento multicanal",6,8],["Triagem processual",5,7],["Mediação e ouvidoria",4,5]]},
+  CGNP:{nome:"Coordenação-Geral de Normas de Pessoal",gap:6,efet:18,nec:24,saidas:[2,7,9],crit:.75,orc:.40,tacito:.90,autoFTE:0.4,efetiv:58,
+    serie:[["2023.2",3],["2024.1",4],["2024.2",4],["2025.1",5],["2025.2",6],["2026.1",6]],
+    comp:[["Redação normativa",8,4],["Direito administrativo",7,4],["Análise de impacto regulatório",5,1]]},
+  CGBE:{nome:"Coordenação-Geral de Benefícios",gap:-4,efet:29,nec:25,saidas:[1,4,7],crit:.50,orc:.75,tacito:.40,autoFTE:1.8,efetiv:75,
+    serie:[["2023.2",1],["2024.1",0],["2024.2",-1],["2025.1",-2],["2025.2",-3],["2026.1",-4]],
+    comp:[["Concessão previdenciária",5,7],["Análise processual",4,6],["Atendimento consultivo",3,5]]},
+  CGPQ:{nome:"Coordenação-Geral de Pesquisa Aplicada",gap:4,efet:24,nec:28,saidas:[1,3,4],crit:.65,orc:.35,tacito:.70,autoFTE:0.5,efetiv:84,
+    serie:[["2023.2",2],["2024.1",3],["2024.2",3],["2025.1",4],["2025.2",4],["2026.1",4]],
+    comp:[["Métodos quantitativos",7,5],["Curadoria de microdados",6,3],["Comunicação científica",4,3]]},
+};
+const ITL_DEC={
+  CGLC:[["2024.2","chegada de 2 vagas do concurso"],["2025.1","RPA de atas implantado"]],
+  CGAT:[["2024.2","automação da triagem (fase 1)"],["2025.2","central digital absorve 30% do presencial"]],
+  CGGP:[["2025.1","1 vaga recebida (reposição)"]],
+};
+const ITL_AUTO={
+  CGGP:[["Folha: conferências repetitivas","RPA",210],["Triagem de requerimentos","IA generativa",96]],
+  CGTI:[["Chamados nível 1","IA generativa",290],["Rotinas de deploy","Integração",95]],
+  CGAT:[["Triagem e protocolo","RPA + IA",380],["Respostas padrão de ouvidoria","IA generativa",130]],
+  CGBE:[["Prova de vida","Integração (biometria)",240],["Conferência documental","IA generativa",50]],
+  CGSD:[["Formulários repetitivos","Plataforma low-code",180],["Monitoramento de indicadores","Integração",76]],
+  CGLC:[["Gestão de atas","RPA",110],["Minutas padronizadas","IA generativa",34]],
+  CGNP:[["Pesquisa de precedentes","IA generativa",64]],
+  CGPQ:[["Tratamento de microdados","Pipeline de dados",80]],
+};
+const ITL_FLUXO={nome:"Concessão de aposentadorias e benefícios",etapas:[
+  {sig:"CGAT",papel:"recebe e tria o requerimento",h:1350,conf:"alta",ev:"nomenclatura idêntica ('requerimento…recebido e triado') + volume compatível (8,2 mil → jusante)"},
+  {sig:"CGBE",papel:"instrui o benefício",h:1290,conf:"alta",ev:"mesma categoria de serviço nas duas unidades; volumes encadeados"},
+  {sig:"CGGP",papel:"analisa e decide a concessão",h:980,conf:"média",ev:"rótulo canônico comum ('processo…analisado e instruído'); competência regimental provável"},
+  {sig:"CGNP",papel:"orienta casos-limite e publica norma",h:410,conf:"baixa",ev:"apenas semelhança temática ('consulta…respondida'); requer confirmação regimental"},
+]};
+const ITL_MOV=[
+  {de:"CGBE",para:"CGGP",n:2,comp:"Concessão previdenciária · Análise processual",ader:92,obs:"mesma família de competências; distância organizacional mínima"},
+  {de:"CGAT",para:"CGSD",n:2,comp:"Atendimento multicanal → Design de serviços",ader:74,obs:"ponte plausível com trilha curta de capacitação (jornada do usuário)"},
+  {de:"CGBE",para:"CGNP",n:1,comp:"Análise processual → Redação normativa",ader:58,obs:"aderência parcial — exigiria capacitação longa; alternativa: manter e capacitar internamente"},
+  {de:"CGAT",para:"CGTI",n:1,comp:"Triagem → Gestão de produtos digitais",ader:41,obs:"aderência baixa — não recomendado; vaga segue para a fila de contratação"},
+];
+const ITL_FONTES=[
+  {f:"Planejamento estratégico",st:2,n:"12 objetivos extraídos no piloto (MGI)",chip:"objetivo_estrategico"},
+  {f:"Regimento interno",st:2,n:"84 competências regimentais mapeadas",chip:"competencia_regimental"},
+  {f:"Carteira de projetos",st:1,n:"coleta iniciada — 3 de 8 secretarias",chip:"projeto_institucional"},
+  {f:"Programação orçamentária",st:0,n:"fonte identificada (LOA/SIOP) — extração não iniciada",chip:"acao_orcamentaria"},
+];
+let itlSel="CGGP";
+function itlSetSel(s){itlSel=s;render();}
+function itlSelRow(){return `<div class="itl-selrow">${ITL_SIGS.map(s=>`<button class="${s===itlSel?'on':''}" onclick="itlSetSel('${s}')">${s}</button>`).join("")}</div>`;}
+function itlBadge(){return `<span class="tag p" style="text-transform:none;letter-spacing:normal;margin-left:8px;vertical-align:middle">PROTÓTIPO</span>`;}
+
+/* ---------- gráficos/tabelas do protótipo (mesma linguagem visual do v4) ---------- */
+function itlProjSaidas(sig){
+  const u=ITL_UN[sig];
+  const anos=[0,1,2,3,4,5];
+  const saidaEm=a=>a<=0?0:a===1?u.saidas[0]:a===2?Math.round((u.saidas[0]+u.saidas[1])/2):a===3?u.saidas[1]:a===4?Math.round((u.saidas[1]+u.saidas[2])/2):u.saidas[2];
+  const efetProj=anos.map(a=>u.efet-saidaEm(a));
+  const W=680,H=210,PL=40,PB=28,PT=14;
+  const maxY=Math.max(u.nec,u.efet)+2, minY=Math.min(...efetProj)-3;
+  const x=a=>PL+(W-PL-14)*a/5, y=v=>PT+(H-PT-PB)*(1-(v-minY)/(maxY-minY));
+  const linha=vs=>vs.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ");
+  const gapHoje=Math.max(u.gap,0), gap3=Math.max(u.gap,0)+u.saidas[1];
+  let out=NS("path",{d:`${linha(efetProj)} L${x(5).toFixed(1)},${y(u.nec).toFixed(1)} L${x(0).toFixed(1)},${y(u.nec).toFixed(1)} Z`,fill:"var(--coral-soft)"});
+  out+=NS("line",{x1:x(0).toFixed(1),y1:y(u.nec).toFixed(1),x2:x(5).toFixed(1),y2:y(u.nec).toFixed(1),stroke:"var(--navy)","stroke-width":1.6,"stroke-dasharray":"6 4"});
+  out+=NS("path",{d:linha(efetProj),fill:"none",stroke:"var(--blue)","stroke-width":2.2});
+  anos.forEach(a=>{
+    out+=NS("circle",{cx:x(a).toFixed(1),cy:y(efetProj[a]).toFixed(1),r:3.2,fill:"var(--blue)"});
+    out+=NS("text",{x:x(a).toFixed(1),y:H-8,"text-anchor":"middle","font-size":9,"font-weight":600,fill:"var(--faint)"},2026+a);
+  });
+  out+=NS("text",{x:(x(5)-4).toFixed(1),y:(y(u.nec)-7).toFixed(1),"text-anchor":"end","font-size":9.5,"font-weight":700,fill:"var(--navy)"},"necessidade · "+u.nec);
+  out+=NS("text",{x:(x(5)-4).toFixed(1),y:(y(efetProj[5])+15).toFixed(1),"text-anchor":"end","font-size":9.5,"font-weight":700,fill:"var(--blue)"},"efetivo projetado · "+efetProj[5]);
+  const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">${out}</svg>`;
+  const kpis=[[gapHoje,"gap hoje",0],[gap3,"gap projetado · 3 anos",1],[u.saidas[2],"saídas prováveis · 5 anos",0],[Math.round(100*u.saidas[1]/u.efet)+"%","da equipe elegível em 3 anos",0]]
+    .map(([v,l,c])=>`<div class="itl-kpi"><div class="v${c?" c":""} tnum">${v}</div><div class="l">${l}</div></div>`).join("");
+  return svg+`<div class="itl-kpis">${kpis}</div>`;
+}
+function itlLongitudinal(sig){
+  const dec=ITL_DEC[sig]; const u=ITL_UN[sig], serie=u.serie;
+  if(!dec) return `<div class="itl-note">Ainda não há marco de decisão registrado para ${sig} no piloto — o gráfico aparece assim que uma decisão (reposição, automação, reorganização) for tomada e a série de gap seguir sendo guardada.</div>`;
+  const W=680,H=190,PL=36,PB=30,PT=16;
+  const ys=serie.map(p=>p[1]); const maxY=Math.max(...ys,1)+2, minY=Math.min(...ys,0)-2;
+  const x=i=>PL+(W-PL-16)*i/(serie.length-1), y=v=>PT+(H-PT-PB)*(1-(v-minY)/(maxY-minY));
+  let out=NS("line",{x1:PL,y1:y(0).toFixed(1),x2:W-10,y2:y(0).toFixed(1),stroke:"var(--hair)"});
+  out+=NS("path",{d:serie.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+","+y(p[1]).toFixed(1)).join(" "),fill:"none",stroke:"var(--navy)","stroke-width":2.2});
+  serie.forEach((p,i)=>{
+    out+=NS("circle",{cx:x(i).toFixed(1),cy:y(p[1]).toFixed(1),r:3.6,fill:"var(--navy)"});
+    out+=NS("text",{x:x(i).toFixed(1),y:H-10,"text-anchor":"middle","font-size":9,"font-weight":600,fill:"var(--faint)"},p[0]);
+    out+=NS("text",{x:x(i).toFixed(1),y:(y(p[1])-9).toFixed(1),"text-anchor":"middle","font-size":9.5,"font-weight":700,fill:"var(--navy)"},(p[1]>0?"+":"")+p[1]);
+  });
+  dec.forEach(([per,txt],i)=>{
+    const idx=serie.findIndex(p=>p[0]===per); if(idx<0)return;
+    out+=NS("line",{x1:x(idx).toFixed(1),y1:PT,x2:x(idx).toFixed(1),y2:H-PB,stroke:"var(--green)","stroke-dasharray":"4 4"});
+    out+=NS("text",{x:(x(idx)+5).toFixed(1),y:PT+11+(i%2)*13,"font-size":9,"font-weight":700,fill:"var(--green)"},"▸ "+txt);
+  });
+  const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">${out}</svg>`;
+  return svg+`<div class="itl-note"><b>Fase 1 (fazer já, sem tela):</b> parar de descartar as versões anteriores do dimensionamento — guardar a série histórica de gap por unidade é a mudança mais barata e mais urgente do catálogo inteiro.</div>`;
+}
+function itlCompetencias(sig){
+  const u=ITL_UN[sig], max=10;
+  const rows=u.comp.map(([nome,dem,ofe])=>{
+    const gap=dem-ofe;
+    const info=gap<=0?["coberta","g"]:gap>=3?["contratar / mover","c"]:["capacitar","k"];
+    return `<div class="itl-dbar-row">
+      <div style="font-size:11.5px;font-weight:700;color:var(--navy)">${nome}</div>
+      <div class="itl-dbar"><div class="dem" style="width:${100*dem/max}%"></div><div class="ofe" style="width:${100*ofe/max}%"></div></div>
+      <div class="tnum" style="font-size:11px;font-weight:700;color:var(--sub);text-align:right">${ofe} / ${dem}</div>
+      <span class="tag ${info[1]}">${info[0]}</span></div>`;
+  }).join("");
+  return rows+`<div class="itl-note">Regra: gap em entrega <b>nova</b> (demanda reprimida) → contratar/mover; gap em entrega <b>existente</b> subdimensionada → capacitar tem mais chance.</div>`;
+}
+function itlAutomacao(sig){
+  const u=ITL_UN[sig], itens=ITL_AUTO[sig]||[];
+  if(!itens.length) return `<div style="font-size:11px;color:var(--faint)">Sem frentes de automação mapeadas para ${sig} no piloto.</div>`;
+  const horas=itens.reduce((s,x)=>s+x[2],0), fteL=Math.round(10*horas/160)/10;
+  const gap=Math.max(u.gap,0), fecha=gap>0?Math.min(Math.round(100*fteL/gap),100):0;
+  const tabela=`<table><thead><tr><th>Frente automatizável</th><th>Tecnologia</th><th class="num">h/mês</th><th class="num">FTE liberado</th></tr></thead><tbody>
+    ${itens.map(x=>`<tr><td>${x[0]}</td><td><span class="tag p" style="text-transform:none;letter-spacing:normal">${x[1]}</span></td><td class="num">${fmt(x[2])}</td><td class="num">${fmt1(Math.round(10*x[2]/160)/10)}</td></tr>`).join("")}
+  </tbody></table>`;
+  const barra=gap>0?`<div style="display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-top:14px">
+    <div style="font-size:10.5px;font-weight:700;color:var(--navy)">gap ${gap} FTE</div>
+    <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--hair2)">
+      <i style="display:block;height:100%;width:${100-fecha}%;background:var(--coral);opacity:.8"></i>
+      <i style="display:block;height:100%;width:${fecha}%;background:var(--green)"></i>
+    </div>
+    <div style="font-size:10.5px;color:var(--sub)"><b style="color:var(--green)">${fecha}%</b> do gap fechável por automação</div>
+  </div>`:`<div class="itl-note">Em ${sig}, os ${fteL} FTE liberados não fecham gap — viram oferta de movimentação entre unidades (ver aba Rede).</div>`;
+  return tabela+barra;
+}
+function itlBenchmark(){
+  const W=680,H=280,P=48;
+  const x=v=>P+(W-P-16)*(v-60)/60;
+  const y=v=>16+(H-16-40)*(1-(v-50)/40);
+  let out=NS("line",{x1:x(100).toFixed(1),y1:14,x2:x(100).toFixed(1),y2:H-40,stroke:"var(--hair)"});
+  out+=NS("line",{x1:P-6,y1:y(70).toFixed(1),x2:W-16,y2:y(70).toFixed(1),stroke:"var(--hair)"});
+  ITL_SIGS.forEach(s=>{
+    const uu=ITL_UN[s], adeq=Math.round(100*uu.efet/uu.nec), on=s===itlSel;
+    out+=NS("circle",{cx:x(adeq).toFixed(1),cy:y(uu.efetiv).toFixed(1),r:on?8:6,fill:on?"var(--blue)":"var(--navy)",opacity:on?1:.72});
+    out+=NS("text",{x:x(adeq).toFixed(1),y:(y(uu.efetiv)-11).toFixed(1),"text-anchor":"middle","font-size":10,"font-weight":700,fill:"var(--navy)"},s);
+  });
+  out+=NS("text",{x:x(78).toFixed(1),y:30,"text-anchor":"middle","font-size":8.6,"font-weight":600,fill:"var(--faint)"},"alta efetividade com gap");
+  out+=NS("text",{x:x(111).toFixed(1),y:30,"text-anchor":"middle","font-size":8.6,"font-weight":600,fill:"var(--faint)"},"coerente (bem provida, entrega)");
+  out+=NS("text",{x:x(78).toFixed(1),y:(y(70)+22).toFixed(1),"text-anchor":"middle","font-size":8.6,"font-weight":600,fill:"var(--faint)"},"coerente (gap explica resultado)");
+  out+=NS("text",{x:x(111).toFixed(1),y:(y(70)+22).toFixed(1),"text-anchor":"middle","font-size":8.6,"font-weight":700,fill:"var(--coral)"},"baixa efetividade com folga");
+  out+=NS("text",{x:((P+W)/2).toFixed(1),y:H-8,"text-anchor":"middle","font-size":8.8,"font-weight":600,fill:"var(--faint)"},"adequação de recursos (efetivo ÷ necessidade) →");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible">${out}</svg>`;
+}
+
+/* ---------- aba Rede: fila de priorização, movimentação, fluxo, esteira ---------- */
+const ITL_PESOS_INI={gap:.22,proj:.24,crit:.20,tacito:.12,orc:.12,auto:.10};
+const ITL_NOMES={gap:"Gap atual",proj:"Gap projetado",crit:"Criticidade estratégica",tacito:"Risco de descontinuidade",orc:"Lastro orçamentário",auto:"Automação (redutor)"};
+const ITL_CORF={gap:"var(--coral)",proj:"#E8794A",crit:"var(--blue)",tacito:"var(--purple)",orc:"var(--green)",auto:"#8895A7"};
+let itlPesos={...ITL_PESOS_INI};
+function itlEscore(sig,pesos){
+  const u=ITL_UN[sig];
+  const gapN=Math.max(u.gap,0)/13, gapProjAbs=Math.max(u.gap,0)+u.saidas[1], gapProjN=gapProjAbs/24;
+  const f={
+    gap:{v:gapN,abs:Math.max(u.gap,0)+" FTE",lbl:ITL_NOMES.gap},
+    proj:{v:gapProjN,abs:gapProjAbs+" FTE em 3 anos",lbl:ITL_NOMES.proj},
+    crit:{v:u.crit,abs:Math.round(u.crit*100)+"%",lbl:ITL_NOMES.crit},
+    tacito:{v:u.tacito,abs:Math.round(u.tacito*100)+"%",lbl:ITL_NOMES.tacito},
+    orc:{v:u.orc,abs:Math.round(u.orc*100)+"%",lbl:ITL_NOMES.orc},
+    auto:{v:Math.min(u.autoFTE/3.2,1),abs:u.autoFTE.toLocaleString("pt-BR")+" FTE automatizáveis",lbl:ITL_NOMES.auto,redutor:true},
+  };
+  let s=0,parts=[];
+  for(const k in pesos){ const c=f[k]; if(!c)continue; const contrib=(c.redutor?-1:1)*pesos[k]*c.v; s+=contrib; parts.push({k,...c,peso:pesos[k],contrib}); }
+  return {escore:Math.max(s,0),parts};
+}
+function itlFilaHTML(){
+  const fila=ITL_SIGS.map(s=>({sig:s,...itlEscore(s,itlPesos)}))
+    .filter(r=>Math.max(ITL_UN[r.sig].gap,0)+ITL_UN[r.sig].saidas[1]>0)
+    .sort((a,b)=>b.escore-a.escore);
+  const maxE=Math.max(...fila.map(f=>f.escore),0.001);
+  return fila.map((r,i)=>{
+    const u=ITL_UN[r.sig];
+    const barra=r.parts.filter(p=>!p.redutor&&p.contrib>0).map(p=>`<i style="width:${100*p.contrib/maxE}%;background:${ITL_CORF[p.k]}" title="${p.lbl}"></i>`).join("");
+    const just=r.parts.map(p=>`<b style="color:var(--navy)">${p.lbl}:</b> ${p.abs} (${p.redutor?"−":"+"}${Math.abs(p.contrib).toFixed(2)}, peso ${Math.round(p.peso*100)}%)`).join(" · ");
+    return `<div class="itl-fila">
+      <div class="no${i===0?' p1':''}">${i+1}º</div>
+      <div style="font-weight:700;color:var(--navy);font-size:12.5px">${r.sig}</div>
+      <div class="bar">${barra}</div>
+      <div class="esc tnum">${r.escore.toFixed(2)}<br><small style="font-weight:600;color:var(--faint)">${u.gap>0?'+':''}${u.gap} FTE</small></div>
+      <div class="just">${just}</div>
+    </div>`;
+  }).join("");
+}
+function itlPesosHTML(){
+  return Object.keys(itlPesos).map(k=>`
+    <label class="itl-peso">
+      <span class="n"><i style="background:${ITL_CORF[k]}"></i>${ITL_NOMES[k]}</span>
+      <input type="range" min="0" max="40" value="${Math.round(itlPesos[k]*100)}" oninput="itlSetPeso('${k}',this.value)">
+      <b id="itlPesoV_${k}">${Math.round(itlPesos[k]*100)}%</b>
+    </label>`).join("");
+}
+function itlSetPeso(k,v){
+  itlPesos[k]=Number(v)/100;
+  $("itlPesoV_"+k).textContent=Math.round(itlPesos[k]*100)+"%";
+  $("itlFilaBody").innerHTML=itlFilaHTML();
+}
+function itlResetPesos(){ itlPesos={...ITL_PESOS_INI}; render(); }
+function itlMatching(){
+  return `<table><thead><tr><th>Origem (superávit)</th><th>Destino (gap)</th><th class="num">Pessoas</th><th class="num">Aderência</th><th>Competência / observação</th></tr></thead><tbody>
+    ${ITL_MOV.map(m=>{
+      const cor=m.ader>=80?"var(--green)":m.ader>=55?"var(--amber)":"var(--coral)";
+      return `<tr><td><b>${m.de}</b> <span style="color:var(--faint);font-size:10px">superávit ${Math.abs(ITL_UN[m.de].gap)}</span></td>
+        <td><b>${m.para}</b> <span style="color:var(--faint);font-size:10px">gap +${ITL_UN[m.para].gap}</span></td>
+        <td class="num">${m.n}</td>
+        <td class="num" style="color:${cor};font-weight:700">${m.ader}%</td>
+        <td style="font-size:10.5px;color:var(--sub)">${m.comp}<br><small style="color:var(--faint)">${m.obs}</small></td></tr>`;
+    }).join("")}
+  </tbody></table>
+  <div class="itl-note"><b>Fronteira ética fixada antes da primeira tela:</b> o perfil individual pertence ao servidor. Movimentação é <b>oportunidade oferecida a quem se candidata</b>, nunca alocação empurrada a partir de dados de perfil.</div>`;
+}
+function itlEsteira(){
+  const st=["a iniciar","em coleta","piloto extraído"], stc=["var(--faint)","var(--amber)","var(--green)"];
+  return `<div style="font-size:11px;color:var(--sub);margin-bottom:14px;line-height:2.1">
+    ${["Coleta (PDFs por órgão)","Parse + segmentação","Extração LLM (esquema fixo)","entidade_institucional","Matching com entregas"].map(e=>`<span class="tag k" style="text-transform:none;letter-spacing:normal">${e}</span>`).join(' <span style="color:var(--faint)">→</span> ')}
+  </div>
+  <table><thead><tr><th>Fonte</th><th>Status do piloto (MGI)</th><th>Entidade gerada</th></tr></thead><tbody>
+    ${ITL_FONTES.map(f=>`<tr><td><b>${f.f}</b></td><td><span class="tag" style="color:${stc[f.st]};background:var(--hair2);text-transform:none;letter-spacing:normal">${st[f.st]}</span> <span style="font-size:10px;color:var(--sub)">${f.n}</span></td><td><code style="font-size:10px;background:var(--hair2);border-radius:4px;padding:2px 6px;color:var(--navy)">${f.chip}</code></td></tr>`).join("")}
+  </tbody></table>
+  <div class="itl-note">O ganho que separa lista de desejos de proposta executável: o vínculo com a <b>programação orçamentária</b> responde se uma vaga sugerida tem lastro financeiro.</div>`;
+}
+function itlFluxo(){
+  const cf={alta:"var(--green)","média":"var(--amber)",baixa:"var(--coral)"};
+  return `<table><thead><tr><th>Ordem</th><th>Unidade</th><th>Papel no fluxo</th><th class="num">h/mês</th><th>Confiança do elo</th></tr></thead><tbody>
+    ${ITL_FLUXO.etapas.map((e,i)=>`<tr><td class="num">${i+1}</td><td><b>${e.sig}</b></td><td>${e.papel}</td><td class="num">${fmt(e.h)}</td><td><span class="tag" style="color:${cf[e.conf]};background:var(--hair2);text-transform:none;letter-spacing:normal">${e.conf}</span></td></tr>`).join("")}
+  </tbody></table>
+  <div style="margin-top:12px">${ITL_FLUXO.etapas.slice(1).map(e=>`<div style="font-size:10.5px;color:var(--sub);padding:4px 0"><b style="color:var(--navy)">elo → ${e.sig} (${e.conf}):</b> ${e.ev}</div>`).join("")}</div>
+  <div class="itl-note">Método: normalizar rótulos canônicos → identificar entregas comuns entre unidades → propor sequência com evidência + confiança + o que coletar para confirmar. Elo inferido nunca é apresentado como fato.</div>`;
+}
+
 /* ============================================================ */
-const TABS=[["01","Diagnóstico"],["02","Alavancas"],["03","Carreiras"],["04","Decisão"]];
+const TABS=[["01","Diagnóstico"],["02","Alavancas"],["03","Carreiras"],["04","Decisão"],["05","Rede"]];
 let cur="__real",curTab=0;
 const $=id=>document.getElementById(id);
 
@@ -517,7 +803,7 @@ function render(){
     <div class="cap-bar"><span class="gapz"></span><span class="fill" style="width:${pct}%"></span></div>
     <div class="cap-cap"><span>efetivo <b class="tnum">${fmt(k.efet)}</b> · ${pct}% da necessidade</span><span>estimado <b class="tnum">${fmt(k.estim)}</b></span></div>`;
   }
-  $("content").innerHTML=[tabDiag,tabAlav,tabCarr,tabDec][curTab](u);
+  $("content").innerHTML=[tabDiag,tabAlav,tabCarr,tabDec,tabRede][curTab](u);
 }
 
 function kick(no,t){return `<div class="section-kick"><span class="no">${no}</span><span class="t">${t}</span></div>`}
@@ -592,14 +878,39 @@ function tabAlav(u){
       "Fonte: GET /api/esforco-demanda/demanda-reprimida-por-entrega (dado real)")
     : emptyExh("Sem demanda reprimida registrada", "Esta unidade não tem entregas com demanda reprimida > 0 na visão atual, ou a tabela ainda não foi migrada para esta unidade.");
 
+  const exSel=`<div style="margin:18px 0 4px">
+    <div style="font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:8px">Protótipo Frente 4 · unidade de exemplo (dados fictícios)</div>
+    ${itlSelRow()}</div>`;
+
+  const exBench=exh(`Exhibit 4${itlBadge()}`,
+    "Benchmarking entre pares: efetividade × adequação de recursos",
+    "x = adequação de recursos (efetivo ÷ necessidade DFT) · y = desempenho organizacional agregado · cada quadrante das 8 unidades de exemplo pede uma ação diferente",
+    itlBenchmark(),
+    "Fonte prevista: avaliação de desempenho organizacional (acesso existe, integração não) × gap DFT. Regra de privacidade: nunca ranking nominal público — diagnóstico para a própria unidade, agregado para a alta gestão.");
+
+  const exDemog=exh(`Exhibit 5${itlBadge()}`,
+    `Demografia e risco: projeção de saídas por elegibilidade — exemplo ${itlSel}`,
+    "quanto da equipe sai por elegibilidade nos próximos 5 anos, e o que isso faz com um gap que hoje parece controlado",
+    itlProjSaidas(itlSel),
+    "Fonte prevista: perfil_equipe_unidade + tempo_servico_unidade (tabelas prontas, pendentes de plugar) × regras de elegibilidade.");
+
+  const exAuto=exh(`Exhibit 6${itlBadge()}`,
+    `Automação: tarefa → tecnologia — exemplo ${itlSel}`,
+    "horas/mês automatizáveis convertidas em FTE liberado · o que fecha de gap, e o que sobra como oferta de movimentação",
+    itlAutomacao(itlSel),
+    "Fonte prevista: rubrica de automação via LLM (mesmo pipeline da matriz de aderência de carreiras).");
+
+  const exPlano=exh(`Exhibit 7${itlBadge()}`,
+    `Plano de ação: gap de competências e efeito das decisões — exemplo ${itlSel}`,
+    "não é 'mais pessoas' — é quais competências contratar, capacitar ou mover; e depois de uma decisão tomada, o gap realmente fechou?",
+    `<div style="margin-bottom:18px">${itlCompetencias(itlSel)}</div>`+itlLongitudinal(itlSel),
+    "Fonte prevista: extração de competências via LLM + histórico de dimensionamento (persistir já — é a mudança mais barata e mais urgente do catálogo).");
+
   return kick("02","Alavancas")+
-    `<div class="exh-sub" style="margin:2px 0 8px">Demais análises do relatório — ainda em desenvolvimento. Entram aqui à medida que forem integradas ao pipeline real.</div>`+
+    `<div class="exh-sub" style="margin:2px 0 8px">Análises com dado real do SISDIP, seguidas de quatro exemplos do protótipo da Frente 4 — mostram o formato que a versão com dado real desta unidade vai ter.</div>`+
     exDemanda+
     emptyExh("Matriz impacto × esforço — em desenvolvimento", "O cardápio de soluções priorizadas (contratar/realocar/automatizar/simplificar/eliminar) depende de um modelo de pontuação que ainda não está integrado ao pipeline real.")+
-    emptyExh("Benchmarking entre pares — em desenvolvimento", "A comparação com unidades pares ainda não tem uma fonte de dados integrada ao pipeline real.")+
-    emptyExh("Demografia e risco de conhecimento tácito — em desenvolvimento", "Pirâmide etária, vínculos e projeção de aposentadorias dependem da integração das tabelas de pessoal (tb_cargo, tb_pessoa_*), ainda pendente.")+
-    emptyExh("Automação: tarefa → tecnologia — em desenvolvimento", "A classificação de suscetibilidade à automação por tarefa (metodologia Frente 4/UFRJ) ainda não está integrada ao pipeline real.")+
-    emptyExh("Plano de ação e cenários prospectivos — em desenvolvimento", "As recomendações priorizadas e os cenários de necessidade em 2030 (Frente 4) ainda não têm uma fonte de dados automatizada — seguem como narrativa manual até esse modelo ser integrado.");
+    exSel+exBench+exDemog+exAuto+exPlano;
 }
 
 /* ---------- 03 · CARREIRAS — sugestão de alocação por carreira ----------
@@ -760,6 +1071,44 @@ function tabDec(u){
         frameborder="0" allowfullscreen="true"></iframe>
     </div>
     <div class="exh-src">Fonte: Power BI — Portal das Entregas / SISDIP (publicação web)</div></div>`;
+}
+
+/* ---------- 05 · REDE — análises que comparam várias unidades ao mesmo tempo ----------
+   Protótipo Frente 4 (dados fictícios das 8 unidades de demonstração). Diferente
+   das outras abas, aqui a unidade de análise nunca é só a que está sendo vista —
+   por isso a aba fica separada, em vez de forçada dentro do relatório de uma
+   unidade só. */
+function tabRede(u){
+  const k=kick("05","Rede entre unidades");
+  const intro=`<div class="exh-sub" style="margin:2px 0 20px;max-width:820px">Estas quatro análises comparam <b>várias unidades ao mesmo tempo</b> — não são específicas de ${u.sig}. Fazem parte do protótipo da Frente 4 (dados fictícios das 8 unidades de demonstração) e mostram o formato que a versão com dado real vai ter.</div>`;
+
+  const exFila=exh(`Exhibit R1${itlBadge()}`,
+    "Fila de priorização entre unidades — pesos visíveis e editáveis",
+    "mude um peso e veja a fila reordenar · um escore de caixa-preta seria rejeitado, e com razão — o gestor precisa ver o critério e discordar dele",
+    `<div class="itl-pesos">${itlPesosHTML()}</div>
+     <button class="mini-btn" onclick="itlResetPesos()" style="margin:2px 0 16px">Restaurar pesos</button>
+     <div id="itlFilaBody">${itlFilaHTML()}</div>`,
+    "Insumos do escore: gap DFT (real) · gap projetado (Exhibit 5) · criticidade estratégica e lastro orçamentário (esteira institucional) · risco de descontinuidade · automação (Exhibit 6, como redutor). Versão 1 viável só com gap + projeção + automação.");
+
+  const exMov=exh(`Exhibit R2${itlBadge()}`,
+    "Troca de servidores entre unidades: casando superávit com a fila priorizada",
+    "origem = unidades com superávit hoje · destino = topo da fila do Exhibit R1 · aderência = compatibilidade de competências entre origem e destino",
+    itlMatching(),
+    "Motor previsto: mesma engine semântica usada na matriz de aderência de carreiras — infraestrutura compartilhada.");
+
+  const exFluxo=exh(`Exhibit R3${itlBadge()}`,
+    `Fluxo inferido entre unidades: <em>${ITL_FLUXO.nome}</em>`,
+    "o dado do SISDIP é declarado por unidade, isolado — o fluxo abaixo é inferido a partir de rótulos e volumes, com a confiança do elo à mostra",
+    itlFluxo(),
+    "Fonte prevista: normalização de rótulos canônicos + confirmação regimental para elos de confiança média/baixa.");
+
+  const exEsteira=exh(`Exhibit R4${itlBadge()}`,
+    "Esteira de estruturação institucional",
+    "como planejamento estratégico, regimento, projetos e orçamento — hoje PDFs dispersos — viram dado estruturado que alimenta a criticidade e o lastro orçamentário da fila acima",
+    itlEsteira(),
+    "Fonte prevista: extração via LLM com esquema fixo, a partir dos documentos institucionais de cada órgão.");
+
+  return k+intro+exFila+exMov+exFluxo+exEsteira;
 }
 
 init();
