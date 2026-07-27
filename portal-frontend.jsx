@@ -308,6 +308,7 @@ export default function PortalEntregas(){
   const categoriaOpts=useMemo(()=>{ const m=new Map(); ENTREGAS.forEach(e=>{ if((!natF||e.natureza===natF)&&(!macroF||e.macro===macroF)) m.set(e.categoria,(m.get(e.categoria)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([valor,n])=>({valor,n})); },[natF,macroF,bancoN]);
   const servicoOpts=useMemo(()=>{ const m=new Map(); ENTREGAS.forEach(e=>{ if(e.servico&&(!natF||e.natureza===natF)&&(!macroF||e.macro===macroF)&&(!catF||e.categoria===catF)) m.set(e.servico,(m.get(e.servico)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([valor,n])=>({valor,n})); },[natF,macroF,catF,bancoN]);
   const orgaoOpts=useMemo(()=>{ const m=new Map(); ENTREGAS.forEach(e=>{ if(e.orgao) m.set(e.orgao,(m.get(e.orgao)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([valor,n])=>({valor,n})); },[bancoN]);
+  const naturezaOpts=useMemo(()=>NAT_ORDER.map(id=>({valor:id,label:NAT[id].rot,n:ENTREGAS.filter(e=>e.natureza===id).length})),[bancoN]);
 
   // números do banco para o painel do topo — recalculados quando o banco carrega
   const stats=useMemo(()=>{
@@ -386,11 +387,13 @@ export default function PortalEntregas(){
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por entrega, atividade, serviço ou código…"/>
             {query && <button className="px-clear" onClick={()=>setQuery("")}><X size={15}/></button>}
           </div>
+          <span className={`px-count ${searching?"filt":""}`}>{searching?`${res.length.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`:`${total.toLocaleString("pt-BR")} entregas`}</span>
         </div>
 
         <PainelNumeros stats={stats} bancoStatus={bancoStatus} filtro={{
-          ativoTotal: !natF&&!macroF&&!catF&&!servF&&!orgF,
           onTotal: ()=>{setNavPanel(null);setNatF(null);setMacroF(null);setCatF(null);setServF(null);setOrgF(null);},
+          ativoNatureza: navPanel==="natureza"||!!natF,
+          onNatureza: ()=>setNavPanel(p=>p==="natureza"?null:"natureza"),
           ativoMacro: navPanel==="macro"||!!macroF,
           onMacro: ()=>setNavPanel(p=>p==="macro"?null:"macro"),
           ativoCategoria: navPanel==="categoria"||!!catF,
@@ -400,16 +403,6 @@ export default function PortalEntregas(){
           ativoOrgao: navPanel==="orgao"||!!orgF,
           onOrgao: ()=>setNavPanel(p=>p==="orgao"?null:"orgao"),
         }}/>
-
-        <div className="px-fbar">
-          <span className="px-facets-l">Natureza:</span>
-          <button className={`px-chip ${!natF?"on":""}`} onClick={()=>chooseNat(null)}>Todas <b>{total}</b></button>
-          {Object.entries(NAT).map(([id,n])=>{
-            const ct=ENTREGAS.filter(e=>e.natureza===id).length;
-            return <button key={id} className={`px-chip ${natF===id?"on":""}`} style={natF===id?{background:n.cor,borderColor:n.cor,color:"#fff"}:{borderColor:n.cor,color:n.cor}} onClick={()=>chooseNat(natF===id?null:id)}>{n.rot} <b>{ct}</b></button>;
-          })}
-          <span className={`px-count ${searching?"filt":""}`}>{searching?`${res.length.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}`:`${total.toLocaleString("pt-BR")} entregas`}</span>
-        </div>
         {(natF||macroF||catF||servF||orgF||dquery) && (
           <div className="px-filtros-ativos">
             <div className="px-fa-tags">
@@ -455,6 +448,7 @@ export default function PortalEntregas(){
         </div>
 
         <div className={`px-body ${navPanel||descCollapsed?"solo":""} ${navPanel?"nav":""}`}>
+          {navPanel==="natureza" && <ListaFiltroNav titulo="Natureza" icon={Layers} itens={naturezaOpts} valorAtual={natF} onPick={id=>{chooseNat(id);setNavPanel(null);}} onClear={()=>chooseNat(null)} onClose={()=>setNavPanel(null)} corDe={id=>NAT[id].cor} semBusca/>}
           {navPanel==="macro" && <MacroNav natF={natF} macroF={macroF} onPick={pickMacro} onClear={()=>setMacroF(null)} onClose={()=>setNavPanel(null)}/>}
           {navPanel==="categoria" && <ListaFiltroNav titulo="Categorias" icon={PieChart} itens={categoriaOpts} valorAtual={catF} onPick={pickCategoria} onClear={()=>setCatF(null)} onClose={()=>setNavPanel(null)}/>}
           {navPanel==="servico" && <ListaFiltroNav titulo="Serviços" icon={Sparkles} itens={servicoOpts} valorAtual={servF} onPick={pickServico} onClear={()=>setServF(null)} onClose={()=>setNavPanel(null)}/>}
@@ -831,18 +825,19 @@ function MacroNav({natF,macroF,onPick,onClear,onClose}){
 }
 
 /* ---------- painel genérico de filtro por lista (categoria/serviço/órgão) ---------- */
-function ListaFiltroNav({titulo,icon:Icon,itens,valorAtual,onPick,onClear,onClose}){
+function ListaFiltroNav({titulo,icon:Icon,itens,valorAtual,onPick,onClear,onClose,corDe,semBusca}){
   const [busca,setBusca]=useState("");
-  const filtrados=useMemo(()=>{ const q=norm(busca); return q?itens.filter(it=>norm(it.valor).includes(q)):itens; },[itens,busca]);
+  const filtrados=useMemo(()=>{ const q=norm(busca); return q?itens.filter(it=>norm(it.label||it.valor).includes(q)):itens; },[itens,busca]);
   return (<aside className="px-mnav">
     <div className="px-mnav-h"><span><Icon size={15}/> {titulo}</span><button onClick={onClose}><X size={16}/></button></div>
     <button className={`px-mnav-all ${!valorAtual?"on":""}`} onClick={onClear}>Todos</button>
-    <div className="px-mnav-search"><Search size={13} color={C.faint}/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar…"/></div>
+    {!semBusca && <div className="px-mnav-search"><Search size={13} color={C.faint}/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar…"/></div>}
     <div className="px-mnav-body">
       <div className="px-mnav-list">
         {filtrados.map(it=>(
-          <button key={it.valor} className={`px-mnav-item ${valorAtual===it.valor?"on":""}`} onClick={()=>onPick(it.valor)} title={it.valor}>
-            <span>{it.valor}</span><b>{it.n}</b>
+          <button key={it.valor} className={`px-mnav-item ${valorAtual===it.valor?"on":""}`} onClick={()=>onPick(it.valor)} title={it.label||it.valor}>
+            {corDe && <span className="px-dot" style={{background:corDe(it.valor)}}/>}
+            <span>{it.label||it.valor}</span><b>{it.n}</b>
           </button>
         ))}
         {filtrados.length===0 && <div className="px-mnav-empty">Nada encontrado.</div>}
@@ -915,7 +910,7 @@ function PainelNumeros({stats,bancoStatus,filtro}){
   const {total,macros,cats,servs,orgs,pctServ,dist}=stats;
   const seg=k=> total? (dist[k]/total*100):0;
   const Big = filtro
-    ? <button className={`px-mx-big px-mx-btn ${filtro.ativoTotal?"on":""}`} onClick={filtro.onTotal} title="Ver todas as entregas">{fmt(total)} <em>entregas</em></button>
+    ? <button className="px-mx-big px-mx-btn" onClick={filtro.onTotal} title="Ver todas as entregas">{fmt(total)} <em>entregas</em></button>
     : <span className="px-mx-big">{fmt(total)} <em>entregas</em></span>;
   const Mini = ({onClick,active,title,children}) => filtro
     ? <button className={`px-mx-mini px-mx-btn ${active?"on":""}`} onClick={onClick} title={title}>{children}</button>
@@ -929,6 +924,7 @@ function PainelNumeros({stats,bancoStatus,filtro}){
             <span className="px-mx-eyebrow">Banco de entregas</span>
             <div className="px-mx-row">
               {Big}
+              {filtro && <Mini onClick={filtro.onNatureza} active={filtro.ativoNatureza} title="Filtrar por natureza">Natureza</Mini>}
               <Mini onClick={filtro&&filtro.onMacro} active={filtro&&filtro.ativoMacro} title="Filtrar por macroprocesso"><b>{fmt(macros)}</b> macroprocessos</Mini>
               <Mini onClick={filtro&&filtro.onCategoria} active={filtro&&filtro.ativoCategoria} title="Filtrar por categoria"><b>{fmt(cats)}</b> categorias</Mini>
               <Mini onClick={filtro&&filtro.onServico} active={filtro&&filtro.ativoServico} title="Filtrar por serviço"><b>{fmt(servs)}</b> serviços</Mini>
@@ -3433,9 +3429,8 @@ const css=`
 .px-mx-mini b{font-weight:800;color:${C.ink};}
 .px-mx-btn{border:none;background:transparent;font-family:inherit;cursor:pointer;padding:4px 8px;border-radius:8px;transition:.14s;margin:-4px -8px;}
 .px-mx-btn:hover{background:#fff;box-shadow:0 1px 3px rgba(19,81,180,.12);}
-.px-mx-btn.on{background:${C.navy};color:#fff;}
-.px-mx-btn.on b{color:#fff;}
-.px-mx-btn.on em{color:#dbe4f7;}
+.px-mx-btn.on{background:${C.primarySoft};color:${C.primaryDark};}
+.px-mx-btn.on b{color:${C.primaryDark};}
 .px-mx-bar{display:flex;height:5px;border-radius:4px;overflow:hidden;background:${C.line};margin-top:9px;}
 .px-mx-bar span{height:100%;}
 .px-mx-acts{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;}
