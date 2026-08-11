@@ -614,13 +614,34 @@ function MarcosReferenciais({onAdd,onDone}){
     const cands=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),80);
     const catalogo=cands.length?candidatasTxt(cands):CAT_TXT;
     const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e/ou Regimento Interno). Identifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código no formato 0000.0000. Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
+    // O proxy de IA roda atrás de uma função serverless (Netlify/Vercel), que
+    // tem limite de payload (~6MB). Relatórios de gestão com centenas de
+    // páginas passam disso fácil e a chamada inteira falha com 413. Por isso
+    // PDFs grandes demais ficam de fora do envio à IA — os outros documentos
+    // seguem normalmente, e avisamos qual foi deixado de fora.
+    const LIMITE_PDF_B64=4_000_000, LIMITE_TOTAL_B64=4_500_000; // ~3MB e ~3,4MB de arquivo original
+    const pdfsGrandes=[]; let totalB64=0;
     const conteudo=[];
-    lista.forEach(a=>{ if(a.tipo==="pdf") conteudo.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}}); });
+    lista.forEach(a=>{
+      if(a.tipo!=="pdf") return;
+      const tam=a.pdfB64?.length||0;
+      if(tam>LIMITE_PDF_B64||totalB64+tam>LIMITE_TOTAL_B64){ pdfsGrandes.push(a.nome); return; }
+      totalB64+=tam;
+      conteudo.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}});
+    });
+    const avisoTamanho=pdfsGrandes.length
+      ? `Arquivo(s) grande(s) demais para a IA e não enviado(s): ${pdfsGrandes.join(", ")}. Reduza o tamanho (ex.: exporte só o sumário/resumo executivo) ou complete manualmente na Lista.`
+      : "";
+    if(!conteudo.length && !textos){
+      setCarregando(false);
+      setErro(avisoTamanho||"Não consegui extrair conteúdo dos arquivos enviados.");
+      return;
+    }
     conteudo.push({type:"text",text: textos ? `Documentos enviados (texto extraído):\n\n${textos}` : "Analise os documentos PDF anexados."});
     try{
       const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1500,system:sys,messages:[{role:"user",content:conteudo}]});
       const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n").trim();
-      setResposta(tx||"Não consegui identificar nada nos documentos enviados.");
+      setResposta((tx||"Não consegui identificar nada nos documentos enviados.")+(avisoTamanho?`\n\n⚠️ ${avisoTamanho}`:""));
       const cods=[...new Set((tx.match(CODIGO_RX)||[]).map(v=>v))].filter(c=>codMap.has(c));
       const achados=cods.map(c=>codMap.get(c));
       achados.forEach(onAdd);
@@ -628,7 +649,7 @@ function MarcosReferenciais({onAdd,onDone}){
       if(achados.length>0 && onDone) onDone();
     }catch{
       const top=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),12);
-      setErro("Não consegui falar com a IA agora."+(top.length?" Busquei direto no catálogo pelas palavras dos documentos — as entregas mais próximas já foram adicionadas à Descrição da Área:":""));
+      setErro("Não consegui falar com a IA agora."+(top.length?" Busquei direto no catálogo pelas palavras dos documentos — as entregas mais próximas já foram adicionadas à Descrição da Área:":"")+(avisoTamanho?` ${avisoTamanho}`:""));
       setResposta(top.length?top.map(e=>`${e.codigo} — ${e.entrega}\n   ${e.macro} > ${e.categoria}`).join("\n\n"):null);
       top.forEach(onAdd);
       setQtd(top.length);
