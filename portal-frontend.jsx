@@ -267,6 +267,13 @@ export default function PortalEntregas(){
   const [descView,setDescView]=useState("lista");
   const [objUnidade,setObjUnidade]=useState(SEED_OBJ_UNIDADE);
   const [objOrgao,setObjOrgao]=useState(SEED_OBJ_ORGAO);
+  // Estado de Marcos Referenciais fica aqui (não dentro do componente) para
+  // não se perder quando o usuário troca de aba e volta — os arquivos
+  // anexados e a resposta da IA continuam visíveis.
+  const [marcosArqs,setMarcosArqs]=useState({cadeia:null,estrutura:null,rgi:null,regimento:null});
+  const [marcosResposta,setMarcosResposta]=useState(null);
+  const [marcosQtd,setMarcosQtd]=useState(0);
+  const [marcosErro,setMarcosErro]=useState("");
   const [compare,setCompare]=useState([]);       // até 3 p/ comparar
   const [compareOpen,setCompareOpen]=useState(false);
   const [justAdded,setJustAdded]=useState(null); // micro-confirmação inline
@@ -461,7 +468,11 @@ export default function PortalEntregas(){
               {mode==="arvore" && <ArvoreDecomposicao res={res} add={add} rem={rem} selSet={selSet}/>}
               {mode==="sunburst" && <Sunburst res={res} add={add} rem={rem} selSet={selSet} compare={compare} toggleCompare={toggleCompare} onFlag={setFlagFor} justAdded={justAdded}/>}
               {mode==="nova" && <NovaEntregaCatalogo onFlash={flash} onPropose={t=>setNovaFor(t||"")}/>}
-              {mode==="marcos" && <MarcosReferenciais onAdd={add} onDone={()=>setMode("macro")}/>}
+              {mode==="marcos" && <MarcosReferenciais onAdd={add} onDone={()=>setMode("macro")}
+                arqs={marcosArqs} setArqs={setMarcosArqs}
+                resposta={marcosResposta} setResposta={setMarcosResposta}
+                qtd={marcosQtd} setQtd={setMarcosQtd}
+                erro={marcosErro} setErro={setMarcosErro}/>}
               {mode==="macro" && <Macroprocessos sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
@@ -589,12 +600,8 @@ function NovaEntregaCatalogo({onFlash,onPropose}){
    processos e serviços do catálogo a unidade executa. Ao concluir, adiciona
    os achados à Descrição da Área e leva para a aba Macroprocessos.
 ============================================================================ */
-function MarcosReferenciais({onAdd,onDone}){
-  const [arqs,setArqs]=useState({cadeia:null,estrutura:null,rgi:null,regimento:null});
-  const [erro,setErro]=useState("");
+function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,setQtd,erro,setErro}){
   const [carregando,setCarregando]=useState(false);
-  const [resposta,setResposta]=useState(null);
-  const [qtd,setQtd]=useState(0);
   const codMap=useMemo(()=>{const m=new Map();ENTREGAS.forEach(e=>m.set(e.codigo,e));return m;},[]);
   const campos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
 
@@ -671,7 +678,14 @@ function MarcosReferenciais({onAdd,onDone}){
           <div key={chave} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"10px 12px",minWidth:"220px",flex:"1 1 220px"}}>
             <div style={{fontSize:"11px",fontWeight:700,marginBottom:"6px",opacity:.7}}>{rotulo}</div>
             {arqs[chave]
-              ? <span className="px-anexo-chip"><FileText size={12}/> {arqs[chave].nome} <button onClick={()=>remover(chave)}><X size={11}/></button></span>
+              ? <span className="px-anexo-chip">
+                  <FileText size={12}/> {arqs[chave].nome}
+                  <label style={{cursor:"pointer",display:"inline-flex",alignItems:"center",color:C.sub}} title="Trocar arquivo">
+                    <RefreshCw size={11}/>
+                    <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev)}/>
+                  </label>
+                  <button onClick={()=>remover(chave)} title="Remover arquivo"><X size={11}/></button>
+                </span>
               : <label className="px-mode" style={{cursor:"pointer"}}>
                   <Paperclip size={14}/> <span className="px-mode-lbl">Selecionar arquivo</span>
                   <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev)}/>
