@@ -613,7 +613,7 @@ function MarcosReferenciais({onAdd,onDone}){
     const textos=lista.filter(a=>a.tipo!=="pdf").map(a=>`Documento "${a.nome}":\n${a.texto}`).join("\n\n");
     const cands=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),80);
     const catalogo=cands.length?candidatasTxt(cands):CAT_TXT;
-    const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e/ou Regimento Interno). Identifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código no formato 0000.0000. Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
+    const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e/ou Regimento Interno). Identifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código exatamente como aparece na lista de candidatas abaixo (8 dígitos, sem ponto — ex.: 02900067). Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
     // O proxy de IA roda atrás de uma função serverless (Netlify/Vercel), que
     // tem limite de payload (~6MB). Relatórios de gestão com centenas de
     // páginas passam disso fácil e a chamada inteira falha com 413. Por isso
@@ -642,7 +642,10 @@ function MarcosReferenciais({onAdd,onDone}){
       const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1500,system:sys,messages:[{role:"user",content:conteudo}]});
       const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n").trim();
       setResposta((tx||"Não consegui identificar nada nos documentos enviados.")+(avisoTamanho?`\n\n⚠️ ${avisoTamanho}`:""));
-      const cods=[...new Set((tx.match(CODIGO_RX)||[]).map(v=>v))].filter(c=>codMap.has(c));
+      // os códigos do banco são 8 dígitos sem ponto (ex.: 02900067) — a IA às
+      // vezes segue à risca o "0000.0000" pedido no prompt, às vezes cita o
+      // código cru como aparece na lista de candidatas. Aceita os dois.
+      const cods=[...new Set((tx.match(/\b\d{4}\.?\d{4}\b/g)||[]).map(v=>v.replace(".","")))].filter(c=>codMap.has(c));
       const achados=cods.map(c=>codMap.get(c));
       achados.forEach(onAdd);
       setQtd(achados.length);
