@@ -338,7 +338,7 @@ export default function PortalEntregas(){
 
   const total=ENTREGAS.length;
   const searching=!!(dquery.trim()||natF||macroF||catF||servF||orgF);
-  const modes=[["lista","Lista",LayoutGrid],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow]];
+  const modes=[["lista","Lista",LayoutGrid],["marcos","Marcos referenciais",Bot],["macro","Macroprocessos",Layers],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow]];
 
   const docHeader=(<DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>);
 
@@ -372,7 +372,8 @@ export default function PortalEntregas(){
         onChat={()=>{setSecao("catalogo");setMode("assistente");}}
         onConversor={()=>{setSecao("catalogo");setMode("conversor");}}
         onRevisao={()=>{setSecao("catalogo");setMode("revisao");}}
-        onPGD={()=>{setSecao("catalogo");setMode("pgd");}}/>}
+        onPGD={()=>{setSecao("catalogo");setMode("pgd");}}
+        onMarcos={()=>{setSecao("catalogo");setMode("marcos");}}/>}
       {secao==="inicio" && loading && <BancoLoading/>}
 
       {/* Importar PGD e Conversor vivem DENTRO do Catálogo, como visualizações
@@ -460,6 +461,8 @@ export default function PortalEntregas(){
               {mode==="arvore" && <ArvoreDecomposicao res={res} add={add} rem={rem} selSet={selSet}/>}
               {mode==="sunburst" && <Sunburst res={res} add={add} rem={rem} selSet={selSet} compare={compare} toggleCompare={toggleCompare} onFlag={setFlagFor} justAdded={justAdded}/>}
               {mode==="nova" && <NovaEntregaCatalogo onFlash={flash} onPropose={t=>setNovaFor(t||"")}/>}
+              {mode==="marcos" && <MarcosReferenciais onAdd={add} onDone={()=>setMode("macro")}/>}
+              {mode==="macro" && <Macroprocessos sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
@@ -579,6 +582,394 @@ function NovaEntregaCatalogo({onFlash,onPropose}){
   );
 }
 
+/* ============================================================================
+   MARCOS REFERENCIAIS — upload dos 4 documentos institucionais da unidade
+   (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado,
+   Regimento Interno) e leitura por IA para identificar quais macroprocessos,
+   processos e serviços do catálogo a unidade executa. Ao concluir, adiciona
+   os achados à Descrição da Área e leva para a aba Macroprocessos.
+============================================================================ */
+function MarcosReferenciais({onAdd,onDone}){
+  const [arqs,setArqs]=useState({cadeia:null,estrutura:null,rgi:null,regimento:null});
+  const [erro,setErro]=useState("");
+  const [carregando,setCarregando]=useState(false);
+  const [resposta,setResposta]=useState(null);
+  const [qtd,setQtd]=useState(0);
+  const codMap=useMemo(()=>{const m=new Map();ENTREGAS.forEach(e=>m.set(e.codigo,e));return m;},[]);
+  const campos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
+
+  async function escolherArquivo(chave,ev){
+    const f=ev.target.files?.[0]; if(!f) return; setErro("");
+    try{ const a=await lerArquivo(f); setArqs(s=>({...s,[chave]:a})); }
+    catch(err){ setErro(err.message||"Não consegui ler o arquivo."); }
+    finally{ ev.target.value=""; }
+  }
+  function remover(chave){ setArqs(s=>({...s,[chave]:null})); }
+
+  async function analisar(){
+    const lista=Object.values(arqs).filter(Boolean);
+    if(!lista.length||carregando) return;
+    setCarregando(true); setResposta(null); setQtd(0); setErro("");
+    const textos=lista.filter(a=>a.tipo!=="pdf").map(a=>`Documento "${a.nome}":\n${a.texto}`).join("\n\n");
+    const cands=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),80);
+    const catalogo=cands.length?candidatasTxt(cands):CAT_TXT;
+    const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e/ou Regimento Interno). Identifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código no formato 0000.0000. Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
+    const conteudo=[];
+    lista.forEach(a=>{ if(a.tipo==="pdf") conteudo.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}}); });
+    conteudo.push({type:"text",text: textos ? `Documentos enviados (texto extraído):\n\n${textos}` : "Analise os documentos PDF anexados."});
+    try{
+      const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1500,system:sys,messages:[{role:"user",content:conteudo}]});
+      const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n").trim();
+      setResposta(tx||"Não consegui identificar nada nos documentos enviados.");
+      const cods=[...new Set((tx.match(CODIGO_RX)||[]).map(v=>v))].filter(c=>codMap.has(c));
+      const achados=cods.map(c=>codMap.get(c));
+      achados.forEach(onAdd);
+      setQtd(achados.length);
+      if(achados.length>0 && onDone) onDone();
+    }catch{
+      const top=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),12);
+      setErro("Não consegui falar com a IA agora."+(top.length?" Busquei direto no catálogo pelas palavras dos documentos — as entregas mais próximas já foram adicionadas à Descrição da Área:":""));
+      setResposta(top.length?top.map(e=>`${e.codigo} — ${e.entrega}\n   ${e.macro} > ${e.categoria}`).join("\n\n"):null);
+      top.forEach(onAdd);
+      setQtd(top.length);
+      if(top.length>0 && onDone) onDone();
+    }finally{ setCarregando(false); }
+  }
+
+  return (
+    <div style={{padding:"32px 24px",maxWidth:"720px"}}>
+      <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
+        <Bot size={15}/>
+        <span>Anexe os marcos referenciais da unidade (PDF ou Word). A IA lê os documentos, adiciona automaticamente à Descrição da Área e leva você à aba Macroprocessos com o que foi encontrado.</span>
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"10px",marginBottom:"14px"}}>
+        {campos.map(([chave,rotulo])=>(
+          <div key={chave} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"10px 12px",minWidth:"220px",flex:"1 1 220px"}}>
+            <div style={{fontSize:"11px",fontWeight:700,marginBottom:"6px",opacity:.7}}>{rotulo}</div>
+            {arqs[chave]
+              ? <span className="px-anexo-chip"><FileText size={12}/> {arqs[chave].nome} <button onClick={()=>remover(chave)}><X size={11}/></button></span>
+              : <label className="px-mode" style={{cursor:"pointer"}}>
+                  <Paperclip size={14}/> <span className="px-mode-lbl">Selecionar arquivo</span>
+                  <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev)}/>
+                </label>}
+          </div>
+        ))}
+      </div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      <button className="px-mode cta-bot" disabled={carregando||!Object.values(arqs).some(Boolean)} onClick={analisar}>
+        <Bot size={15}/> <span className="px-mode-lbl">{carregando?"Analisando…":"Analisar com IA"}</span>
+      </button>
+      {qtd>0 && <div style={{marginTop:"12px",fontSize:"12.5px",color:C.green,fontWeight:700,display:"flex",alignItems:"center",gap:"6px"}}>
+        <Check size={14}/> {qtd} entrega{qtd===1?"":"s"} adicionada{qtd===1?"":"s"} à Descrição da Área — abrindo Macroprocessos…
+      </div>}
+      {resposta && <div className="px-chat-b" style={{marginTop:"16px"}}>
+        <div className="px-msg assistant"><div className="px-msg-tx">{resposta}</div></div>
+      </div>}
+      <p style={{fontSize:"12px",opacity:.65,marginTop:"18px"}}>O que a IA não encontrar, complemente manualmente na aba <b>Lista</b>.</p>
+    </div>
+  );
+}
+
+/* ============================================================================
+   MACROPROCESSOS — árvore Natureza → Macroprocesso → Categoria/Serviço (sem
+   descer até as entregas individuais), com contagem de selecionadas em cada
+   nível, busca para adicionar mais, link para propor o que não existe, e
+   exportação em PDF no formato "Relatório de Macroprocessos".
+============================================================================ */
+function Macroprocessos({sel,selSet,add,onGoLista,onGoNova,orgao,unidade}){
+  const agrupado=useMemo(()=>{
+    const porNat=new Map();
+    ENTREGAS.forEach(e=>{
+      if(!porNat.has(e.natureza)) porNat.set(e.natureza,new Map());
+      const porMac=porNat.get(e.natureza);
+      if(!porMac.has(e.macro)) porMac.set(e.macro,new Map());
+      const porCat=porMac.get(e.macro);
+      if(!porCat.has(e.categoria)) porCat.set(e.categoria,[]);
+      porCat.get(e.categoria).push(e);
+    });
+    return NAT_ORDER.filter(n=>porNat.has(n)).map(nat=>{
+      const macros=[...porNat.get(nat)].map(([mac,catMap])=>{
+        const cats=[...catMap].map(([cat,itens])=>({cat,itens})).sort((a,b)=>a.cat.localeCompare(b.cat));
+        const tot=cats.reduce((s,c)=>s+c.itens.length,0);
+        return {mac,cats,tot};
+      }).sort((a,b)=>a.mac.localeCompare(b.mac));
+      const tot=macros.reduce((s,m)=>s+m.tot,0);
+      return {nat,macros,tot};
+    });
+  },[]);
+
+  const [busca,setBusca]=useState("");
+  const candidatos=useMemo(()=>{
+    const q=norm(busca.trim()); if(!q) return [];
+    return ENTREGAS.filter(e=>!selSet.has(e.codigo) &&
+      (norm(e.entrega).includes(q)||norm(e.macro).includes(q)||norm(e.categoria).includes(q)||e.codigo.includes(busca.trim()))
+    ).slice(0,8);
+  },[busca,selSet]);
+  function adicionarBusca(e){ if(!selSet.has(e.codigo)){ add(e); setBusca(""); } }
+
+  const [natAberta,setNatAberta]=useState(()=>{
+    const s=new Set();
+    agrupado.forEach(N=>{ if(N.macros.some(M=>M.cats.some(C=>C.itens.some(e=>selSet.has(e.codigo))))) s.add(N.nat); });
+    return s;
+  });
+  const [macAberto,setMacAberto]=useState(()=>{
+    const s=new Set();
+    agrupado.forEach(N=>N.macros.forEach(M=>{
+      const key=N.nat+"|"+M.mac;
+      if(M.cats.some(C=>C.itens.some(e=>selSet.has(e.codigo)))) s.add(key);
+    }));
+    return s;
+  });
+  function alternar(setFn){ return key=>setFn(prev=>{ const s=new Set(prev); s.has(key)?s.delete(key):s.add(key); return s; }); }
+  const toggleNat=alternar(setNatAberta), toggleMac=alternar(setMacAberto);
+  function expandirTudo(){
+    const s1=new Set(),s2=new Set();
+    agrupado.forEach(N=>{ s1.add(N.nat); N.macros.forEach(M=>s2.add(N.nat+"|"+M.mac)); });
+    setNatAberta(s1); setMacAberto(s2);
+  }
+  function recolherTudo(){ setNatAberta(new Set()); setMacAberto(new Set()); }
+
+  const totCat=useMemo(()=>new Set(ENTREGAS.map(e=>e.categoria)).size,[]);
+
+  return (
+    <div style={{padding:"32px 24px",maxWidth:"920px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"4px"}}>
+        <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>Macroprocessos</h2>
+        <button className="px-mode" disabled={!sel.length} onClick={()=>gerarPdfRelatorioMacroprocessos(sel,orgao,unidade)}>
+          <Download size={14}/> <span className="px-mode-lbl">Baixar PDF</span>
+        </button>
+      </div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
+        {sel.length} entrega{sel.length===1?"":"s"} selecionada{sel.length===1?"":"s"} na Descrição da Área · Órgão: {orgao||"—"} · Unidade: {unidade||"—"}{" "}
+        <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoLista}>Ver na Lista completa</button>
+      </p>
+      <div style={{position:"relative",marginBottom:"18px"}}>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar entrega para adicionar…"
+          style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+        {busca.trim() && candidatos.length===0 && (
+          <div style={{border:`1px solid ${C.line}`,borderRadius:"8px",marginTop:"4px",padding:"10px 12px",fontSize:"12px",color:C.sub,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+            <span>Nenhuma entrega encontrada para "{busca.trim()}".</span>
+            <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoNova}>Propor macroprocesso, processo e serviço novos</button>
+          </div>
+        )}
+        {candidatos.length>0 && (
+          <div style={{border:`1px solid ${C.line}`,borderRadius:"8px",marginTop:"4px",overflow:"hidden"}}>
+            {candidatos.map(c=>(
+              <div key={c.codigo} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",padding:"7px 10px",fontSize:"12px",borderBottom:"1px solid #EFF2F6"}}>
+                <span><b>{c.codigo}</b> — {c.entrega}</span>
+                <button className="px-mode" style={{padding:"3px 8px"}} onClick={()=>adicionarBusca(c)}><Plus size={12}/> Adicionar</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="px-tree">
+        <div className="px-treebar">
+          <div className="px-treebar-l"><b>Catálogo de serviços</b> <span>· {agrupado.length} naturezas · {totCat} categorias · {ENTREGAS.length.toLocaleString("pt-BR")} entregas</span></div>
+          <div className="px-treebar-r">
+            <button onClick={expandirTudo}>Expandir tudo</button><span>/</span>
+            <button onClick={recolherTudo}>Recolher tudo</button>
+          </div>
+        </div>
+        {agrupado.map(N=>{
+          const nat=NAT[N.nat]; const aberta=natAberta.has(N.nat);
+          let selNat=0; N.macros.forEach(M=>M.cats.forEach(C=>C.itens.forEach(e=>{if(selSet.has(e.codigo))selNat++;})));
+          return (
+            <div className="px-natacc" key={N.nat}>
+              <button className="px-nathead" onClick={()=>toggleNat(N.nat)} style={{borderLeftColor:nat.cor}}>
+                {aberta?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
+                <span className="px-nathead-dot" style={{background:nat.cor}}/>
+                <span className="px-nathead-t">{nat.rot}</span>
+                <span className="px-nathead-meta">{N.macros.length} macroprocessos · {N.tot.toLocaleString("pt-BR")} entregas</span>
+                {selNat>0 && <span className="px-catsel"><Check size={9}/> {selNat}</span>}
+              </button>
+              {aberta && <div className="px-natbody">
+                {N.macros.map(M=>{
+                  const key=N.nat+"|"+M.mac; const macOpen=macAberto.has(key);
+                  let selMac=0; M.cats.forEach(C=>C.itens.forEach(e=>{if(selSet.has(e.codigo))selMac++;}));
+                  return (
+                    <div className="px-macacc" key={key}>
+                      <button className="px-machead" onClick={()=>toggleMac(key)}>
+                        {macOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
+                        <GitBranch size={13} color={nat.cor}/>
+                        <span className="px-machead-t">{M.mac}</span>
+                        <span className="px-machead-meta">{M.cats.length} categorias · {M.tot}</span>
+                        {selMac>0 && <span className="px-catsel sm"><Check size={9}/> {selMac}</span>}
+                      </button>
+                      {macOpen && <div className="px-macbody">
+                        {M.cats.map(C=>{
+                          const selCat=C.itens.filter(e=>selSet.has(e.codigo)).length;
+                          return (
+                            <div className="px-catacc" key={C.cat}>
+                              <div className="px-cathead" style={{cursor:"default"}}>
+                                <span className={`px-dot${selCat>0?" sel":""}`} style={{background:nat.cor}}/>
+                                <span className="px-cathead-t">{C.cat}</span>
+                                <span className="px-catcount">{C.itens.length}</span>
+                                {selCat>0 && <span className="px-catsel"><Check size={9}/> {selCat}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>}
+                    </div>
+                  );
+                })}
+              </div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Relatório de Macroprocessos em PDF (sem libs, gerado na mão) ---------- */
+function winAnsiByte(code){
+  if(code<256) return code;
+  const map={0x2014:0x97,0x2013:0x96,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2026:0x85};
+  return map[code]!=null?map[code]:0x3F;
+}
+function pdfEscape(str){
+  str=String(str==null?"":str); let out="";
+  for(let i=0;i<str.length;i++){
+    const b=winAnsiByte(str.charCodeAt(i));
+    out+= (b===0x28||b===0x29||b===0x5C) ? "\\"+String.fromCharCode(b) : String.fromCharCode(b);
+  }
+  return out;
+}
+function larguraTexto(str,fontSize,bold){
+  return String(str==null?"":str).length*fontSize*(bold?0.56:0.5);
+}
+function quebrarTexto(str,fontSize,maxWidth,bold){
+  str=(str==null?"":String(str)).trim(); if(!str) return [""];
+  const palavras=str.split(/\s+/); const linhas=[]; let atual="";
+  for(const p of palavras){
+    const teste=atual?atual+" "+p:p;
+    if(larguraTexto(teste,fontSize,bold)<=maxWidth) atual=teste;
+    else{ if(atual) linhas.push(atual); atual=p; }
+  }
+  if(atual) linhas.push(atual);
+  return linhas.length?linhas:[""];
+}
+function agruparPorNaturezaRelatorio(itens){
+  const finalistica=itens.filter(r=>r.natureza==="finalistico");
+  const resto=itens.filter(r=>r.natureza!=="finalistico");
+  const grupos=[];
+  if(finalistica.length) grupos.push({label:"Finalística",itens:finalistica});
+  if(resto.length) grupos.push({label:"Suporte/Governança",itens:resto});
+  return grupos;
+}
+function gerarPdfRelatorioMacroprocessos(resultados,orgao,unidade){
+  const PAGE_W=595, PAGE_H=842, MARGIN=42;
+  const usableW=PAGE_W-MARGIN*2;
+  const cols=[["Macroprocesso",122],["Processo",195]];
+  cols.push(["Entrega",usableW-cols.reduce((s,c)=>s+c[1],0)]);
+  const TITLE_FS=22, META_FS=11, INTRO_FS=10.5, SEC_FS=17, SUB_FS=12.5, TH_FS=11.5, ROW_FS=10.5;
+  const LH=ROW_FS+4.3, TH_LH=TH_FS+6, META_LH=META_FS+6.5, INTRO_LH=INTRO_FS+5.5, FOOTER_FS=9.5;
+  const grupos=agruparPorNaturezaRelatorio(resultados);
+  const introTexto="Este relatório mapeia os macroprocessos, processos e entregas da unidade a partir dos marcos referenciais enviados (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e Regimento Interno), com apoio de extração automática por IA.";
+  const geradoEm=new Date().toLocaleString("pt-BR");
+
+  let pagesContent=[]; let page=[]; let y=0;
+  function texto(x,yy,size,str,bold){
+    page.push("BT /"+(bold?"F2":"F1")+" "+size+" Tf "+x.toFixed(2)+" "+yy.toFixed(2)+" Td ("+pdfEscape(str)+") Tj ET");
+  }
+  function linha(yy){
+    page.push("0.7 w "+MARGIN.toFixed(2)+" "+yy.toFixed(2)+" m "+(PAGE_W-MARGIN).toFixed(2)+" "+yy.toFixed(2)+" l S");
+  }
+  function novaPagina(){
+    if(page.length) pagesContent.push(page.join("\n"));
+    page=[]; y=PAGE_H-MARGIN;
+    texto(MARGIN,y-TITLE_FS,TITLE_FS,"Relatório de Macroprocessos",true); y-=TITLE_FS+6;
+    texto(MARGIN,y-META_FS,META_FS,"Órgão: "+(orgao||"—")); y-=META_LH;
+    texto(MARGIN,y-META_FS,META_FS,"Unidade: "+(unidade||"—")); y-=META_LH;
+    texto(MARGIN,y-META_FS,META_FS,"Data de geração: "+geradoEm); y-=META_LH+4;
+    const intro=quebrarTexto(introTexto,INTRO_FS,usableW,false);
+    intro.forEach(ln=>{ texto(MARGIN,y-INTRO_FS,INTRO_FS,ln); y-=INTRO_LH; });
+    y-=6; linha(y); y-=22;
+  }
+  function cabecalhoTabela(){
+    let x=MARGIN;
+    for(const [rotulo,w] of cols){ texto(x,y-TH_FS,TH_FS,rotulo,true); x+=w; }
+    y-=TH_LH;
+  }
+  function garantirEspaco(h){ if(y-h<MARGIN+16) novaPagina(); }
+
+  novaPagina();
+  for(const g of grupos){
+    garantirEspaco(SEC_FS+SUB_FS+TH_LH+20);
+    texto(MARGIN,y-SEC_FS,SEC_FS,g.label,true); y-=SEC_FS+8;
+    texto(MARGIN,y-SUB_FS,SUB_FS,unidade||"—",true); y-=SUB_FS+6;
+    cabecalhoTabela();
+    for(const it of g.itens){
+      const cel=[
+        quebrarTexto(it.macro||"",ROW_FS,cols[0][1]-6,false),
+        quebrarTexto(it.categoria||"",ROW_FS,cols[1][1]-6,false),
+        quebrarTexto(it.entrega||"",ROW_FS,cols[2][1]-6,false),
+      ];
+      const nLinhas=Math.max(cel[0].length,cel[1].length,cel[2].length);
+      const altura=nLinhas*LH;
+      garantirEspaco(altura);
+      let x=MARGIN;
+      for(let c=0;c<cols.length;c++){
+        cel[c].forEach((ln,li)=>texto(x,y-ROW_FS-LH*li,ROW_FS,ln));
+        x+=cols[c][1];
+      }
+      y-=altura;
+    }
+    y-=14;
+  }
+  pagesContent.push(page.join("\n"));
+
+  const total=pagesContent.length;
+  pagesContent=pagesContent.map((stream,i)=>{
+    const rotulo=(i+1)+" / "+total;
+    const w=larguraTexto(rotulo,FOOTER_FS,false);
+    const x=(PAGE_W-w)/2;
+    return stream+"\nBT /F1 "+FOOTER_FS+" Tf "+x.toFixed(2)+" 24.00 Td ("+pdfEscape(rotulo)+") Tj ET";
+  });
+
+  let out="%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+  const offsets=[];
+  function push(s){ out+=s; }
+  function iniciarObj(num){ offsets[num]=out.length; push(num+" 0 obj\n"); }
+  function fecharObj(){ push("endobj\n"); }
+  const totalPages=pagesContent.length;
+  const pageObjNums=[], contentObjNums=[];
+  const fontBoldNum=4; let nextNum=5;
+  for(let p=0;p<totalPages;p++){ pageObjNums.push(nextNum++); contentObjNums.push(nextNum++); }
+
+  iniciarObj(1); push("<< /Type /Catalog /Pages 2 0 R >>\n"); fecharObj();
+  iniciarObj(2); push("<< /Type /Pages /Kids ["+pageObjNums.map(n=>n+" 0 R").join(" ")+"] /Count "+totalPages+" >>\n"); fecharObj();
+  iniciarObj(3); push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\n"); fecharObj();
+  iniciarObj(fontBoldNum); push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\n"); fecharObj();
+
+  for(let q=0;q<totalPages;q++){
+    iniciarObj(pageObjNums[q]);
+    push("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+PAGE_W+" "+PAGE_H+"] /Resources << /Font << /F1 3 0 R /F2 "+fontBoldNum+" 0 R >> >> /Contents "+contentObjNums[q]+" 0 R >>\n");
+    fecharObj();
+    const stream=pagesContent[q];
+    iniciarObj(contentObjNums[q]);
+    push("<< /Length "+stream.length+" >>\nstream\n"+stream+"\nendstream\n");
+    fecharObj();
+  }
+  const xrefStart=out.length;
+  const totalObjs=nextNum-1;
+  push("xref\n0 "+(totalObjs+1)+"\n0000000000 65535 f \n");
+  for(let n=1;n<=totalObjs;n++) push(String(offsets[n]).padStart(10,"0")+" 00000 n \n");
+  push("trailer\n<< /Size "+(totalObjs+1)+" /Root 1 0 R >>\nstartxref\n"+xrefStart+"\n%%EOF");
+
+  const bytes=new Uint8Array(out.length);
+  for(let bi=0;bi<out.length;bi++) bytes[bi]=out.charCodeAt(bi)&255;
+  const blob=new Blob([bytes],{type:"application/pdf"});
+  const url=URL.createObjectURL(blob);
+  const lk=document.createElement("a");
+  lk.href=url;
+  lk.download="relatorio-macroprocessos-"+(unidade||"unidade").replace(/[^a-z0-9]+/gi,"-").toLowerCase().slice(0,40)+".pdf";
+  document.body.appendChild(lk); lk.click(); lk.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
 function DocHeaderEdit({orgao,unidade,setOrgao,setUnidade}){
   const [edit,setEdit]=useState(false);
   const [o,setO]=useState(orgao); const [u,setU]=useState(unidade);
@@ -677,13 +1068,14 @@ function BancoLoading(){
 
 /* ---------- capa de abertura (clara e serena) ---------- */
 /* ---------- Início — porta de entrada do portal (seção, não overlay) ---------- */
-function SecaoInicio({stats,onCatalogo,onOrgaos,onChat,onConversor,onRevisao,onPGD}){
+function SecaoInicio({stats,onCatalogo,onOrgaos,onChat,onConversor,onRevisao,onPGD,onMarcos}){
   const fmt=n=>Number(n||0).toLocaleString("pt-BR");
   const caminhos=[
     {ic:LayoutGrid, cor:C.primary, soft:C.primarySoft, t:"Catálogo de serviços",  d:"Navegue, busque e monte a descrição da sua área a partir das entregas oficiais.", onClick:onCatalogo, destaque:true},
     {ic:Wand2,      cor:C.green,   soft:C.greenSoft,   t:"Conversor de entregas",  d:"Traga seu PGD, regimento interno, planilha ou planejamento estratégico — a IA enquadra cada item no catálogo, com a confiança à mostra.", onClick:onConversor, destaque:true},
     {ic:ShieldCheck,cor:C.green,   soft:C.greenSoft,   t:"Curadoria do banco",    d:"Classifique serviços e una duplicatas — qualidade do catálogo.", onClick:onRevisao},
     {ic:Bot,        cor:C.primary, soft:C.primarySoft, t:"Assistente de Entregas",d:"Descreva o que sua área faz — a IA sugere as entregas.", onClick:onChat},
+    {ic:Bot,        cor:"#0C7B93", soft:"#E2F1F4",     t:"Marcos Referenciais",  d:"Anexe a Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e Regimento Interno — a IA identifica os macroprocessos, processos e serviços da unidade.", onClick:onMarcos},
     {ic:Upload,     cor:"#5B3A9B", soft:"#F0EBF8",     t:"Importar PGD",         d:"A esteira de conversão: cada registro do PGD vira entrega do catálogo.", onClick:onPGD},
     {ic:Building2,  cor:C.navy,    soft:"#E7EDF7",     t:"Visão por órgão",       d:"Organograma, status do DFT e as entregas de cada unidade federal.", onClick:onOrgaos},
   ];
