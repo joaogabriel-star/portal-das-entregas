@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meu plano de trabalho</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--surface:#fff;--ink:#1B1B1B;--sub:#55606E;--faint:#8C97A6;
+  --line:#E4E7EB;--hair:#EFF2F6;--primary:#1351B4;--primaryDark:#0C326F;--primarySoft:#E8EEF9;
+  --navy:#13315C;--green:#168821;--greenSoft:#E3F2E5;--amber:#B86E00;--amberSoft:#FBEEDB;
+  --coral:#9E3B1F;--coralSoft:#FAECE7;--grey:#9AA6B2;--greySoft:#EDF0F3;--purple:#5B4AA8;--purpleSoft:#ECE9F8;
+  --num:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Raleway,-apple-system,'Segoe UI',sans-serif;color:var(--sub);font-size:14px}
+.stripe{height:3px;display:flex}.stripe i{flex:1}
+.stripe i:nth-child(1){background:var(--green)}.stripe i:nth-child(2){background:#FFCD07}.stripe i:nth-child(3){background:var(--primary)}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.h-linha{padding:11px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-t{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.h-s{font-size:10px;color:var(--faint);font-weight:600;margin-top:1px}
+.h-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pill{font-size:10.5px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;white-space:nowrap}
+.pill.proto{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple);font-weight:800;letter-spacing:.05em;text-transform:uppercase;font-size:8.5px}
+.h-back{font-size:11px;font-weight:700;color:var(--primary);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.h-back:hover{border-color:var(--primary)}
+
+.ctx{background:#fff;border-bottom:1px solid var(--line);padding:9px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctx-u{font-weight:800;color:var(--navy);font-size:13.5px}
+.ctx-p{color:var(--faint);font-weight:600;font-size:10.5px}
+.ctx-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:20px;padding:5px 12px;white-space:nowrap;border:1px solid transparent}
+.chip.neutro{background:var(--bg);border-color:var(--line);color:var(--sub)}
+.chip.neutro b{color:var(--navy);font-family:var(--num)}
+.chip.andando{background:var(--primarySoft);border-color:#C4D6F0;color:var(--primaryDark)}
+.chip.andando b{font-family:var(--num)}
+.chip.ok{background:var(--greenSoft);border-color:#B6DDBB;color:var(--green)}
+.chip.ok b{font-family:var(--num)}
+.chip.acima{background:var(--amberSoft);border-color:#EAD9BD;color:var(--amber)}
+.chip.acima b{font-family:var(--num)}
+.sel-mod{font-family:inherit;font-size:11px;font-weight:700;color:var(--sub);border:1px solid var(--line);
+  border-radius:20px;padding:5px 10px;background:#fff;max-width:230px}
+.sel-mod:focus{outline:0;border-color:var(--primary)}
+
+.wrap{max-width:900px;margin:0 auto;padding:22px 24px 90px}
+.bloco{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:14px}
+.tit{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.sub{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:4px;max-width:72ch}
+.cab{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.cab-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+
+/* ---------- seletor de mês ---------- */
+.meses{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mes-pick{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+.mes-b{border:0;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--sub);
+  border-radius:9px;padding:8px 16px;cursor:pointer;text-transform:capitalize;transition:all .14s;position:relative}
+.mes-b:hover{background:#fff;color:var(--navy)}
+.mes-b.on{background:#fff;color:var(--primaryDark);box-shadow:0 1px 3px rgba(19,49,92,.14);font-weight:800}
+.mes-e{display:block;width:6px;height:6px;border-radius:50%;margin:4px auto 0;background:#D3D9E0}
+.mes-e.ok{background:var(--green)}
+.mes-e.meio{background:var(--primary)}
+.bt-igual{border:1px dashed var(--line);background:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--primary);transition:all .14s}
+.bt-igual:hover{border-style:solid;border-color:var(--primary);background:var(--primarySoft)}
+.bt-igual:disabled{opacity:.4;cursor:not-allowed;color:var(--faint)}
+
+/* ---------- lista de entregas ---------- */
+.lista{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.it{padding:12px 15px;border-bottom:1px solid var(--hair)}
+.it:last-of-type{border-bottom:0}
+.it:hover{background:#FCFDFE}
+.it-topo{display:grid;grid-template-columns:1fr 104px 76px 34px;gap:12px;align-items:center}
+@media(max-width:620px){.it-topo{grid-template-columns:1fr 88px 34px}.it-topo .h{display:none}}
+.it-cab{display:grid;grid-template-columns:1fr 104px 76px 34px;gap:12px;padding:9px 15px;background:var(--bg);
+  border-bottom:1px solid var(--line);font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+@media(max-width:620px){.it-cab{grid-template-columns:1fr 88px 34px}.it-cab .h{display:none}}
+.it-cab .c{text-align:center}
+.it.balde{background:#FCFDFE}
+.e-nome{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.4}
+.e-meta{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:3px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.e-cod{font-family:var(--num)}
+.tag{font-size:8px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;background:var(--purpleSoft);color:var(--purple)}
+.tag.pgd{background:var(--purpleSoft);color:var(--purple)}
+.tag.balde{background:var(--greySoft);color:var(--sub)}
+.acao{border:0;background:none;font-family:inherit;font-size:9.5px;font-weight:700;color:var(--primary);
+  cursor:pointer;padding:2px 0;display:inline-flex;align-items:center;gap:5px}
+.acao:hover{color:var(--primaryDark);text-decoration:underline}
+.acao .pt{width:7px;height:7px;border-radius:50%;border:1.5px dashed #C9D2DC;display:inline-block}
+.acao .pt.on{border:0;background:var(--amber)}
+.num{width:100%;text-align:center;font-family:var(--num);font-size:13px;font-weight:700;color:var(--navy);
+  border:1px solid var(--line);border-radius:9px;padding:9px 4px;background:#fff}
+.num:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.num.vazio{background:#FCFCFD;border-style:dashed;border-color:#DDE2E8}
+.h{font-family:var(--num);font-size:11px;font-weight:700;color:var(--faint);text-align:right}
+.bt-x{border:0;background:none;color:var(--faint);font-size:16px;font-weight:800;cursor:pointer;padding:4px 7px;border-radius:7px;line-height:1}
+.bt-x:hover{background:var(--coralSoft);color:var(--coral)}
+.bt-x.oculto{visibility:hidden}
+
+/* descrição dos trabalhos, recolhida */
+.desc{margin-top:10px;border:1px solid var(--hair);border-radius:10px;background:#FCFDFE;padding:11px 13px}
+.desc-t{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+  display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.desc-t .tag{text-transform:none;letter-spacing:0}
+.desc textarea{width:100%;font-family:inherit;font-size:11.5px;color:var(--ink);line-height:1.6;
+  border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;resize:vertical;min-height:96px}
+.desc textarea:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.desc-n{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:7px;line-height:1.5}
+
+/* fila que ficou para trás */
+.fila-cx{margin-top:9px;border:1px solid #EAD9BD;border-radius:10px;background:var(--amberSoft);padding:10px 13px;
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.fila-cx .r{font-size:11px;font-weight:700;color:var(--amber);flex:1;line-height:1.4}
+.fila-cx .r small{display:block;font-size:9.5px;font-weight:600;color:#96590A;margin-top:2px}
+.fila-cx input{width:92px;text-align:center;font-family:var(--num);font-size:12.5px;font-weight:700;
+  border:1px solid #EAD9BD;border-radius:8px;padding:7px 4px;background:#fff;color:var(--navy)}
+
+.total{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 15px;background:var(--bg);border-top:1px solid var(--line)}
+.total-l{font-size:11px;font-weight:800;color:var(--navy)}
+.total-d{font-size:10.5px;color:var(--sub);font-weight:600}
+.total-v{margin-left:auto;font-family:var(--num);font-size:13px;font-weight:800;padding:5px 13px;border-radius:20px}
+.total-v.ok{background:var(--greenSoft);color:var(--green)}
+.total-v.andando{background:var(--primarySoft);color:var(--primaryDark)}
+.total-v.acima{background:var(--amberSoft);color:var(--amber)}
+.barra{height:7px;border-radius:4px;background:var(--hair);overflow:hidden;display:flex;margin-top:12px}
+.barra i{display:block;height:100%;transition:width .3s}
+.pe-lista{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;
+  color:var(--sub);font-weight:600;line-height:1.5}
+.pe-lista b{color:var(--navy);font-weight:800}
+.pe-lista button{border:0;background:none;font-family:inherit;font-size:11.5px;font-weight:800;color:var(--primary);
+  cursor:pointer;padding:0;text-decoration:underline}
+
+/* ---------- balãozinho ---------- */
+.pop{position:fixed;z-index:70;background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 14px 36px -12px rgba(13,49,111,.36);padding:14px 16px;width:310px;display:none}
+.pop.on{display:block}
+.pop-t{font-size:12.5px;font-weight:800;color:var(--navy);line-height:1.35}
+.pop-d{font-size:10px;color:var(--faint);font-weight:600;margin-top:3px}
+.pop-s{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:13px 0 8px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tg{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;font-family:inherit;
+  font-size:10.5px;font-weight:700;color:var(--sub);cursor:pointer;transition:all .14s}
+.tg:hover{border-color:var(--primary);color:var(--primary)}
+.tg.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.pop-l{display:flex;align-items:center;gap:10px;margin-top:9px}
+.pop-l .r{flex:1;font-size:11px;font-weight:700;color:var(--sub);line-height:1.3}
+.pop-l .r small{display:block;font-size:9px;color:var(--faint);font-weight:600;margin-top:1px}
+.pop-l input{width:84px;text-align:center;font-family:var(--num);font-size:12.5px;font-weight:700;color:var(--navy);
+  border:1px solid var(--line);border-radius:8px;padding:7px 4px;background:#fff}
+.pop-l input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.pop-pe{display:flex;align-items:center;gap:10px;margin-top:13px;padding-top:11px;border-top:1px solid var(--hair)}
+.pop-n{font-size:9.5px;color:var(--faint);font-weight:600;line-height:1.4}
+.pop-ok{margin-left:auto;border:0;background:var(--primary);color:#fff;border-radius:8px;padding:6px 14px;
+  font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0}
+.pop-ok:hover{background:var(--primaryDark)}
+
+/* ---------- adicionar ---------- */
+.add{border:1px dashed var(--line);border-radius:12px;background:#fff;margin-bottom:14px;overflow:hidden}
+.add-bt{width:100%;border:0;background:none;font-family:inherit;display:flex;align-items:center;gap:11px;
+  padding:14px 20px;cursor:pointer;text-align:left;transition:background .13s}
+.add-bt:hover{background:#FAFBFD}
+.add-ic{width:26px;height:26px;border-radius:8px;background:var(--primarySoft);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0;line-height:1}
+.add-t{display:block;font-size:12.5px;font-weight:800;color:var(--navy)}
+.add-d{display:block;font-size:10.5px;color:var(--faint);font-weight:600;margin-top:3px}
+.add-seta{margin-left:auto;color:var(--faint);font-size:12px;font-weight:800}
+.add-corpo{padding:0 20px 18px;border-top:1px solid var(--hair)}
+.busca{margin:14px 0 12px}
+input[type=text],input[type=number],select,textarea{font-family:inherit;font-size:12.5px;color:var(--ink);
+  border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:#fff;width:100%}
+input[type=number]{font-family:var(--num);font-weight:700}
+input:focus,select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.conta{font-size:11px;color:var(--faint);font-weight:600;margin-bottom:9px}
+.res{border:1px solid var(--line);border-radius:11px;overflow:hidden;max-height:270px;overflow-y:auto}
+.res-i{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--hair)}
+.res-i:last-child{border-bottom:0}
+.cod{font-family:var(--num);font-size:10px;font-weight:700;background:var(--primarySoft);color:var(--primaryDark);padding:2px 6px;border-radius:4px;white-space:nowrap}
+.res-e{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.4}
+.res-m{font-size:10px;color:var(--faint);font-weight:600;margin-top:3px}
+.livre{margin-top:14px;padding-top:14px;border-top:1px solid var(--hair)}
+.livre-l{font-size:11px;font-weight:700;color:var(--sub);margin-bottom:9px}
+.livre-c{display:grid;grid-template-columns:1fr auto;gap:9px}
+@media(max-width:560px){.livre-c{grid-template-columns:1fr}}
+
+.rodape{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.rodape .info{font-size:11px;color:var(--sub);font-weight:600;margin-right:auto;line-height:1.5}
+.rodape .info b{color:var(--navy)}
+.btn{border:0;border-radius:9px;padding:10px 18px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn.pri{background:var(--primary);color:#fff}
+.btn.pri:hover{background:var(--primaryDark)}
+.btn.vazado{background:#fff;color:var(--primary);border:1px solid var(--line)}
+.btn.vazado:hover{border-color:var(--primary)}
+.btn.mini{padding:6px 11px;font-size:11px}
+.btn.feito{background:var(--greenSoft);color:var(--green);border:1px solid #B6DDBB}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="stripe"><i></i><i></i><i></i></div>
+<header>
+  <div class="h-linha">
+    <div>
+      <div class="h-t">Meu plano de trabalho</div>
+      <div class="h-s">CGGP · abril a junho de 2026</div>
+    </div>
+    <div class="h-dir">
+      <span class="pill proto">Protótipo</span>
+      <a class="h-back" href="./jornada-gestor-unidade.html">visão do gestor</a>
+    </div>
+  </div>
+  <div class="ctx" id="ctx"></div>
+</header>
+
+<div class="wrap" id="wrap"></div>
+<div class="pop" id="pop" role="dialog"></div>
+
+<script>
+/* ============================================================
+   PLANO DE TRABALHO — visão de quem executa.
+
+   O que a chefia define é QUAIS entregas a unidade assumiu e as
+   metas delas. Quanto de tempo cada pessoa gastou é informação
+   de quem executou — por isso não existe aqui nenhuma coluna de
+   alocação vinda da chefia.
+
+   O QUE ESTA TELA RESOLVE DOS DOIS SISTEMAS (revisão de 01/08)
+   Levantamento feito no Petrvs de produção do MGI mostrou que o
+   plano de trabalho do PGD pede coisas que o DFT não pedia. Em
+   vez de criar tela nova para cada uma, elas entraram onde a
+   pessoa já estava:
+
+     · OS TRÊS BALDES — o PGD reparte a carga horária em
+       "vinculado a entregas da unidade", "vinculado a entrega de
+       OUTRA unidade" e "não vinculado a entrega". As duas
+       últimas viraram duas linhas fixas no fim da mesma lista, e
+       entram na mesma soma de 100%. Custo para a pessoa: um
+       campo.
+
+     · DESCRIÇÃO DOS TRABALHOS — o PGD pede o passo a passo por
+       escrito. No Petrvs real isso é digitado à mão (vi um plano
+       com dez linhas escritas por alguém). Aqui já vem pronto do
+       campo `flu` do catálogo, que está preenchido em 100% das
+       31.241 entregas, e fica RECOLHIDO: quem quiser ajusta.
+
+     · REGISTRO MENSAL — o PGD exige registro todo mês, até o dia
+       10 do mês seguinte. O seletor de mês e o botão "foi igual
+       ao mês passado" existem para que o mês que não mudou custe
+       um clique, não um preenchimento.
+
+     · INTERCORRÊNCIAS — o PGD pede o que atrapalhou. São as
+       mesmas etiquetas da tela do gestor, num balãozinho.
+       "Etiquetas" é campo NATIVO do Petrvs (seção Caracterização
+       da Entrega) e está vazio lá — nossa lista é proposta de
+       conteúdo, não mecanismo novo.
+
+     · DEMANDA REPRIMIDA — quem executa é quem sabe o que ficou
+       para trás. Fica no mesmo balãozinho da intercorrência,
+       porque é o mesmo assunto: o que não coube no mês.
+
+     · MODALIDADE — seis valores, conforme a lista real do Petrvs
+       (inclui as duas de exterior, que a documentação não cita).
+
+   Esforço é PERCENTUAL do tempo da pessoa. A leitura em horas
+   usa (esforço/100) × carga × 52/12.
+   ============================================================ */
+
+const MESES = ["abr","mai","jun"];
+const ANO = 2026;
+const SEMANAS_MES = 52/12;
+const PESSOA = {nome:"Ana Ribeiro", cargo:"Analista Técnico de Políticas Sociais", ch:40, unidade:"CGGP"};
+
+/* lista real do Petrvs — as duas de exterior não aparecem na documentação */
+const MODALIDADES = [
+  {v:"nd",   r:"Não definida"},
+  {v:"pres", r:"Presencial"},
+  {v:"parc", r:"Teletrabalho parcial"},
+  {v:"int",  r:"Teletrabalho integral"},
+  {v:"extD", r:"Teletrabalho no exterior (discricionária)"},
+  {v:"extS", r:"Teletrabalho no exterior (substituição)"},
+];
+
+/* ------------------------------------------------------------
+   ETIQUETAS — mesma lista da tela do gestor, provisória.
+   No Petrvs o campo existe e está VAZIO; esta lista é a proposta
+   de conteúdo. Mexer aqui basta.
+   ------------------------------------------------------------ */
+const MOTIVOS = [
+  "faltou gente",
+  "sistema fora do ar",
+  "prioridade mudou",
+  "demanda cresceu",
+  "travou em outra área",
+  "faltou informação",
+];
+
+/* entregas que a unidade assumiu no período.
+   `flu` = passo a passo, que no catálogo real vem preenchido em
+   100% das entregas e é o que o PGD chama de "descrição dos
+   trabalhos". */
+const DA_UNIDADE = [
+  {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", conta:true,
+   flu:"• Receber o requerimento de aposentadoria\n• Conferir a documentação exigida\n• Calcular o tempo de contribuição\n• Elaborar a planilha de proventos\n• Instruir o processo para decisão\n• Publicar o ato no boletim"},
+  {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", conta:true,
+   flu:"• Receber a solicitação de perícia\n• Agendar com a junta médica oficial\n• Registrar o laudo no SIASS\n• Homologar o afastamento no SIAPE"},
+  {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", conta:false,
+   flu:"• Levantar as necessidades de desenvolvimento das unidades\n• Consolidar as demandas por competência\n• Elaborar a minuta do plano\n• Submeter à aprovação do comitê"},
+  {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", conta:false,
+   flu:"• Receber a demanda do órgão de controle\n• Distribuir para a área técnica responsável\n• Consolidar a resposta\n• Encaminhar dentro do prazo"},
+  {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", conta:true,
+   flu:"• Receber a solicitação pela central\n• Classificar por tipo de atendimento\n• Resolver ou encaminhar ao setor competente\n• Registrar o encerramento no sistema"},
+];
+
+/* os dois baldes que o PGD exige além das entregas da unidade */
+const BALDES = [
+  {c:"__outra", e:"Trabalho para entrega de outra unidade", m:"o PGD pede separado", balde:true, conta:false, flu:""},
+  {c:"__nao",   e:"Não vinculado a nenhuma entrega",        m:"reuniões, capacitação, apoio geral", balde:true, conta:false, flu:""},
+];
+
+const CATALOGO = [
+  ...DA_UNIDADE,
+  {c:"11420047", e:"Emissão de certidão de tempo de contribuição", m:"Gestão de Pessoas", conta:true,
+   flu:"• Receber o pedido de certidão\n• Levantar o histórico funcional\n• Emitir e assinar a certidão"},
+  {c:"11420052", e:"Concessão de pensão civil", m:"Gestão de Pessoas", conta:true,
+   flu:"• Receber o requerimento de pensão\n• Habilitar os dependentes\n• Calcular o valor do benefício\n• Publicar o ato"},
+  {c:"11420068", e:"Análise de acumulação de cargos", m:"Gestão de Pessoas", conta:true,
+   flu:"• Receber a declaração de acumulação\n• Analisar a compatibilidade de horários\n• Emitir parecer conclusivo"},
+  {c:"11420094", e:"Registro de afastamento para tratamento de saúde", m:"Saúde do Servidor", conta:true,
+   flu:"• Receber o atestado\n• Validar na perícia quando exigido\n• Registrar o afastamento no SIAPE"},
+  {c:"11420115", e:"Execução de ação de desenvolvimento", m:"Desenvolvimento de Pessoas", conta:true,
+   flu:"• Planejar a turma e o conteúdo\n• Executar a ação\n• Registrar a frequência e avaliar"},
+  {c:"11420133", e:"Movimentação de servidor entre unidades", m:"Gestão de Pessoas", conta:true,
+   flu:"• Receber o pedido de movimentação\n• Colher anuência das chefias\n• Publicar a portaria"},
+  {c:"11420185", e:"Publicação de ato de pessoal no boletim", m:"Gestão de Pessoas", conta:true,
+   flu:"• Reunir os atos do período\n• Conferir a redação\n• Publicar no boletim de pessoal"},
+  {c:"11420193", e:"Manutenção de dados cadastrais no SIAPE", m:"Gestão de Pessoas", conta:true,
+   flu:"• Receber a solicitação de alteração\n• Conferir a documentação\n• Atualizar o cadastro"},
+  {c:"11420207", e:"Instrução de processo de abono de permanência", m:"Gestão de Pessoas", conta:true,
+   flu:"• Verificar os requisitos de aposentadoria\n• Instruir o processo\n• Publicar a concessão"},
+  {c:"11420214", e:"Elaboração de nota técnica sobre legislação de pessoal", m:"Governança", conta:false,
+   flu:"• Levantar a legislação aplicável\n• Redigir a nota técnica\n• Submeter à validação jurídica"},
+  {c:"11420228", e:"Monitoramento de indicadores de gestão de pessoas", m:"Governança", conta:false,
+   flu:"• Coletar os dados do período\n• Calcular os indicadores\n• Publicar o painel"},
+];
+
+const est = {
+  mes: 2,                 // junho: o mês que falta registrar
+  modalidade: "parc",
+  itens: [...DA_UNIDADE.map(x=>({...x, minha:false})), ...BALDES.map(x=>({...x, minha:false}))],
+  pct: new Map(),         // "mes|cod" → percentual
+  desc: new Map(),        // "mes|cod" → descrição ajustada (só se a pessoa mexeu)
+  causas: new Map(),      // "mes|cod" → array de etiquetas
+  fila: new Map(),        // "mes|cod" → quanto ficou para trás
+  outraUnid: "",          // qual unidade, quando há trabalho para outra
+  abertas: new Set(),     // códigos com a descrição expandida
+  addAberto:false, termo:"", descLivre:"",
+  pop:null,
+  enviados: new Set([0,1]),   // abr e mai já enviados
+};
+
+(function semear(){
+  /* abril e maio já lançados — é o que faz o "foi igual ao mês passado"
+     ter sentido em junho, que é o caso comum de quem registra todo mês */
+  const base = {"11420031":40, "11420089":20, "11420108":10, "11420164":10, "11420178":15, "__nao":5};
+  for(const [cod,v] of Object.entries(base)){
+    est.pct.set("0|"+cod, v);
+    est.pct.set("1|"+cod, v);
+  }
+  est.pct.set("1|11420089", 15);
+  est.pct.set("1|__outra", 5);
+  est.causas.set("1|11420178", ["demanda cresceu"]);
+  est.fila.set("1|11420178", 60);
+})();
+
+const $ = id => document.getElementById(id);
+const k = (m,c) => m+"|"+c;
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const n1 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1});
+const fmt = n => (n==null||isNaN(n)) ? "—" : Math.round(n).toLocaleString("pt-BR");
+const horas = p => (p/100) * PESSOA.ch * SEMANAS_MES;
+
+const pctDe = (m,c) => { const v=est.pct.get(k(m,c)); return v===undefined?null:v; };
+const soma = m => est.itens.reduce((s,x)=>s+(+pctDe(m,x.c)||0), 0);
+const preenchidas = m => est.itens.filter(x=>pctDe(m,x.c)!==null).length;
+const descDe = (m,x) => { const v=est.desc.get(k(m,x.c)); return v!==undefined ? v : x.flu; };
+const mexeuNaDesc = (m,c) => est.desc.has(k(m,c));
+const causasDe = (m,c) => est.causas.get(k(m,c)) || [];
+const filaDe = (m,c) => { const v=est.fila.get(k(m,c)); return v===undefined?null:v; };
+const temNota = (m,c) => causasDe(m,c).length>0 || filaDe(m,c)!==null;
+
+const CORES = ["#1351B4","#168821","#B86E00","#5B4AA8","#0C326F","#2C7A38","#9AA6B2","#8C97A6"];
+
+function estadoMes(m){
+  const s=soma(m);
+  if(est.enviados.has(m)) return "ok";
+  return s>0 ? "meio" : "";
+}
+
+function render(){ renderCtx(); renderCorpo(); }
+
+function renderCtx(){
+  const s=soma(est.mes);
+  const cls = s===100 ? "ok" : s>100 ? "acima" : s>0 ? "andando" : "neutro";
+  $("ctx").innerHTML = `
+    <span class="ctx-u">${PESSOA.nome}</span>
+    <span class="ctx-p">${PESSOA.cargo} · ${PESSOA.ch}h semanais</span>
+    <div class="ctx-dir">
+      <select class="sel-mod" onchange="setModalidade(this.value)" title="modalidade do plano de trabalho">
+        ${MODALIDADES.map(x=>`<option value="${x.v}" ${est.modalidade===x.v?"selected":""}>${x.r}</option>`).join("")}
+      </select>
+      <span class="chip ${cls}">${MESES[est.mes]}/${ANO} <b>${s}%</b></span>
+    </div>`;
+}
+
+function renderCorpo(){
+  $("wrap").innerHTML = blocoMeses() + blocoLista() + blocoAdicionar() + rodape();
+  if(est.addAberto){ const c=$("campoBusca"); if(c){ c.focus(); c.setSelectionRange(c.value.length,c.value.length); } }
+}
+
+/* ---------- 1. o mês ---------- */
+function blocoMeses(){
+  const ant = est.mes-1;
+  const podeCopiar = ant>=0 && soma(ant)>0;
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Qual mês você está registrando</div>
+        <div class="sub">O registro é mensal — até o dia 10 do mês seguinte. Se o mês foi igual ao anterior,
+          um clique resolve.</div></div>
+    </div>
+    <div class="meses">
+      <div class="mes-pick">${MESES.map((mm,i)=>`
+        <button class="mes-b ${est.mes===i?"on":""}" onclick="setMes(${i})">${mm}
+          <span class="mes-e ${estadoMes(i)}"></span></button>`).join("")}</div>
+      <button class="bt-igual" ${podeCopiar?"":"disabled"} onclick="copiarAnterior()"
+        title="${podeCopiar?`repetir o que você lançou em ${MESES[ant]}`:"não há mês anterior preenchido"}">
+        ${podeCopiar?`foi igual a ${MESES[ant]}`:`sem mês anterior`}</button>
+      ${est.enviados.has(est.mes)?`<span class="chip ok">${MESES[est.mes]} já enviado</span>`:``}
+    </div>
+  </div>`;
+}
+
+/* ---------- 2. distribuição do tempo ---------- */
+function blocoLista(){
+  const m=est.mes, s=soma(m);
+  const cls = s===100 ? "ok" : s>100 ? "acima" : "andando";
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Quanto do meu tempo foi para cada entrega</div>
+        <div class="sub">Distribua o seu tempo de <b>${MESES[m]}</b>. As duas últimas linhas são as que o PGD pede
+          em separado — trabalho para outra unidade e o que não se prende a nenhuma entrega.</div></div>
+    </div>
+    <div class="lista">
+      <div class="it-cab"><span>Entrega</span><span class="c">Meu tempo</span><span class="h">Por mês</span><span></span></div>
+      ${est.itens.map((x,i)=>linha(x,i,m)).join("")}
+      <div class="total">
+        <div>
+          <div class="total-l">Total do meu tempo em ${MESES[m]}</div>
+          <div class="total-d">${preenchidas(m)} de ${est.itens.length} linhas preenchidas</div>
+        </div>
+        <span class="total-v ${cls}" id="totV">${s}%</span>
+      </div>
+    </div>
+    <div class="barra" id="barra">${faixas(m)}</div>
+    <div class="pe-lista" id="peLista">${textoSoma(s)}</div>
+  </div>`;
+}
+
+/* tom: a barra se enche, ninguém é repreendido por ainda não ter fechado */
+function textoSoma(s){
+  if(s===100) return `Distribuído. São <b>${n1(horas(100))}h</b> no mês.`;
+  if(s>100) return `Você distribuiu <b>${s}%</b> — <b>${s-100}%</b> além do seu tempo.
+    <button onclick="ajustarProporcional()">ajustar proporcionalmente</button>`;
+  return `Faltam <b>${100-s}%</b> para distribuir.`;
+}
+
+function linha(x,i,m){
+  const v=pctDe(m,x.c), cheio=v!==null;
+  const aberta=est.abertas.has(x.c);
+  const c=causasDe(m,x.c), f=filaDe(m,x.c);
+  return `<div class="it ${x.balde?"balde":""}">
+    <div class="it-topo">
+      <div><div class="e-nome">${x.e}</div>
+        <div class="e-meta">
+          ${x.balde?`<span class="tag balde">o PGD pede</span>`:`<span class="e-cod">${x.c||"sem código"}</span>`}
+          <span>${x.m}</span>
+          ${x.minha?`<span class="tag">acrescentei</span>`:``}
+          ${x.flu?`<button class="acao" onclick="alternarDesc('${x.c}')">${aberta?"▴":"▾"} ${aberta?"esconder":"o que eu faço"}</button>`:``}
+          ${x.balde?``:`<button class="acao" onclick="abrirPop(event,'${x.c}')">
+            <span class="pt ${temNota(m,x.c)?"on":""}"></span>${resumoNota(m,x.c)}</button>`}
+        </div></div>
+      <div><input type="number" class="num ${cheio?"":"vazio"}" min="0" max="100" placeholder="0"
+        value="${cheio?v:""}" oninput="setPct(${i},'${x.c}',this.value,this)"></div>
+      <div class="h" id="h${i}">${cheio&&+v>0?n1(horas(+v))+"h":"—"}</div>
+      <button class="bt-x ${x.minha?"":"oculto"}" onclick="remover(${i})" title="tirar da lista">×</button>
+    </div>
+    ${x.c==="__outra" && (+v||0)>0 ? `<div class="pop-l" style="margin-top:9px">
+      <div class="r">Para qual unidade?<small>ajuda a chefia a saber para onde foi o tempo</small></div>
+      <input type="text" style="width:200px;text-align:left" placeholder="ex.: CGSD · SEGES"
+        value="${est.outraUnid.replace(/"/g,"&quot;")}" oninput="est.outraUnid=this.value"></div>` : ``}
+    ${aberta?blocoDesc(x,m):``}
+    ${f!==null && f>0 ? `<div class="fila-cx">
+      <div class="r">Ficou para trás em ${MESES[m]}<small>vai somar à demanda reprimida da unidade</small></div>
+      <input type="number" min="0" value="${f}" oninput="setFila('${x.c}',this.value)"></div>` : ``}
+  </div>`;
+}
+
+function resumoNota(m,c){
+  const cs=causasDe(m,c), f=filaDe(m,c);
+  if(!cs.length && f===null) return "algo atrapalhou?";
+  const p=[];
+  if(cs.length) p.push(cs.length===1?cs[0]:`${cs.length} causas`);
+  if(f!==null && f>0) p.push(`${fmt(f)} na fila`);
+  return p.join(" · ");
+}
+
+/* a descrição vem pronta do catálogo — quem quiser ajusta */
+function blocoDesc(x,m){
+  const mexeu=mexeuNaDesc(m,x.c);
+  const passos=(x.flu.match(/•/g)||[]).length;
+  return `<div class="desc">
+    <div class="desc-t">O que eu faço nesta entrega
+      <span class="tag pgd">${mexeu?"ajustado por você":"vem do catálogo"}</span></div>
+    <textarea oninput="setDesc('${x.c}',this.value)">${descDe(m,x)}</textarea>
+    <div class="desc-n">${mexeu
+      ? `Sua versão substitui a do catálogo neste mês. <button class="acao" onclick="restaurarDesc('${x.c}')">voltar ao original</button>`
+      : `${passos} passos já escritos. Isto é o que o PGD chama de <b>descrição dos trabalhos</b> — só mexa se o seu caso for diferente.`}</div>
+  </div>`;
+}
+
+function faixas(m){
+  return est.itens.map((x,i)=>{
+    const v=+pctDe(m,x.c)||0;
+    return v>0 ? `<i style="width:${Math.min(v,100)}%;background:${CORES[i%CORES.length]}" title="${x.e}: ${v}%"></i>` : "";
+  }).join("");
+}
+
+/* ---------- 3. acrescentar entrega ---------- */
+function blocoAdicionar(){
+  if(!est.addAberto){
+    return `<div class="add"><button class="add-bt" onclick="alternarAdd()">
+      <span class="add-ic">+</span>
+      <span><span class="add-t">Acrescentar entrega</span>
+        <span class="add-d">se você trabalhou em algo que não está na lista</span></span>
+      <span class="add-seta">▾</span></button></div>`;
+  }
+  const res=buscar(), jaTem=c=>est.itens.some(x=>x.c===c);
+  return `<div class="add"><button class="add-bt" onclick="alternarAdd()">
+      <span class="add-ic">+</span>
+      <span><span class="add-t">Acrescentar entrega</span>
+        <span class="add-d">busque no catálogo, ou descreva se não encontrar</span></span>
+      <span class="add-seta">▴</span></button>
+    <div class="add-corpo">
+      <div class="busca"><input type="text" id="campoBusca" placeholder="procure por palavra ou código"
+        value="${est.termo.replace(/"/g,"&quot;")}" oninput="digitar(this.value)"></div>
+      <div class="conta">${res.length} ${res.length===1?"entrega encontrada":"entregas encontradas"}</div>
+      <div class="res">${res.length ? res.map(x=>`
+        <div class="res-i">
+          <span class="cod">${x.c}</span>
+          <div><div class="res-e">${x.e}</div><div class="res-m">${x.m}</div></div>
+          ${jaTem(x.c) ? `<button class="btn feito mini" disabled>já na lista</button>`
+            : `<button class="btn vazado mini" onclick="adicionar('${x.c}')">acrescentar</button>`}
+        </div>`).join("")
+        : `<div style="padding:22px;text-align:center;color:var(--faint);font-size:11.5px;font-weight:600">Nada encontrado com esse termo.</div>`}</div>
+      <div class="livre">
+        <div class="livre-l">Não encontrou no catálogo?</div>
+        <div class="livre-c">
+          <input type="text" id="campoLivre" placeholder="descreva a entrega — ex.: apoio a mutirão de outra área"
+            value="${est.descLivre.replace(/"/g,"&quot;")}" oninput="est.descLivre=this.value">
+          <button class="btn vazado" onclick="adicionarLivre()">acrescentar assim</button>
+        </div>
+      </div>
+    </div></div>`;
+}
+
+function buscar(){
+  const t=norm(est.termo).trim();
+  if(t.length<2) return CATALOGO;
+  return CATALOGO.filter(x=>norm(x.e+" "+x.m).includes(t)||String(x.c).includes(t));
+}
+
+/* ---------- rodapé ---------- */
+function rodape(){
+  const m=est.mes, s=soma(m), ok=s===100, ja=est.enviados.has(m);
+  const comFila=est.itens.filter(x=>{const f=filaDe(m,x.c); return f!==null&&f>0;}).length;
+  return `<div class="rodape">
+    <div class="info">${ja
+      ? `<b>${MESES[m]}</b> enviado à chefia.${comFila?` Você sinalizou fila em ${comFila} ${comFila===1?"entrega":"entregas"}.`:``}`
+      : ok ? `Pronto para enviar <b>${MESES[m]}</b>.${comFila?` Com fila sinalizada em ${comFila} ${comFila===1?"entrega":"entregas"}.`:``}`
+           : s>100 ? `Ajuste o total antes de enviar.`
+                   : `Faltam <b>${100-s}%</b> para fechar ${MESES[m]}.`}</div>
+    ${ja
+      ? `<button class="btn feito" onclick="reabrir()">Enviado — reabrir</button>`
+      : `<button class="btn pri" ${ok?"":"disabled"} onclick="enviar()">Enviar ${MESES[m]}</button>`}
+  </div>`;
+}
+
+/* ============================================================
+   BALÃOZINHO — intercorrência e fila, no mesmo lugar porque são
+   o mesmo assunto: o que não coube no mês.
+   ============================================================ */
+function abrirPop(ev,cod){
+  ev.stopPropagation();
+  est.pop={cod};
+  pintarPop();
+  posicionarPop(ev.currentTarget);
+  $("pop").classList.add("on");
+}
+
+function pintarPop(){
+  if(!est.pop) return;
+  const {cod}=est.pop, m=est.mes;
+  const x=est.itens.find(y=>y.c===cod); if(!x) return;
+  const cs=causasDe(m,cod), f=filaDe(m,cod);
+  $("pop").innerHTML = `
+    <div class="pop-t">${MESES[m]} — algo atrapalhou?</div>
+    <div class="pop-d">${x.e}</div>
+    <div class="pop-s">O que aconteceu</div>
+    <div class="tags">${MOTIVOS.map(mo=>`
+      <button class="tg ${cs.includes(mo)?"on":""}" onclick="girarCausa(event,'${cod}','${mo}')">${mo}</button>`).join("")}</div>
+    ${x.conta ? `
+      <div class="pop-s">Ficou coisa para trás?</div>
+      <div class="pop-l">
+        <div class="r">Quantidade não atendida<small>vira demanda reprimida da unidade</small></div>
+        <input type="number" min="0" placeholder="0" value="${f===null?"":f}"
+          oninput="setFila('${cod}',this.value,true)"></div>` : `
+      <div class="pop-s">Fila</div>
+      <div class="pop-d">Esta entrega não é medida em quantidade, então não acumula fila.</div>`}
+    <div class="pop-pe">
+      <span class="pop-n">tudo opcional — pode fechar sem marcar</span>
+      <button class="pop-ok" onclick="fecharPop()">pronto</button>
+    </div>`;
+}
+
+function posicionarPop(alvo){
+  const p=$("pop"), r=alvo.getBoundingClientRect();
+  p.style.visibility="hidden"; p.classList.add("on");
+  const alt=p.offsetHeight, larg=p.offsetWidth;
+  let x = r.left + r.width/2 - larg/2;
+  let y = r.bottom + 9;
+  x = Math.max(12, Math.min(x, window.innerWidth - larg - 12));
+  if(y + alt > window.innerHeight - 12) y = Math.max(12, r.top - alt - 9);
+  p.style.left=x+"px"; p.style.top=y+"px"; p.style.visibility="visible";
+}
+function fecharPop(){ est.pop=null; $("pop").classList.remove("on"); renderCorpo(); }
+
+/* marcar etiqueta não pode repintar o balão: o botão sairia do DOM
+   no meio do próprio clique e o "clicou fora" fecharia tudo */
+function girarCausa(ev,cod,motivo){
+  ev.stopPropagation();
+  const kk=k(est.mes,cod);
+  const atual=est.causas.get(kk)||[];
+  const nova = atual.includes(motivo) ? atual.filter(x=>x!==motivo) : [...atual, motivo];
+  nova.length ? est.causas.set(kk, nova) : est.causas.delete(kk);
+  ev.currentTarget.classList.toggle("on", nova.includes(motivo));
+}
+
+/* ============================================================
+   AÇÕES
+   ============================================================ */
+function setMes(i){ fecharPop(); est.mes=i; render(); }
+function setModalidade(v){ est.modalidade=v; }
+
+function copiarAnterior(){
+  const ant=est.mes-1;
+  if(ant<0) return;
+  for(const x of est.itens){
+    const v=pctDe(ant,x.c);
+    v===null ? est.pct.delete(k(est.mes,x.c)) : est.pct.set(k(est.mes,x.c), v);
+  }
+  render();
+}
+
+/* digitar não repinta a tela: o campo perderia o foco a cada tecla */
+function setPct(i,cod,v,el){
+  const m=est.mes;
+  v==="" ? est.pct.delete(k(m,cod)) : est.pct.set(k(m,cod), +v);
+  el.classList.toggle("vazio", v==="");
+  const h=$("h"+i); if(h) h.textContent = (v!==""&&+v>0) ? n1(horas(+v))+"h" : "—";
+  atualizarResumos();
+  /* o campo "para qual unidade" aparece/some conforme o balde recebe tempo */
+  if(cod==="__outra" && ((+v>0) !== !!document.querySelector('input[oninput*="outraUnid"]'))) renderCorpo();
+}
+
+function atualizarResumos(){
+  const m=est.mes, s=soma(m);
+  const cls = s===100 ? "ok" : s>100 ? "acima" : "andando";
+  const t=$("totV"); if(t){ t.textContent=s+"%"; t.className="total-v "+cls; }
+  const b=$("barra"); if(b) b.innerHTML=faixas(m);
+  const p=$("peLista"); if(p) p.innerHTML=textoSoma(s);
+  const r=document.querySelector(".rodape"); if(r) r.outerHTML=rodape();
+  renderCtx();
+}
+
+function ajustarProporcional(){
+  const m=est.mes, s=soma(m);
+  if(s<=100) return;
+  for(const x of est.itens){
+    const v=pctDe(m,x.c);
+    if(v===null||v===0) continue;
+    est.pct.set(k(m,x.c), Math.round(v*100/s));
+  }
+  /* o arredondamento pode deixar 99 ou 101: joga a sobra na maior linha */
+  const dif=100-soma(m);
+  if(dif!==0){
+    const maior=est.itens.filter(x=>pctDe(m,x.c)>0).sort((a,b)=>pctDe(m,b.c)-pctDe(m,a.c))[0];
+    if(maior) est.pct.set(k(m,maior.c), pctDe(m,maior.c)+dif);
+  }
+  renderCorpo();
+}
+
+function alternarDesc(cod){
+  est.abertas.has(cod) ? est.abertas.delete(cod) : est.abertas.add(cod);
+  renderCorpo();
+}
+function setDesc(cod,v){ est.desc.set(k(est.mes,cod), v); }
+function restaurarDesc(cod){ est.desc.delete(k(est.mes,cod)); renderCorpo(); }
+
+function setFila(cod,v,noPop){
+  const kk=k(est.mes,cod);
+  v==="" ? est.fila.delete(kk) : est.fila.set(kk, +v);
+  if(!noPop) return;              /* digitando no balão: não repinta a lista */
+  const r=document.querySelector(".rodape"); if(r) r.outerHTML=rodape();
+}
+
+function alternarAdd(){ est.addAberto=!est.addAberto; renderCorpo(); }
+let tmr=null;
+function digitar(v){ est.termo=v; clearTimeout(tmr); tmr=setTimeout(renderCorpo,150); }
+
+function adicionar(cod){
+  const x=CATALOGO.find(y=>y.c===cod); if(!x) return;
+  if(est.itens.some(y=>y.c===cod)) return;
+  /* entra antes dos dois baldes, que ficam sempre no fim */
+  const i=est.itens.findIndex(y=>y.balde);
+  est.itens.splice(i<0?est.itens.length:i, 0, {...x, minha:true});
+  render();
+}
+function adicionarLivre(){
+  const d=String(est.descLivre).trim();
+  if(!d){ alert("Escreva o que foi a entrega."); return; }
+  const cod="livre"+Date.now();
+  const i=est.itens.findIndex(y=>y.balde);
+  est.itens.splice(i<0?est.itens.length:i, 0,
+    {c:cod, e:d, m:"fora do catálogo", conta:false, flu:"", minha:true});
+  est.descLivre=""; est.addAberto=false; est.termo="";
+  render();
+}
+function remover(i){
+  const x=est.itens[i]; if(!x) return;
+  est.itens.splice(i,1);
+  for(const mapa of [est.pct, est.desc, est.causas, est.fila])
+    for(const kk of [...mapa.keys()]) if(String(kk).endsWith("|"+x.c)) mapa.delete(kk);
+  est.abertas.delete(x.c);
+  render();
+}
+
+function enviar(){
+  est.enviados.add(est.mes);
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function reabrir(){ est.enviados.delete(est.mes); render(); }
+
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && est.pop) fecharPop(); });
+document.addEventListener("click", e=>{ if(est.pop && !$("pop").contains(e.target)) fecharPop(); });
+window.addEventListener("resize", ()=>{ if(est.pop) fecharPop(); });
+document.addEventListener("scroll", ()=>{ if(est.pop) fecharPop(); }, true);
+
+render();
+</script>
+</body>
+</html>

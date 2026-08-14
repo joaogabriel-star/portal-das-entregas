@@ -227,6 +227,25 @@ async function loadBanco(){
 const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
 const NAT_ORDER=["finalistico","governanca","suporte"];
 
+/* ---------- órgão/unidade lembrados no navegador ----------
+   O cadastro é a etapa 1 do caminho: uma vez informado, fica salvo neste
+   computador e não é perguntado de novo (dá para trocar pelo cabeçalho). */
+const CHAVE_UNIDADE="portal:unidade";
+function lerUnidadeSalva(){
+  try{
+    const cru=window.localStorage.getItem(CHAVE_UNIDADE);
+    if(!cru) return {orgao:"",unidade:""};
+    const d=JSON.parse(cru);
+    return {orgao:d.orgao||"",unidade:d.unidade||""};
+  }catch{ return {orgao:"",unidade:""}; }
+}
+function salvarUnidade(orgao,unidade){
+  try{
+    if(!orgao && !unidade) window.localStorage.removeItem(CHAVE_UNIDADE);
+    else window.localStorage.setItem(CHAVE_UNIDADE,JSON.stringify({orgao,unidade}));
+  }catch{ /* navegador sem localStorage (aba anônima, etc.) — segue sem lembrar */ }
+}
+
 /* ---------- objetivos (editáveis no portal; futuramente vêm do PGD) ---------- */
 const SEED_OBJ_ORGAO=[];  // começa vazio — a unidade inclui os objetivos do órgão
 let _orgSeq=1;
@@ -252,8 +271,10 @@ export default function PortalEntregas(){
   const [exp,setExp]=useState(null);
   const [sel,setSel]=useState([]);
   const [notes,setNotes]=useState({});          // observações por código → DFT
-  const [orgao,setOrgao]=useState("");
-  const [unidade,setUnidade]=useState("");
+  // Órgão/unidade ficam lembrados no navegador: quem já cadastrou uma vez não
+  // precisa redigitar a cada visita (troca pelo chip do cabeçalho).
+  const [orgao,setOrgao]=useState(()=>lerUnidadeSalva().orgao);
+  const [unidade,setUnidade]=useState(()=>lerUnidadeSalva().unidade);
   const [preview,setPreview]=useState(false);
   const [toast,setToast]=useState(null);
   /* Conversor agora é uma visualização (mode==="conversor"), não um modal */
@@ -263,6 +284,8 @@ export default function PortalEntregas(){
   const [onboard,setOnboard]=useState(false);    // boas-vindas antiga (desativada — Início assume)
   const [secao,setSecao]=useState("inicio");     // navegação principal: inicio · catalogo
   const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
+  const [escopo,setEscopo]=useState("sel");      // níveis: "sel" (o que a IA achou) · "tudo" (catálogo inteiro)
+  const [trocarUnidade,setTrocarUnidade]=useState(false); // modal de cadastro/troca da unidade
   const [descDrawer,setDescDrawer]=useState(false);
   const [descView,setDescView]=useState("lista");
   const [objUnidade,setObjUnidade]=useState(SEED_OBJ_UNIDADE);
@@ -293,6 +316,8 @@ export default function PortalEntregas(){
 
   // debounce da busca (≈300ms) — evita reconstruir gráficos a cada tecla
   useEffect(()=>{ const t=setTimeout(()=>setDquery(query),300); return ()=>clearTimeout(t); },[query]);
+  // grava o cadastro da unidade neste navegador a cada mudança
+  useEffect(()=>{ salvarUnidade(orgao,unidade); },[orgao,unidade]);
   // carga inicial real do banco de entregas (banco.json em produção)
   useEffect(()=>{ let vivo=true;
     loadBanco().then(n=>{ if(!vivo) return;
@@ -348,6 +373,39 @@ export default function PortalEntregas(){
 
   const docHeader=(<DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>);
 
+  /* ---- encadeamento dos 4 níveis do catálogo ----
+     Descer leva o filtro do nível junto; a trilha no topo sobe de volta.
+     Reaproveita os filtros que já existiam (macroF / catF / servF), então a
+     Lista e a barra de filtros ativos continuam funcionando sem mudança. */
+  const descerNivel=(nivel,valor,semServico)=>{
+    if(nivel==="macro"){ setMacroF(valor||null); setCatF(null); setServF(null); setMode("processo"); return; }
+    if(nivel==="processo"){ setCatF(valor||null); setServF(null); setMode("servico"); return; }
+    // no nível Serviço, o grupo "sem serviço específico" não tem valor próprio
+    // que sirva de filtro quando não há processo escolhido — nesse caso desce
+    // sem fixar o serviço, mostrando as entregas do recorte atual.
+    setServF(semServico && !catF ? null : (valor||null));
+    setMode("lista");
+  };
+  const irNivel=id=>{
+    if(id==="macro"){ setMacroF(null); setCatF(null); setServF(null); }
+    if(id==="processo"){ setCatF(null); setServF(null); }
+    if(id==="servico"){ setServF(null); }
+    setMode(id);
+  };
+  const limparTrilha=()=>{ setMacroF(null); setCatF(null); setServF(null); };
+
+  /* ---- caminho de 4 etapas (navegação principal) ---- */
+  const etapaAtual = secao!=="catalogo" ? 0 : (mode==="marcos" ? 1 : 2);
+  // "feito" só quando há sinal concreto; as etapas 3 e 4 vivem em páginas
+  // separadas, então não têm como se marcar sozinhas aqui.
+  const etapasFeitas = { 1: !!(orgao||unidade), 2: sel.length>0 };
+  const irParaEtapa = n => {
+    if(n===1){ setSecao("catalogo"); setMode("marcos"); return; }
+    if(n===2){ setSecao("catalogo"); setMode("macro"); return; }
+    if(typeof window==="undefined") return;
+    window.location.href = n===3 ? "./jornada-gestor-unidade.html" : "./organizacoes.html";
+  };
+
   return (
     <div className="px-app" style={{background:C.bg,minHeight:"100%",color:C.ink,fontFamily:"'Raleway','Segoe UI',system-ui,sans-serif"}}>
       <style>{css}</style>
@@ -359,23 +417,27 @@ export default function PortalEntregas(){
           <div><div className="px-logo-w">Catálogo de Serviços</div><div className="px-logo-s">SIGEPE · SISDIP / DFT</div></div>
         </div>
         <nav className="px-nav" aria-label="Seções do portal">
-          {[["inicio","Início",Home],["catalogo","Catálogo",LayoutGrid]].map(([id,lbl,Ic])=>(
-            <button key={id} className={`px-nav-item ${secao===id?"on":""}`}
-              onClick={()=>setSecao(id)}><Ic size={14}/><span>{lbl}</span></button>
-          ))}
-          <button className="px-nav-item" onClick={()=>{ if(typeof window!=="undefined") window.location.href="./organizacoes.html"; }}><Building2 size={14}/><span>Órgãos</span></button>
+          <button className={`px-nav-item ${secao==="inicio"?"on":""}`}
+            onClick={()=>setSecao("inicio")}><Home size={14}/><span>Início</span></button>
         </nav>
         <div className="px-head-r">
-          {(orgao||unidade) && <div className="px-org"><Building2 size={13}/> {unidade||orgao}</div>}
+          <button className="px-org" onClick={()=>setTrocarUnidade(true)}
+            title={orgao||unidade?"Trocar órgão e unidade":"Cadastrar órgão e unidade"}>
+            <Building2 size={13}/> {unidade||orgao||"Cadastrar unidade"} <Pencil size={11}/>
+          </button>
         </div>
       </header>
+
+      {/* faixa das 4 etapas — navegação principal do portal */}
+      <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>
+
+      {trocarUnidade && <ModalUnidade orgao={orgao} unidade={unidade}
+        setOrgao={setOrgao} setUnidade={setUnidade} onClose={()=>setTrocarUnidade(false)}/>}
 
       {!loading && secao==="inicio" && <PainelNumeros stats={stats} bancoStatus={bancoStatus}/>}
 
       {secao==="inicio" && !loading && <SecaoInicioCaminho stats={stats}
-        orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}
-        onCatalogo={()=>setSecao("catalogo")}
-        onMarcos={()=>{setSecao("catalogo");setMode("marcos");}}/>}
+        orgao={orgao} unidade={unidade} completo={etapasFeitas} ir={irParaEtapa}/>}
       {secao==="inicio" && loading && <BancoLoading/>}
 
       {/* Importar PGD e Conversor vivem DENTRO do Catálogo, como visualizações
@@ -440,11 +502,8 @@ export default function PortalEntregas(){
               <button className={`px-mode cta-conv ${mode==="conversor"?"on":""}`} onClick={()=>setMode("conversor")}><Wand2 size={15}/> <span className="px-mode-lbl">Conversor</span></button>
             </Tip>
             <span className="px-modes-sep"/>
-            <Tip pos="bottom" text="Central de Revisão: console do curador para tratar entregas similares ou sem serviço vinculado.">
-              <button className={`px-mode ${mode==="revisao"?"on":""}`} onClick={()=>setMode("revisao")}><ShieldCheck size={15}/> <span className="px-mode-lbl">Revisão</span></button>
-            </Tip>
-            <Tip pos="bottom" text="Qualidade do banco: entregas sinalizadas pelo uso do portal, aguardando curadoria.">
-              <button className={`px-mode ${mode==="qualidade"?"on":""}`} onClick={()=>setMode("qualidade")}><Flag size={15}/> <span className="px-mode-lbl">Sinalizações</span>{flags.length>0 && <span className="px-mode-badge">{flags.length}</span>}</button>
+            <Tip pos="bottom" text="Central de Revisão: console do curador para tratar entregas similares, sem serviço vinculado ou sinalizadas pelo uso do portal.">
+              <button className={`px-mode ${mode==="revisao"?"on":""}`} onClick={()=>setMode("revisao")}><ShieldCheck size={15}/> <span className="px-mode-lbl">Revisão</span>{flags.length>0 && <span className="px-mode-badge">{flags.length}</span>}</button>
             </Tip>
             <Tip pos="bottom" text="Descrição da área em tela cheia: veja com mais espaço a lista de entregas que você já está descrevendo.">
               <button className={`px-mode ${mode==="descricao"?"on":""}`} onClick={()=>{setMode("descricao");setDescCollapsed(true);}}><ClipboardList size={15}/> <span className="px-mode-lbl">Descrição</span>{sel.length>0 && <span className="px-mode-badge">{sel.length}</span>}</button>
@@ -470,15 +529,18 @@ export default function PortalEntregas(){
                 arqs={marcosArqs} setArqs={setMarcosArqs}
                 resposta={marcosResposta} setResposta={setMarcosResposta}
                 qtd={marcosQtd} setQtd={setMarcosQtd}
-                erro={marcosErro} setErro={setMarcosErro}/>}
-              {mode==="macro" && <Macroprocessos sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
-              {mode==="processo" && <ArvoreSelecaoIA titulo="Processo" campo="categoria" icone={PieChart} sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")}/>}
-              {mode==="servico" && <ArvoreSelecaoIA titulo="Serviço" campo="servico" icone={Sparkles} sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")}/>}
+                erro={marcosErro} setErro={setMarcosErro}
+                orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>}
+              {(mode==="macro"||mode==="processo"||mode==="servico") &&
+                <NivelCatalogo nivel={mode} sel={sel} selSet={selSet} add={add} rem={rem}
+                  escopo={escopo} setEscopo={setEscopo}
+                  trilha={{macro:macroF,processo:catF,servico:servF}}
+                  descer={descerNivel} irNivel={irNivel} limparTrilha={limparTrilha}
+                  onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
-              {mode==="revisao" && <CentralRevisao embutido onClose={()=>setMode("lista")}/>}
-              {mode==="qualidade" && <QualidadePanel embutido flags={flags} onClose={()=>setMode("lista")}/>}
+              {mode==="revisao" && <CentralRevisao embutido flags={flags} onClose={()=>setMode("lista")}/>}
               {mode==="descricao" && <div className="px-desc-expandida">
                 <div className="px-doc-h"><div className="px-doc-t"><ClipboardList size={16}/> Descrição da Área</div><span className="px-doc-badge">{sel.length}</span></div>
                 {docHeader}
@@ -530,54 +592,118 @@ export default function PortalEntregas(){
 }
 
 /* ---------- descrição da área (agrupada por natureza, com observações) ---------- */
+/* Regra de criação por natureza: só o finalístico é aberto nos três níveis
+   acima da entrega. Suporte e governança são estrutura comum a todo o governo
+   — ali a unidade no máximo propõe um serviço novo, e mesmo assim o conferidor
+   checa antes se já existe algo equivalente. */
+const PODE_CRIAR={
+  "Finalístico":{macro:true, cat:true, serv:true},
+  "Governança": {macro:false,cat:false,serv:true},
+  "Suporte":    {macro:false,cat:false,serv:true},
+};
+const NAT_CHAVE={"Finalístico":"finalistico","Governança":"governanca","Suporte":"suporte"};
+
 function NovaEntregaCatalogo({onFlash,onPropose}){
   const [nat,setNat]=useState("Finalístico");
   const [mac,setMac]=useState(""),[cat,setCat]=useState(""),[serv,setServ]=useState(""),[ent,setEnt]=useState("");
   const [feito,setFeito]=useState(false);
-  const vocab=useMemo(()=>{ const M=new Set(),Ca=new Set(),S=new Set();
-    ENTREGAS.forEach(e=>{ if(e.macro)M.add(e.macro); if(e.categoria)Ca.add(e.categoria); if(e.servico)S.add(e.servico); });
-    return {macros:[...M].sort(),cats:[...Ca].sort(),servs:[...S].slice(0,1500)}; },[]);
+  const regra=PODE_CRIAR[nat]||PODE_CRIAR["Finalístico"];
+
+  // vocabulário restrito à natureza escolhida — o que já existe naquele ramo
+  const vocab=useMemo(()=>{
+    const chave=NAT_CHAVE[nat];
+    const M=new Set(),Ca=new Set(),S=new Set();
+    ENTREGAS.forEach(e=>{ if(e.natureza!==chave) return;
+      if(e.macro)M.add(e.macro);
+      if(e.categoria&&(!mac||e.macro===mac))Ca.add(e.categoria);
+      if(e.servico&&e.servico!==e.categoria&&(!cat||e.categoria===cat))S.add(e.servico); });
+    return {macros:[...M].sort(),cats:[...Ca].sort(),servs:[...S].sort().slice(0,1500)};
+  },[nat,mac,cat]);
+
+  // o que é novo em cada nível (não existe no vocabulário) → indicador
+  const ehNovo=(v,lista)=>!!v.trim() && !lista.some(x=>norm(x)===norm(v));
+  const novoMac=ehNovo(mac,vocab.macros), novoCat=ehNovo(cat,vocab.cats), novoServ=ehNovo(serv,vocab.servs);
+  const violacao = (novoMac&&!regra.macro) ? "macroprocesso"
+    : (novoCat&&!regra.cat) ? "processo"
+    : (novoServ&&!regra.serv) ? "serviço" : null;
+
   const cand=useMemo(()=>{ if(norm(ent).length<6) return [];
     const toks=x=>new Set(norm(x).split(" ").filter(Boolean)); const T=toks(ent);
     return ENTREGAS.map(e=>{ const B=toks(e.entrega); let inter=0; T.forEach(t=>{if(B.has(t))inter++;});
       const sc=inter/((T.size+B.size-inter)||1);
-      return {e,s:sc,nMac:norm(mac)===norm(e.macro),nCat:norm(cat)===norm(e.categoria)}; })
-      .filter(x=>x.s>0.34).sort((a,b)=>b.s-a.s).slice(0,6); },[ent,mac,cat]);
+      return {e,s:sc,nMac:norm(mac)===norm(e.macro),nCat:norm(cat)===norm(e.categoria),nServ:!!serv&&norm(serv)===norm(e.servico)}; })
+      .filter(x=>x.s>0.34).sort((a,b)=>b.s-a.s).slice(0,6); },[ent,mac,cat,serv]);
   const top=cand[0];
   const veredito=!top?"ok":(top.s>=0.72&&top.nCat)?"bloqueio":(top.s>=0.55)?"atencao":"ok";
-  function inserir(){ if(veredito==="bloqueio"){onFlash&&onFlash("Muito parecida com uma entrega existente — verifique antes de propor.");return;}
-    if(!ent.trim()||!mac||!cat){onFlash&&onFlash("Preencha ao menos macroprocesso, categoria e o texto da entrega.");return;}
-    onPropose&&onPropose(ent.trim()); setFeito(true); }
+
+  function inserir(){
+    if(violacao){ onFlash&&onFlash(`Em ${nat.toLowerCase()}, ${violacao} novo não pode ser criado — escolha um já existente.`); return; }
+    if(veredito==="bloqueio"){onFlash&&onFlash("Muito parecida com uma entrega existente — verifique antes de propor.");return;}
+    if(!ent.trim()||!mac||!cat){onFlash&&onFlash("Preencha ao menos macroprocesso, processo e o texto da entrega.");return;}
+    onPropose&&onPropose(ent.trim()); setFeito(true);
+  }
+
+  // rótulo "novo"/"travado" ao lado de cada nível
+  const marca=(novo,permitido)=> novo
+    ? (permitido ? <span className="px-nova-tag nova"><Sparkles size={9}/> novo</span>
+                 : <span className="px-nova-tag trava"><AlertTriangle size={9}/> não permitido nesta natureza</span>)
+    : null;
+
   return (
     <div className="px-nova">
       <div className="px-nova-hero"><span className="px-nova-badge"><FilePlus2 size={18}/></span>
-        <div><h2>Criar nova entrega</h2><p>Antes de propor ao banco, o sistema confere se já existe algo parecido nos 4 níveis (macroprocesso → categoria → serviço → entrega).</p></div></div>
+        <div><h2>Criar novo no catálogo</h2><p>Antes de propor ao banco, o sistema confere se já existe algo parecido nos 4 níveis (macroprocesso → processo → serviço → entrega).</p></div></div>
       <div className="px-nova-grid">
         <div className="px-nova-form">
           <label className="px-nova-l">Natureza</label>
-          <div className="px-nova-nat">{Object.keys(NAT).map(n=>(
-            <button key={n} className={`px-nova-chip ${nat===n?"on":""}`} style={nat===n?{background:NAT[n].cor,borderColor:NAT[n].cor,color:"#fff"}:{}} onClick={()=>setNat(n)}>{NAT[n].rot}</button>))}</div>
-          <label className="px-nova-l">Macroprocesso</label>
-          <input list="px-nova-macros" className="px-nova-in" value={mac} onChange={e=>setMac(e.target.value)} placeholder="Comece a digitar…"/>
+          <div className="px-nova-nat">{Object.keys(NAT_CHAVE).map(n=>(
+            <button key={n} className={`px-nova-chip ${nat===n?"on":""}`}
+              style={nat===n?{background:NAT[NAT_CHAVE[n]].cor,borderColor:NAT[NAT_CHAVE[n]].cor,color:"#fff"}:{}}
+              onClick={()=>{setNat(n);setMac("");setCat("");setServ("");}}>{n}</button>))}</div>
+
+          <div className={`px-nova-regra ${regra.macro?"aberta":"restrita"}`}>
+            {regra.macro
+              ? <><Check size={12}/> Em finalístico você pode criar macroprocesso, processo e serviço novos.</>
+              : <><AlertTriangle size={12}/> Em {nat.toLowerCase()}, macroprocesso e processo vêm da estrutura existente — só o serviço pode ser novo.</>}
+          </div>
+
+          <label className="px-nova-l">Macroprocesso {marca(novoMac,regra.macro)}</label>
+          {regra.macro
+            ? <input list="px-nova-macros" className="px-nova-in" value={mac} onChange={e=>{setMac(e.target.value);setCat("");setServ("");}} placeholder="Escolha um existente ou digite um novo…"/>
+            : <select className="px-nova-in" value={mac} onChange={e=>{setMac(e.target.value);setCat("");setServ("");}}>
+                <option value="">Escolha o macroprocesso…</option>
+                {vocab.macros.map(m=><option key={m} value={m}>{m}</option>)}
+              </select>}
           <datalist id="px-nova-macros">{vocab.macros.map(m=><option key={m} value={m}/>)}</datalist>
-          <label className="px-nova-l">Categoria de serviço</label>
-          <input list="px-nova-cats" className="px-nova-in" value={cat} onChange={e=>setCat(e.target.value)} placeholder="Comece a digitar…"/>
+
+          <label className="px-nova-l">Processo (categoria de serviço) {marca(novoCat,regra.cat)}</label>
+          {regra.cat
+            ? <input list="px-nova-cats" className="px-nova-in" value={cat} onChange={e=>{setCat(e.target.value);setServ("");}} placeholder="Escolha um existente ou digite um novo…"/>
+            : <select className="px-nova-in" value={cat} onChange={e=>{setCat(e.target.value);setServ("");}} disabled={!mac}>
+                <option value="">{mac?"Escolha o processo…":"Escolha o macroprocesso primeiro"}</option>
+                {vocab.cats.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>}
           <datalist id="px-nova-cats">{vocab.cats.map(c=><option key={c} value={c}/>)}</datalist>
-          <label className="px-nova-l">Serviço</label>
-          <input list="px-nova-servs" className="px-nova-in" value={serv} onChange={e=>setServ(e.target.value)} placeholder="Opcional"/>
+
+          <label className="px-nova-l">Serviço {marca(novoServ,regra.serv)}</label>
+          <input list="px-nova-servs" className="px-nova-in" value={serv} onChange={e=>setServ(e.target.value)} placeholder="Opcional — pode ser um serviço novo"/>
           <datalist id="px-nova-servs">{vocab.servs.map(x=><option key={x} value={x}/>)}</datalist>
+
           <label className="px-nova-l">Texto da entrega</label>
           <textarea className="px-nova-ta" value={ent} onChange={e=>{setEnt(e.target.value);setFeito(false);}} placeholder="Ex.: Relatório de gestão consolidado elaborado"/>
-          <button className={`px-nova-btn ${veredito==="bloqueio"?"blocked":""}`} onClick={inserir} disabled={feito}>
-            {feito?<><Check size={15}/> Proposta enviada à curadoria</>:<><Plus size={15}/> Propor nova entrega</>}</button>
+          <button className={`px-nova-btn ${veredito==="bloqueio"||violacao?"blocked":""}`} onClick={inserir} disabled={feito}>
+            {feito?<><Check size={15}/> Proposta enviada à curadoria</>:<><Plus size={15}/> Propor ao catálogo</>}</button>
         </div>
         <div className="px-nova-check">
           <div className="px-nova-check-h"><Search size={15}/> Já existe algo parecido?</div>
+          {violacao && <div className="px-nova-verd v-bloqueio" style={{marginBottom:"10px"}}>
+            <AlertTriangle size={15}/> {violacao.charAt(0).toUpperCase()+violacao.slice(1)} novo não é permitido em {nat.toLowerCase()}.
+          </div>}
           {norm(ent).length<6
             ? <div className="px-nova-empty">Digite o texto da entrega para ver as mais próximas no banco.</div>
             : <>
               <div className={`px-nova-verd v-${veredito}`}>
-                {veredito==="bloqueio" && <><AlertTriangle size={15}/> Praticamente idêntica a uma entrega existente na mesma categoria.</>}
+                {veredito==="bloqueio" && <><AlertTriangle size={15}/> Praticamente idêntica a uma entrega existente no mesmo processo.</>}
                 {veredito==="atencao" && <><AlertTriangle size={15}/> Há entregas próximas — confirme que é realmente distinta.</>}
                 {veredito==="ok" && <><Check size={15}/> Nada muito próximo. Parece uma entrega nova.</>}
               </div>
@@ -585,6 +711,11 @@ function NovaEntregaCatalogo({onFlash,onPropose}){
                 <div className="px-nova-cand" key={c.e.codigo+i}>
                   <span className="px-nova-cand-sim">{Math.round(c.s*100)}%</span>
                   <div className="px-nova-cand-tx"><b>{c.e.entrega}</b><span>{c.e.codigo} · {c.e.macro}</span></div>
+                  <div className="px-nova-cand-niv" title="Níveis que coincidem">
+                    <span className={c.nMac?"hit":""}>M</span>
+                    <span className={c.nCat?"hit":""}>P</span>
+                    <span className={c.nServ?"hit":""}>S</span>
+                  </div>
                 </div>))}</div>
             </>}
         </div>
@@ -600,27 +731,47 @@ function NovaEntregaCatalogo({onFlash,onPropose}){
    processos e serviços do catálogo a unidade executa. Ao concluir, adiciona
    os achados à Descrição da Área e leva para a aba Macroprocessos.
 ============================================================================ */
-function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,setQtd,erro,setErro}){
+function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,setQtd,erro,setErro,
+                             orgao,unidade,setOrgao,setUnidade}){
   const [carregando,setCarregando]=useState(false);
   const codMap=useMemo(()=>{const m=new Map();ENTREGAS.forEach(e=>m.set(e.codigo,e));return m;},[]);
+  // Os 4 documentos institucionais são sugestões fixas; além deles a unidade
+  // pode anexar quantos outros quiser (PGD, planejamento estratégico, etc.),
+  // cada um com um rótulo livre que também vai para a IA.
   const campos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
+  const extras=Object.keys(arqs).filter(k=>k.startsWith("extra")&&arqs[k]);
 
-  async function escolherArquivo(chave,ev){
+  async function escolherArquivo(chave,ev,rotulo){
     const f=ev.target.files?.[0]; if(!f) return; setErro("");
-    try{ const a=await lerArquivo(f); setArqs(s=>({...s,[chave]:a})); }
+    try{ const a=await lerArquivo(f); setArqs(s=>({...s,[chave]:{...a,rotulo:rotulo||s[chave]?.rotulo||""}})); }
     catch(err){ setErro(err.message||"Não consegui ler o arquivo."); }
     finally{ ev.target.value=""; }
   }
-  function remover(chave){ setArqs(s=>({...s,[chave]:null})); }
+  async function adicionarExtra(ev){
+    const f=ev.target.files?.[0]; if(!f) return; setErro("");
+    try{
+      const a=await lerArquivo(f);
+      const chave="extra"+Date.now().toString(36);
+      setArqs(s=>({...s,[chave]:{...a,rotulo:"Outro documento"}}));
+    }catch(err){ setErro(err.message||"Não consegui ler o arquivo."); }
+    finally{ ev.target.value=""; }
+  }
+  function renomearExtra(chave,rotulo){ setArqs(s=>({...s,[chave]:{...s[chave],rotulo}})); }
+  function remover(chave){
+    // extras somem de vez; os 4 fixos voltam a ser slot vazio
+    if(chave.startsWith("extra")) setArqs(s=>{ const n={...s}; delete n[chave]; return n; });
+    else setArqs(s=>({...s,[chave]:null}));
+  }
 
   async function analisar(){
     const lista=Object.values(arqs).filter(Boolean);
     if(!lista.length||carregando) return;
     setCarregando(true); setResposta(null); setQtd(0); setErro("");
-    const textos=lista.filter(a=>a.tipo!=="pdf").map(a=>`Documento "${a.nome}":\n${a.texto}`).join("\n\n");
+    const textos=lista.filter(a=>a.tipo!=="pdf").map(a=>`Documento "${a.rotulo?`${a.rotulo} — ${a.nome}`:a.nome}":\n${a.texto}`).join("\n\n");
     const cands=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),80);
     const catalogo=cands.length?candidatasTxt(cands):CAT_TXT;
-    const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade (Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e/ou Regimento Interno). Identifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código exatamente como aparece na lista de candidatas abaixo (8 dígitos, sem ponto — ex.: 02900067). Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
+    const ctx=[orgao&&`Órgão: ${orgao}`,unidade&&`Unidade: ${unidade}`].filter(Boolean).join(" · ");
+    const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade — tipicamente Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e Regimento Interno, mas também outros que a unidade anexe (PGD, planejamento estratégico, etc.); o rótulo de cada documento vem junto do texto.${ctx?`\n${ctx}`:""}\nIdentifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código exatamente como aparece na lista de candidatas abaixo (8 dígitos, sem ponto — ex.: 02900067). Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
     // O proxy de IA roda atrás de uma função serverless (Netlify/Vercel), que
     // tem limite de payload (~6MB). Relatórios de gestão com centenas de
     // páginas passam disso fácil e a chamada inteira falha com 413. Por isso
@@ -669,11 +820,18 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
 
   return (
     <div style={{padding:"32px 24px",maxWidth:"720px"}}>
+      {/* etapa 1 do caminho: quem é a unidade + o que ela produz, no mesmo lugar */}
+      <div className="px-etapa1-cad">
+        <div className="px-etapa1-cad-h"><Building2 size={14}/> <b>Unidade</b>
+          <span>fica salva neste computador</span></div>
+        <DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>
+      </div>
+
       <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
         <Bot size={15}/>
         <span>Anexe os marcos referenciais da unidade (PDF ou Word). A IA lê os documentos, adiciona automaticamente à Descrição da Área e leva você à aba Macroprocessos com o que foi encontrado.</span>
       </div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:"10px",marginBottom:"14px"}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"10px",marginBottom:"10px"}}>
         {campos.map(([chave,rotulo])=>(
           <div key={chave} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"10px 12px",minWidth:"220px",flex:"1 1 220px"}}>
             <div style={{fontSize:"11px",fontWeight:700,marginBottom:"6px",opacity:.7}}>{rotulo}</div>
@@ -682,17 +840,32 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
                   <FileText size={12}/> {arqs[chave].nome}
                   <label style={{cursor:"pointer",display:"inline-flex",alignItems:"center",color:C.sub}} title="Trocar arquivo">
                     <RefreshCw size={11}/>
-                    <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev)}/>
+                    <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev,rotulo)}/>
                   </label>
                   <button onClick={()=>remover(chave)} title="Remover arquivo"><X size={11}/></button>
                 </span>
               : <label className="px-mode" style={{cursor:"pointer"}}>
                   <Paperclip size={14}/> <span className="px-mode-lbl">Selecionar arquivo</span>
-                  <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev)}/>
+                  <input type="file" accept=".pdf,.docx" style={{display:"none"}} onChange={ev=>escolherArquivo(chave,ev,rotulo)}/>
                 </label>}
           </div>
         ))}
+        {/* documentos além dos 4 sugeridos — rótulo livre */}
+        {extras.map(chave=>(
+          <div key={chave} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"10px 12px",minWidth:"220px",flex:"1 1 220px"}}>
+            <input className="px-extra-rot" value={arqs[chave].rotulo||""} placeholder="Nome do documento"
+              onChange={ev=>renomearExtra(chave,ev.target.value)} title="Como este documento se chama"/>
+            <span className="px-anexo-chip">
+              <FileText size={12}/> {arqs[chave].nome}
+              <button onClick={()=>remover(chave)} title="Remover arquivo"><X size={11}/></button>
+            </span>
+          </div>
+        ))}
       </div>
+      <label className="px-extra-add">
+        <Plus size={13}/> Adicionar outro documento
+        <input type="file" accept=".pdf,.docx,.xlsx,.xls,.csv" style={{display:"none"}} onChange={adicionarExtra}/>
+      </label>
       {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
       <button className="px-mode cta-bot" disabled={carregando||!Object.values(arqs).some(Boolean)} onClick={analisar}>
         <Bot size={15}/> <span className="px-mode-lbl">{carregando?"Analisando…":"Analisar com IA"}</span>
@@ -761,188 +934,183 @@ function VazioSelecaoIA({Icone}){
   );
 }
 
-function Macroprocessos({sel,selSet,add,onGoLista,onGoNova,orgao,unidade}){
-  const agrupado=useMemo(()=>{
-    const porNat=new Map();
-    sel.forEach(e=>{
-      if(!porNat.has(e.natureza)) porNat.set(e.natureza,new Map());
-      const porMac=porNat.get(e.natureza);
-      if(!porMac.has(e.macro)) porMac.set(e.macro,new Map());
-      const porCat=porMac.get(e.macro);
-      if(!porCat.has(e.categoria)) porCat.set(e.categoria,[]);
-      porCat.get(e.categoria).push(e);
-    });
-    return NAT_ORDER.filter(n=>porNat.has(n)).map(nat=>{
-      const macros=[...porNat.get(nat)].map(([mac,catMap])=>{
-        const cats=[...catMap].map(([cat,itens])=>({cat,itens})).sort((a,b)=>a.cat.localeCompare(b.cat));
-        const tot=cats.reduce((s,c)=>s+c.itens.length,0);
-        return {mac,cats,tot};
-      }).sort((a,b)=>a.mac.localeCompare(b.mac));
-      const tot=macros.reduce((s,m)=>s+m.tot,0);
-      return {nat,macros,tot};
-    });
-  },[sel]);
+/* ============================================================================
+   OS 4 NÍVEIS DO CATÁLOGO — macroprocesso → processo → serviço → entrega.
+   Um componente só serve os três primeiros níveis (o quarto é a Lista): mudam
+   o campo agrupador e o nível seguinte. Clicar num item desce um nível
+   levando o filtro junto; a trilha no topo permite subir de volta.
+   O escopo alterna entre "só o que está na Descrição da Área" (o que a IA
+   encontrou, que é o padrão) e "todo o catálogo".
+============================================================================ */
+const SEM_SERVICO="Sem serviço específico";
+const NIVEIS={
+  macro:    {campo:"macro",     rot:"Macroprocesso", plural:"macroprocessos", proximo:"processo", ic:Layers},
+  processo: {campo:"categoria", rot:"Processo",      plural:"processos",      proximo:"servico",  ic:PieChart},
+  servico:  {campo:"servico",   rot:"Serviço",       plural:"serviços",       proximo:"lista",    ic:Sparkles},
+};
 
-  const [natAberta,setNatAberta]=useState(()=>new Set(agrupado.map(N=>N.nat)));
-  const [macAberto,setMacAberto]=useState(()=>{
-    const s=new Set();
-    agrupado.forEach(N=>N.macros.forEach(M=>s.add(N.nat+"|"+M.mac)));
-    return s;
-  });
-  function alternar(setFn){ return key=>setFn(prev=>{ const s=new Set(prev); s.has(key)?s.delete(key):s.add(key); return s; }); }
-  const toggleNat=alternar(setNatAberta), toggleMac=alternar(setMacAberto);
-  function expandirTudo(){
-    const s1=new Set(),s2=new Set();
-    agrupado.forEach(N=>{ s1.add(N.nat); N.macros.forEach(M=>s2.add(N.nat+"|"+M.mac)); });
-    setNatAberta(s1); setMacAberto(s2);
-  }
-  function recolherTudo(){ setNatAberta(new Set()); setMacAberto(new Set()); }
-
-  const totMac=useMemo(()=>agrupado.reduce((s,N)=>s+N.macros.length,0),[agrupado]);
-
+/* trilha clicável dos 4 níveis — mostra onde você está e deixa voltar */
+function TrilhaNiveis({nivel,trilha,ir,limpar}){
+  const passos=[
+    {id:"macro",    rot:"Macroprocesso", val:trilha.macro},
+    {id:"processo", rot:"Processo",      val:trilha.processo},
+    {id:"servico",  rot:"Serviço",       val:trilha.servico},
+    {id:"lista",    rot:"Entrega",       val:null},
+  ];
+  const idx=passos.findIndex(p=>p.id===nivel);
   return (
-    <div style={{padding:"32px 24px",maxWidth:"920px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"4px"}}>
-        <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>Macroprocessos</h2>
-        <button className="px-mode" disabled={!sel.length} onClick={()=>gerarPdfRelatorioMacroprocessos(sel,orgao,unidade)}>
-          <Download size={14}/> <span className="px-mode-lbl">Baixar PDF</span>
-        </button>
-      </div>
-      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
-        {sel.length} entrega{sel.length===1?"":"s"} selecionada{sel.length===1?"":"s"} na Descrição da Área · Órgão: {orgao||"—"} · Unidade: {unidade||"—"}{" "}
-        <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoLista}>Ver na Lista completa</button>
-      </p>
-
-      {sel.length===0 ? <VazioSelecaoIA Icone={Layers}/> : (
-        <div className="px-tree">
-          <div className="px-treebar">
-            <div className="px-treebar-l"><b>Descrição da Área</b> <span>· {agrupado.length} naturezas · {totMac} macroprocessos · {sel.length} entregas</span></div>
-            <div className="px-treebar-r">
-              <button onClick={expandirTudo}>Expandir tudo</button><span>/</span>
-              <button onClick={recolherTudo}>Recolher tudo</button>
-            </div>
-          </div>
-          {agrupado.map(N=>{
-            const nat=NAT[N.nat]; const aberta=natAberta.has(N.nat);
-            return (
-              <div className="px-natacc" key={N.nat}>
-                <button className="px-nathead" onClick={()=>toggleNat(N.nat)} style={{borderLeftColor:nat.cor}}>
-                  {aberta?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
-                  <span className="px-nathead-dot" style={{background:nat.cor}}/>
-                  <span className="px-nathead-t">{nat.rot}</span>
-                  <span className="px-nathead-meta">{N.macros.length} macroprocessos · {N.tot.toLocaleString("pt-BR")} entregas</span>
-                </button>
-                {aberta && <div className="px-natbody">
-                  {N.macros.map(M=>{
-                    const key=N.nat+"|"+M.mac; const macOpen=macAberto.has(key);
-                    return (
-                      <div className="px-macacc" key={key}>
-                        <button className="px-machead" onClick={()=>toggleMac(key)}>
-                          {macOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
-                          <GitBranch size={13} color={nat.cor}/>
-                          <span className="px-machead-t">{M.mac}</span>
-                          <span className="px-machead-meta">{M.cats.length} categorias · {M.tot}</span>
-                        </button>
-                        {macOpen && <div className="px-macbody">
-                          {M.cats.map(C=>(
-                            <div className="px-catacc" key={C.cat}>
-                              <div className="px-cathead" style={{cursor:"default"}}>
-                                <span className="px-dot sel" style={{background:nat.cor}}/>
-                                <span className="px-cathead-t">{C.cat}</span>
-                                <span className="px-catcount">{C.itens.length}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>}
-                      </div>
-                    );
-                  })}
-                </div>}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <BuscaAdicionar selSet={selSet} add={add} onGoNova={onGoNova}/>
+    <div className="px-trilha">
+      {passos.map((p,i)=>(
+        <Fragment key={p.id}>
+          {i>0 && <ChevronRight size={13} className="px-trilha-sep"/>}
+          <button className={`px-trilha-p ${i===idx?"on":""} ${i<idx?"feito":""}`}
+            onClick={()=>ir(p.id)} title={`Ir para ${p.rot}`}>
+            <span className="px-trilha-rot">{p.rot}</span>
+            {p.val && <span className="px-trilha-val">{p.val.length>26?p.val.slice(0,25)+"…":p.val}</span>}
+          </button>
+        </Fragment>
+      ))}
+      {(trilha.macro||trilha.processo||trilha.servico) &&
+        <button className="px-trilha-limpar" onClick={limpar} title="Limpar a trilha e voltar ao topo">
+          <X size={11}/> limpar
+        </button>}
     </div>
   );
 }
 
-/* ---------- Processo e Serviço — mesma árvore do Macroprocessos, só que
-   agrupada por categoria (Processo) ou serviço (Serviço) em vez de
-   macroprocesso. Sempre a partir da Descrição da Área (o que a IA achou nos
-   Marcos Referenciais, editável na Lista), nunca o catálogo inteiro. ---------- */
-function ArvoreSelecaoIA({titulo,campo,icone,sel,selSet,add,onGoLista,onGoNova}){
+function NivelCatalogo({nivel,sel,selSet,add,rem,escopo,setEscopo,trilha,descer,irNivel,limparTrilha,
+                        onGoNova,orgao,unidade}){
+  const cfg=NIVEIS[nivel];
+  const [removidos,setRemovidos]=useState([]);   // permite remarcar sem refazer a análise
+
+  // base = só o selecionado (padrão) ou o catálogo inteiro, sempre recortada
+  // pelos níveis já escolhidos acima na trilha
   const agrupado=useMemo(()=>{
-    const SEM_SERVICO="Sem serviço específico";
+    // No escopo "só selecionados" os grupos desmarcados continuam na tela
+    // (apagados), senão sumiriam no instante do clique e não haveria como
+    // devolvê-los à Descrição da Área.
+    let base;
+    if(escopo!=="sel") base=ENTREGAS;
+    else{
+      const vistos=new Set(sel.map(e=>e.codigo));
+      base=[...sel,...removidos.filter(e=>!vistos.has(e.codigo))];
+    }
     const porNat=new Map();
-    sel.forEach(e=>{
-      // ~73% das entregas do banco não têm serviço próprio cadastrado — nesse
-      // caso o carregamento (ingestBanco) usa o nome da categoria como
-      // serviço, só pra nunca deixar o campo vazio nos filtros gerais. Aqui,
-      // na aba Serviço, isso enganaria (pareceria igual à aba Processo), então
-      // detectamos o caso (servico===categoria) e agrupamos à parte.
-      const semServicoProprio = campo==="servico" && e.servico===e.categoria;
-      const chave = semServicoProprio ? SEM_SERVICO : (e[campo]||"—");
+    base.forEach(e=>{
+      if(nivel!=="macro" && trilha.macro && e.macro!==trilha.macro) return;
+      if(nivel==="servico" && trilha.processo && e.categoria!==trilha.processo) return;
+      // ~73% das entregas não têm serviço próprio: ingestBanco usa a categoria
+      // como serviço pra não deixar o campo vazio. No nível Serviço isso
+      // enganaria (pareceria o nível Processo), então agrupamos à parte.
+      const semServicoProprio = nivel==="servico" && e.servico===e.categoria;
+      const valor = e[cfg.campo]||"";
+      const nome = semServicoProprio ? SEM_SERVICO : (valor||"—");
       if(!porNat.has(e.natureza)) porNat.set(e.natureza,new Map());
       const porGrupo=porNat.get(e.natureza);
-      if(!porGrupo.has(chave)) porGrupo.set(chave,[]);
-      porGrupo.get(chave).push(e);
+      if(!porGrupo.has(nome)) porGrupo.set(nome,{nome,valor,semServico:semServicoProprio,itens:[]});
+      porGrupo.get(nome).itens.push(e);
     });
     return NAT_ORDER.filter(n=>porNat.has(n)).map(nat=>{
-      const grupos=[...porNat.get(nat)].map(([nome,itens])=>({nome,itens,semServico:nome===SEM_SERVICO}))
+      const grupos=[...porNat.get(nat).values()]
         .sort((a,b)=> (a.semServico!==b.semServico) ? (a.semServico?1:-1) : a.nome.localeCompare(b.nome));
-      const tot=grupos.reduce((s,g)=>s+g.itens.length,0);
-      return {nat,grupos,tot};
+      return {nat,grupos,tot:grupos.reduce((s,g)=>s+g.itens.length,0)};
     });
-  },[sel,campo]);
+  },[sel,removidos,escopo,nivel,trilha.macro,trilha.processo,cfg.campo]);
 
-  const [natAberta,setNatAberta]=useState(()=>new Set(agrupado.map(N=>N.nat)));
+  const [natAberta,setNatAberta]=useState(()=>new Set(NAT_ORDER));
   function toggleNat(id){ setNatAberta(prev=>{ const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; }); }
-  function expandirTudo(){ setNatAberta(new Set(agrupado.map(N=>N.nat))); }
-  function recolherTudo(){ setNatAberta(new Set()); }
 
-  const totGrupos=useMemo(()=>agrupado.reduce((s,N)=>s+N.grupos.length,0),[agrupado]);
-  const rot=titulo.toLowerCase();
+  // caixinha: confere o que a IA trouxe. Desmarcar tira o grupo da Descrição
+  // da Área (guardando de lado); marcar devolve.
+  function alternarGrupo(g){
+    const dentro=g.itens.filter(e=>selSet.has(e.codigo));
+    if(dentro.length){
+      setRemovidos(r=>[...r,...dentro]);
+      dentro.forEach(e=>rem(e.codigo));
+    }else{
+      const voltar=removidos.filter(e=>(nivel==="servico"&&g.semServico)
+        ? e.servico===e.categoria && (!trilha.processo||e.categoria===trilha.processo)
+        : e[cfg.campo]===g.valor);
+      voltar.forEach(add);
+      setRemovidos(r=>r.filter(e=>!voltar.includes(e)));
+    }
+  }
+
+  const conferindo = escopo==="sel";
+  // no modo conferência os totais contam só o que segue marcado
+  const contar=g=>conferindo ? g.itens.filter(e=>selSet.has(e.codigo)).length : g.itens.length;
+  const totGrupos=agrupado.reduce((s,N)=>s+N.grupos.filter(g=>!conferindo||contar(g)>0).length,0);
+  const totItens=agrupado.reduce((s,N)=>s+N.grupos.reduce((x,g)=>x+contar(g),0),0);
 
   return (
-    <div style={{padding:"32px 24px",maxWidth:"920px"}}>
-      <h2 style={{margin:"0 0 4px",fontSize:"18px",color:C.navy}}>{titulo}</h2>
-      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
-        {sel.length} entrega{sel.length===1?"":"s"} na Descrição da Área{" "}
-        <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoLista}>Ver na Lista completa</button>
+    <div style={{padding:"24px 24px 32px",maxWidth:"920px"}}>
+      <TrilhaNiveis nivel={nivel} trilha={trilha} ir={irNivel} limpar={limparTrilha}/>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"4px"}}>
+        <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>{cfg.rot}</h2>
+        <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+          <div className="px-escopo">
+            <button className={escopo==="sel"?"on":""} onClick={()=>setEscopo("sel")}>Só os selecionados</button>
+            <button className={escopo==="tudo"?"on":""} onClick={()=>setEscopo("tudo")}>Todo o catálogo</button>
+          </div>
+          {nivel==="macro" && <button className="px-mode" disabled={!sel.length}
+            onClick={()=>gerarPdfRelatorioMacroprocessos(sel,orgao,unidade)}>
+            <Download size={14}/> <span className="px-mode-lbl">Baixar PDF</span>
+          </button>}
+        </div>
+      </div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"14px"}}>
+        {conferindo
+          ? <>{sel.length} entrega{sel.length===1?"":"s"} na Descrição da Área — desmarque o que não é da unidade, clique para descer ao próximo nível.</>
+          : <>Navegando por todo o catálogo. Clique para descer até a entrega.</>}
+        {nivel==="macro" && (orgao||unidade) ? <> · {orgao||"—"} / {unidade||"—"}</> : null}
       </p>
 
-      {sel.length===0 ? <VazioSelecaoIA Icone={icone}/> : (
+      {totGrupos===0 ? <VazioSelecaoIA Icone={cfg.ic}/> : (
         <div className="px-tree">
           <div className="px-treebar">
-            <div className="px-treebar-l"><b>Descrição da Área</b> <span>· {agrupado.length} naturezas · {totGrupos} {rot}{totGrupos===1?"":"s"} · {sel.length} entregas</span></div>
+            <div className="px-treebar-l">
+              <b>{conferindo?"Descrição da Área":"Catálogo"}</b>
+              <span>· {totGrupos} {totGrupos===1?cfg.rot.toLowerCase():cfg.plural} · {totItens.toLocaleString("pt-BR")} entregas</span>
+            </div>
             <div className="px-treebar-r">
-              <button onClick={expandirTudo}>Expandir tudo</button><span>/</span>
-              <button onClick={recolherTudo}>Recolher tudo</button>
+              <button onClick={()=>setNatAberta(new Set(NAT_ORDER))}>Expandir tudo</button><span>/</span>
+              <button onClick={()=>setNatAberta(new Set())}>Recolher tudo</button>
             </div>
           </div>
           {agrupado.map(N=>{
             const nat=NAT[N.nat]; const aberta=natAberta.has(N.nat);
+            const nGrupos=N.grupos.filter(g=>!conferindo||contar(g)>0).length;
+            const nItens=N.grupos.reduce((x,g)=>x+contar(g),0);
             return (
               <div className="px-natacc" key={N.nat}>
                 <button className="px-nathead" onClick={()=>toggleNat(N.nat)} style={{borderLeftColor:nat.cor}}>
                   {aberta?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
                   <span className="px-nathead-dot" style={{background:nat.cor}}/>
                   <span className="px-nathead-t">{nat.rot}</span>
-                  <span className="px-nathead-meta">{N.grupos.length} {rot}{N.grupos.length===1?"":"s"} · {N.tot} entregas</span>
+                  <span className="px-nathead-meta">{nGrupos} {nGrupos===1?cfg.rot.toLowerCase():cfg.plural} · {nItens.toLocaleString("pt-BR")} entregas</span>
                 </button>
                 {aberta && <div className="px-natbody">
-                  {N.grupos.map(G=>(
-                    <div className="px-catacc" key={G.nome}>
-                      <div className="px-cathead" style={{cursor:"default",opacity:G.semServico?.7:1}}>
-                        <span className="px-dot sel" style={{background:G.semServico?C.faint:nat.cor}}/>
-                        <span className="px-cathead-t" style={{fontStyle:G.semServico?"italic":"normal",color:G.semServico?C.faint:undefined}}>{G.nome}</span>
-                        <span className="px-catcount">{G.itens.length}</span>
+                  {N.grupos.map(g=>{
+                    const marcado=g.itens.some(e=>selSet.has(e.codigo));
+                    return (
+                      <div className={`px-nivel-row ${conferindo&&!marcado?"fora":""}`} key={g.nome}>
+                        {conferindo && (
+                          <button className={`px-nivel-check ${marcado?"on":""}`} onClick={()=>alternarGrupo(g)}
+                            title={marcado?"Tirar da Descrição da Área":"Devolver à Descrição da Área"}>
+                            {marcado && <Check size={11}/>}
+                          </button>
+                        )}
+                        <button className="px-nivel-nome" onClick={()=>descer(nivel,g.valor,g.semServico)}
+                          title={`Ver ${NIVEIS[cfg.proximo]?NIVEIS[cfg.proximo].plural:"as entregas"} de "${g.nome}"`}>
+                          <span className="px-dot sel" style={{background:g.semServico?C.faint:nat.cor}}/>
+                          <span className="px-nivel-t" style={g.semServico?{fontStyle:"italic",color:C.faint}:undefined}>{g.nome}</span>
+                          <span className="px-catcount">{g.itens.length}</span>
+                          <ChevronRight size={14} className="px-nivel-go"/>
+                        </button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>}
               </div>
             );
@@ -1198,30 +1366,77 @@ function BancoLoading(){
   </div>);
 }
 
-/* ---------- Início 2.0 — caminho guiado: cadastro → Marcos Referenciais → Macroprocessos/Catálogo ---------- */
-function SecaoInicioCaminho({stats,orgao,unidade,setOrgao,setUnidade,onCatalogo,onMarcos}){
+/* ============================================================================
+   CAMINHO DE 4 ETAPAS — é a navegação principal do portal. Sai do cabeçalho
+   ("Catálogo" e "Órgãos" não estão mais lá) e vira uma faixa logo abaixo dele:
+   cards completos no Início, tira compacta nas demais telas.
+============================================================================ */
+const ETAPAS=[
+  {n:1, ic:Bot,        t:"Unidade e marcos referenciais",
+   d:"Cadastre a unidade e anexe os documentos institucionais — a IA identifica o que a área faz."},
+  {n:2, ic:LayoutGrid, t:"Catálogo de entregas",
+   d:"Confira o que a IA encontrou e desça de macroprocesso até a entrega, escolhendo o que é da unidade."},
+  {n:3, ic:Users,      t:"Jornada do gestor",
+   d:"Acompanhe entregas, equipe e o retorno do período. O planejamento é opcional."},
+  {n:4, ic:Building2,  t:"Resultados do órgão",
+   d:"Organograma, dimensionamento e o relatório de cada unidade."},
+];
+
+function FaixaEtapas({etapa,completo,expandida,ir}){
+  if(expandida) return null;           // no Início os cards grandes já cumprem esse papel
+  return (
+    <nav className="px-etapas-tira" aria-label="Etapas do portal">
+      {ETAPAS.map(e=>{
+        const Ic=e.ic, feito=!!completo[e.n], ativo=etapa===e.n;
+        return (
+          <button key={e.n} className={`px-etapa-min ${ativo?"on":""} ${feito?"feito":""}`}
+            onClick={()=>ir(e.n)} title={e.d}>
+            <span className="px-etapa-min-n">{feito?<Check size={11}/>:e.n}</span>
+            <Ic size={13}/>
+            <span className="px-etapa-min-t">{e.t}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* modal de cadastro/troca da unidade — acionado pelo chip do cabeçalho */
+function ModalUnidade({orgao,unidade,setOrgao,setUnidade,onClose}){
   const [o,setO]=useState(orgao||"");
   const [u,setU]=useState(unidade||"");
-  const pronto = o.trim() && u.trim();
+  const salvar=()=>{ setOrgao(o.trim()); setUnidade(u.trim()); onClose(); };
+  useEffect(()=>{ const h=ev=>{ if(ev.key==="Escape") onClose(); };
+    window.addEventListener("keydown",h); return ()=>window.removeEventListener("keydown",h); },[onClose]);
+  return (
+    <div className="px-modal-bg" onClick={onClose}>
+      <div className="px-unid-modal" onClick={ev=>ev.stopPropagation()}>
+        <div className="px-unid-h"><Building2 size={16}/> <b>Órgão e unidade</b>
+          <button className="px-unid-x" onClick={onClose}><X size={15}/></button></div>
+        <p className="px-unid-d">Fica salvo neste computador — você não precisa informar de novo na próxima visita.</p>
+        <div className="px-caminho-form">
+          <label>Órgão<input value={o} onChange={e=>setO(e.target.value)} placeholder="Ex.: Ministério da Gestão e da Inovação" autoFocus/></label>
+          <label>Unidade<input value={u} onChange={e=>setU(e.target.value)} placeholder="Ex.: Coordenação-Geral de Recursos Humanos" onKeyDown={e=>{ if(e.key==="Enter") salvar(); }}/></label>
+        </div>
+        <div className="px-caminho-foot">
+          <button className="px-caminho-skip" onClick={onClose}>Cancelar</button>
+          <button className="px-caminho-go" onClick={salvar}><Check size={15}/> Salvar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Início — os 4 cards do caminho ---------- */
+function SecaoInicioCaminho({stats,orgao,unidade,completo,ir}){
   const fmt=n=>Number(n||0).toLocaleString("pt-BR");
-
-  const seguir=()=>{
-    if(!pronto) return;
-    setOrgao(o.trim()); setUnidade(u.trim());
-    onMarcos();
-  };
-
-  const passos=[
-    {n:1, ic:Building2, t:"Órgão e unidade"},
-    {n:2, ic:Bot,        t:"Marcos Referenciais"},
-    {n:3, ic:LayoutGrid, t:"Macroprocessos e Catálogo"},
-  ];
-
   return (
     <section className="px-caminho">
       <div className="px-caminho-hero">
         <h1>O trabalho do serviço público federal,<br/>organizado em um só lugar.</h1>
-        <p>{o.trim() ? <>Rota de cadastro de <b>{o.trim()}</b>{u.trim() && <> — {u.trim()}</>}</> : "Comece cadastrando o órgão e a unidade — o restante do caminho segue sozinho."}</p>
+        <p>{(orgao||unidade)
+          ? <>Caminho de <b>{unidade||orgao}</b>{unidade&&orgao ? <> — {orgao}</> : null}</>
+          : "Quatro etapas, do cadastro da unidade ao relatório do órgão."}</p>
         <div className="px-home-nums">
           <span><b>{fmt(stats.total)}</b> entregas</span><i/>
           <span><b>{fmt(stats.servs)}</b> serviços</span><i/>
@@ -1229,28 +1444,21 @@ function SecaoInicioCaminho({stats,orgao,unidade,setOrgao,setUnidade,onCatalogo,
         </div>
       </div>
 
-      <div className="px-caminho-trilha">
-        {passos.map((p,i)=>{ const Ic=p.ic; return (<Fragment key={p.n}>
-          <div className={`px-caminho-passo ${p.n===1?"ativo":"futuro"}`}>
-            <span className="px-caminho-bola"><Ic size={16}/></span>
-            <span className="px-caminho-label">{p.t}</span>
-          </div>
-          {i<passos.length-1 && <span className="px-caminho-trilho"/>}
-        </Fragment>); })}
-      </div>
-
-      <div className="px-caminho-card">
-        <span className="px-caminho-badge">Passo 1 de 3</span>
-        <h2>Cadastrar órgão e unidade</h2>
-        <p className="px-caminho-d">Depois de cadastrar, você já entra direto nos Marcos Referenciais — a IA identifica os macroprocessos e monta o Catálogo da unidade a partir deles.</p>
-        <div className="px-caminho-form">
-          <label>Órgão<input value={o} onChange={e=>setO(e.target.value)} placeholder="Ex.: Ministério da Gestão e da Inovação" autoFocus/></label>
-          <label>Unidade<input value={u} onChange={e=>setU(e.target.value)} placeholder="Ex.: Coordenação-Geral de Recursos Humanos" onKeyDown={e=>{ if(e.key==="Enter") seguir(); }}/></label>
-        </div>
-        <div className="px-caminho-foot">
-          <button className="px-caminho-skip" onClick={onCatalogo}>Ir direto ao catálogo</button>
-          <button className="px-caminho-go" disabled={!pronto} onClick={seguir}>Continuar → Marcos Referenciais <ArrowRight size={15}/></button>
-        </div>
+      <div className="px-etapas-grid">
+        {ETAPAS.map(e=>{
+          const Ic=e.ic, feito=!!completo[e.n];
+          return (
+            <button className={`px-etapa-card ${feito?"feito":""}`} key={e.n} onClick={()=>ir(e.n)}>
+              <span className="px-etapa-card-top">
+                <span className="px-etapa-card-n">{feito?<Check size={13}/>:e.n}</span>
+                <span className="px-etapa-card-ic"><Ic size={18}/></span>
+              </span>
+              <b>{e.t}</b>
+              <span className="px-etapa-card-d">{e.d}</span>
+              <span className="px-etapa-card-go">{feito?"Revisar":"Abrir"} <ArrowRight size={13}/></span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="px-home-foot">SGP · MGI — SIGEPE · SISDIP/DFT</div>
@@ -3108,22 +3316,102 @@ const css=`
 .px-home-card-go{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:2px;}
 .px-home-foot{text-align:center;margin-top:40px;font-size:11px;color:${C.faint};letter-spacing:.4px;}
 /* ---- Início 2.0: caminho guiado ---- */
-.px-caminho{max-width:640px;margin:0 auto;padding:44px 28px 60px;animation:fadeUp .35s ease;}
-.px-caminho-hero{text-align:center;margin:0 auto 32px;}
+.px-caminho{max-width:940px;margin:0 auto;padding:36px 28px 60px;animation:fadeUp .35s ease;}
+.px-caminho-hero{text-align:center;margin:0 auto 30px;}
 .px-caminho-hero h1{font-size:27px;line-height:1.25;font-weight:800;color:${C.navy};letter-spacing:-.4px;margin:0 0 12px;}
 .px-caminho-hero p{font-size:14px;line-height:1.6;color:${C.sub};margin:0 auto 18px;}
 .px-caminho-hero p b{color:${C.primaryDark};}
-.px-caminho-trilha{display:flex;align-items:flex-start;margin-bottom:26px;}
-.px-caminho-passo{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
-.px-caminho-bola{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid ${C.line};background:#fff;color:${C.faint};flex-shrink:0;}
-.px-caminho-passo.ativo .px-caminho-bola{border-color:${C.primary};background:${C.primary};color:#fff;}
-.px-caminho-label{font-size:11.5px;font-weight:700;color:${C.faint};text-align:center;line-height:1.3;}
-.px-caminho-passo.ativo .px-caminho-label{color:${C.primary};}
-.px-caminho-trilho{flex:0 0 44px;height:2px;background:${C.line};margin:16px -2px 0;}
-.px-caminho-card{background:#fff;border:1px solid ${C.line};border-radius:16px;padding:30px;box-shadow:0 2px 16px rgba(19,49,92,.06);}
-.px-caminho-badge{display:inline-flex;align-items:center;background:${C.primarySoft};color:${C.primary};font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:20px;margin-bottom:14px;}
-.px-caminho-card h2{font-size:18px;margin:0 0 6px;color:${C.ink};}
-.px-caminho-d{font-size:13px;line-height:1.6;color:${C.sub};margin:0 0 22px;max-width:480px;}
+/* ---- os 4 cards do caminho (Início) ---- */
+.px-etapas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+@media(max-width:900px){.px-etapas-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.px-etapas-grid{grid-template-columns:1fr;}}
+.px-etapa-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;background:#fff;
+  border:1px solid ${C.line};border-radius:15px;padding:18px 18px 15px;cursor:pointer;font-family:inherit;transition:all .16s;}
+.px-etapa-card:hover{border-color:${C.primary};box-shadow:0 8px 26px rgba(19,49,92,.1);transform:translateY(-2px);}
+.px-etapa-card-top{display:flex;align-items:center;gap:9px;width:100%;}
+.px-etapa-card-n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:${C.primarySoft};
+  color:${C.primary};font-size:12px;font-weight:800;flex-shrink:0;}
+.px-etapa-card.feito .px-etapa-card-n{background:${C.greenSoft};color:${C.green};}
+.px-etapa-card-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:${C.bg};color:${C.navy};margin-left:auto;}
+.px-etapa-card b{font-size:14px;font-weight:800;color:${C.ink};line-height:1.3;}
+.px-etapa-card-d{font-size:12px;line-height:1.5;color:${C.sub};min-height:54px;}
+.px-etapa-card-go{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:${C.primary};margin-top:2px;}
+.px-etapa-card.feito .px-etapa-card-go{color:${C.green};}
+/* ---- tira compacta das etapas (demais telas) ---- */
+.px-etapas-tira{display:flex;gap:6px;background:#fff;border-bottom:1px solid ${C.line};padding:7px 24px;
+  overflow-x:auto;position:sticky;top:57px;z-index:94;}
+.px-etapa-min{display:inline-flex;align-items:center;gap:7px;background:none;border:1px solid transparent;border-radius:9px;
+  padding:6px 11px;font-family:inherit;font-size:12.5px;font-weight:700;color:${C.faint};cursor:pointer;white-space:nowrap;transition:all .14s;}
+.px-etapa-min:hover{background:${C.bg};color:${C.navy};}
+.px-etapa-min.on{background:${C.primarySoft};border-color:${C.primary};color:${C.primaryDark};}
+.px-etapa-min-n{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:${C.line};color:${C.sub};font-size:10.5px;font-weight:800;flex-shrink:0;}
+.px-etapa-min.on .px-etapa-min-n{background:${C.primary};color:#fff;}
+.px-etapa-min.feito .px-etapa-min-n{background:${C.green};color:#fff;}
+.px-etapa-min-t{max-width:180px;overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:760px){.px-etapa-min-t{display:none;}}
+/* ---- criação: regra por natureza e marcas de nível novo ---- */
+.px-nova-regra{display:flex;align-items:flex-start;gap:7px;font-size:11.5px;line-height:1.5;border-radius:9px;
+  padding:9px 11px;margin:4px 0 14px;}
+.px-nova-regra.aberta{background:${C.greenSoft};color:${C.green};}
+.px-nova-regra.restrita{background:#FBF3DC;color:#9A6A00;}
+.px-nova-tag{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:800;padding:2px 6px;
+  border-radius:20px;margin-left:6px;text-transform:none;letter-spacing:0;}
+.px-nova-tag.nova{background:${C.primarySoft};color:${C.primary};}
+.px-nova-tag.trava{background:#FBEDE4;color:#C2410C;}
+.px-nova-cand-niv{display:flex;gap:3px;margin-left:auto;flex-shrink:0;}
+.px-nova-cand-niv span{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;background:${C.bg};
+  color:${C.faint};font-size:9px;font-weight:800;}
+.px-nova-cand-niv span.hit{background:${C.primary};color:#fff;}
+/* ---- trilha dos 4 níveis do catálogo ---- */
+.px-trilha{display:flex;align-items:center;gap:2px;flex-wrap:wrap;background:#fff;border:1px solid ${C.line};
+  border-radius:11px;padding:7px 10px;margin-bottom:16px;}
+.px-trilha-sep{color:${C.line};flex-shrink:0;}
+.px-trilha-p{display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:none;border:none;
+  border-radius:7px;padding:4px 9px;font-family:inherit;cursor:pointer;text-align:left;transition:all .14s;}
+.px-trilha-p:hover{background:${C.bg};}
+.px-trilha-rot{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${C.faint};}
+.px-trilha-p.on .px-trilha-rot{color:${C.primary};}
+.px-trilha-p.feito .px-trilha-rot{color:${C.green};}
+.px-trilha-val{font-size:11.5px;font-weight:700;color:${C.ink};max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.px-trilha-limpar{display:inline-flex;align-items:center;gap:4px;margin-left:auto;background:none;border:none;
+  font-family:inherit;font-size:11px;font-weight:700;color:${C.faint};cursor:pointer;padding:4px 6px;}
+.px-trilha-limpar:hover{color:${C.coral||"#9E3B1F"};}
+/* ---- alternador de escopo (só selecionados / todo o catálogo) ---- */
+.px-escopo{display:inline-flex;gap:2px;background:${C.bg};border:1px solid ${C.line};border-radius:9px;padding:3px;}
+.px-escopo button{border:none;background:none;font-family:inherit;font-size:11.5px;font-weight:700;color:${C.faint};
+  padding:5px 11px;border-radius:7px;cursor:pointer;transition:all .14s;white-space:nowrap;}
+.px-escopo button:hover{color:${C.navy};}
+.px-escopo button.on{background:#fff;color:${C.primaryDark};box-shadow:0 1px 3px rgba(19,49,92,.12);}
+/* ---- linha de um item de nível (caixinha + nome clicável) ---- */
+.px-nivel-row{display:flex;align-items:center;gap:8px;padding:2px 0 2px 6px;}
+.px-nivel-row.fora .px-nivel-t{color:${C.faint};text-decoration:line-through;}
+.px-nivel-row.fora .px-dot{opacity:.35;}
+.px-nivel-check{width:17px;height:17px;flex-shrink:0;border:1.5px solid ${C.line};border-radius:5px;background:#fff;
+  display:grid;place-items:center;cursor:pointer;color:#fff;transition:all .14s;}
+.px-nivel-check:hover{border-color:${C.primary};}
+.px-nivel-check.on{background:${C.green};border-color:${C.green};}
+.px-nivel-nome{flex:1;display:flex;align-items:center;gap:8px;background:none;border:none;border-radius:8px;
+  padding:7px 9px;font-family:inherit;cursor:pointer;text-align:left;min-width:0;transition:background .14s;}
+.px-nivel-nome:hover{background:${C.bg};}
+.px-nivel-t{flex:1;font-size:12.5px;font-weight:600;color:${C.ink};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.px-nivel-go{color:${C.faint};flex-shrink:0;}
+.px-nivel-nome:hover .px-nivel-go{color:${C.primary};}
+/* ---- etapa 1: cadastro da unidade no topo dos marcos referenciais ---- */
+.px-etapa1-cad{background:#fff;border:1px solid ${C.line};border-radius:12px;padding:14px 16px;margin-bottom:20px;}
+.px-etapa1-cad-h{display:flex;align-items:center;gap:7px;font-size:13px;color:${C.navy};margin-bottom:2px;}
+.px-etapa1-cad-h span{font-size:11px;font-weight:600;color:${C.faint};margin-left:auto;}
+.px-extra-rot{width:100%;border:none;border-bottom:1px dashed ${C.line};background:none;font-family:inherit;
+  font-size:11px;font-weight:700;color:${C.navy};padding:0 0 4px;margin-bottom:6px;opacity:.85;}
+.px-extra-rot:focus{outline:none;border-bottom-color:${C.primary};opacity:1;}
+.px-extra-add{display:inline-flex;align-items:center;gap:7px;border:1px dashed ${C.line};border-radius:9px;
+  padding:8px 13px;font-size:12.5px;font-weight:700;color:${C.sub};cursor:pointer;margin-bottom:14px;transition:all .14s;}
+.px-extra-add:hover{border-color:${C.primary};color:${C.primaryDark};border-style:solid;}
+/* ---- modal de órgão/unidade ---- */
+.px-unid-modal{background:#fff;border-radius:16px;padding:24px;width:min(560px,100%);box-shadow:0 18px 50px rgba(19,49,92,.25);}
+.px-unid-h{display:flex;align-items:center;gap:8px;font-size:15px;color:${C.navy};margin-bottom:6px;}
+.px-unid-x{margin-left:auto;background:none;border:none;cursor:pointer;color:${C.faint};display:grid;place-items:center;}
+.px-unid-x:hover{color:${C.ink};}
+.px-unid-d{font-size:12.5px;color:${C.sub};line-height:1.55;margin:0 0 18px;}
 .px-caminho-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
 @media(max-width:560px){.px-caminho-form{grid-template-columns:1fr;}}
 .px-caminho-form label{display:block;font-size:11.5px;font-weight:700;color:${C.navy};margin-bottom:6px;}
@@ -3210,7 +3498,9 @@ const css=`
 .px-logo{display:flex;align-items:center;gap:11px;}
 .px-logo-w{font-size:18px;font-weight:800;color:${C.navy};letter-spacing:-.01em;line-height:1;}
 .px-logo-s{font-size:11px;color:${C.sub};margin-top:2px;}
-.px-org{display:flex;align-items:center;gap:6px;font-size:12px;color:${C.sub};}
+.px-org{display:flex;align-items:center;gap:6px;font-size:12px;color:${C.sub};background:none;
+  border:1px solid ${C.line};border-radius:8px;padding:6px 10px;font-family:inherit;font-weight:600;cursor:pointer;transition:all .14s;}
+.px-org:hover{border-color:${C.primary};color:${C.primaryDark};background:${C.primarySoft};}
 .px-org.vazio{background:#fff;border:1px dashed ${C.line};border-radius:20px;padding:5px 12px;cursor:pointer;font-weight:600;font-family:inherit;color:${C.primary};}
 .px-org.vazio:hover{border-color:${C.primary};background:${C.primarySoft};}
 .px-limpachip{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(100deg,#168821,#0f6b1a);border:none;border-radius:20px;padding:6px 14px;cursor:pointer;text-decoration:none;box-shadow:0 2px 8px rgba(22,136,33,.3);transition:.15s;}
@@ -4373,7 +4663,7 @@ const COLS_EXPORT = ["Código","Entrega","MacroProcesso","Categoria de Serviço"
   "Texto Mesclado","Serviço Sugerido IA","Justificativa IA","Revisor","Aba","Registrado em"];
 
 /* ============================================================ */
-function CentralRevisao({ onClose, embutido }){
+function CentralRevisao({ onClose, embutido, flags }){
   const [aba,setAba]=useState("similares");
   const [revisor,setRevisor]=useState("");
   const [banco,setBanco]=useState(SAMPLE.corpus);           // corpus p/ similaridade
@@ -4431,9 +4721,11 @@ function CentralRevisao({ onClose, embutido }){
   const [filtro,setFiltro]=useState({mac:null,cat:null});
   const paresF=useMemo(()=>pares.filter(p=>(!filtro.mac||p.macro===filtro.mac)&&(!filtro.cat||p.cat===filtro.cat)),[pares,filtro]);
   const semServicoF=useMemo(()=>semServico.filter(x=>(!filtro.mac||x.mac===filtro.mac)&&(!filtro.cat||x.cat===filtro.cat)),[semServico,filtro]);
+  const sinalizacoes=flags||[];
   const abas=[
     ["similares","Similares",GitMerge, paresF.length],
     ["servicos","Serviços",Sparkles, semServicoF.length],
+    ["sinalizacoes","Sinalizações",Flag, sinalizacoes.length],
   ];
 
   return (
@@ -4478,6 +4770,7 @@ function CentralRevisao({ onClose, embutido }){
         <main className="cr-main">
           {aba==="similares" && <AbaSimilares pares={paresF} revisor={revisor} onDecidir={registrar} flash={flash}/>}
           {aba==="servicos"  && <AbaServicos itens={semServicoF} revisor={revisor} onAprovar={registrar} flash={flash}/>}
+          {aba==="sinalizacoes" && <QualidadePanel embutido flags={sinalizacoes} onClose={onClose}/>}
         </main>
       </div>
 
@@ -5805,7 +6098,9 @@ function PainelUnidade({
   const nec = leituraNecessidade(dash ? dash.nec : null);
   const semDftProprio = unidade.status === "sem" || unidade.status === "englobado";
 
-  const [aba, setAba] = useState("entregas");           // 'entregas' | 'relatorio'
+  // O relatório é o conteúdo principal do painel; a lista de entregas que o
+  // sustenta fica recolhida abaixo dele, para quem quiser conferir item a item.
+  const [entregasAbertas, setEntregasAbertas] = useState(false);
   const [obsAberta, setObsAberta] = useState(false);
   const observacao = dash && dash.obs ? dash.obs : null;
 
@@ -5876,75 +6171,71 @@ function PainelUnidade({
         <button className="od-p-close" onClick={onClose}><X size={15} /></button>
       </div>
 
-      {/* barra de abas: Entregas ⇄ Relatório completo */}
-      <div className="od-p-tabbar">
-        <div className="od-p-tabs">
-          <button className={"od-p-tab" + (aba === "entregas" ? " on" : "")} onClick={() => setAba("entregas")}>
-            <FileText size={13} /> Entregas <span className="od-p-tabn">{listaFiltrada.length}</span>
-          </button>
-          <button className={"od-p-tab" + (aba === "relatorio" ? " on" : "")} onClick={() => setAba("relatorio")}>
-            <Layers size={13} /> Relatório completo
-          </button>
-        </div>
-
-        {/* indicadores só fazem sentido na aba Entregas — o relatório já traz os seus próprios */}
-        {aba === "entregas" && !semDftProprio && dash && (
-          <div className="od-p-inds">
-            <span><TrendingUp size={11} /> último: <b>{formatarPeriodo(dash.periodo)}</b></span>
-            <span>
-              <nec.Icon size={11} /> necessidade:{" "}
-              <b style={{ color: nec.cor }}>
-                {nec.tipo === "deficit" ? `faltam ${dash.nec}` : nec.tipo === "superavit" ? `${-dash.nec} a mais` : "equilíbrio"}
-              </b>
-            </span>
-            <span><Users size={11} /> <b>{dash.efet}</b> efetivas · est. <b>{dash.estim}</b></span>
-            <button className="od-p-bilink"
-              onClick={() => flash("Integração Power BI — próxima fase. Abrirá o painel do DFT filtrado por esta unidade.")}>
-              <BarChart2 size={11} /> Power BI <ExternalLink size={11} />
-            </button>
-            {observacao && (
-              <button className={"od-p-obsbtn" + (obsAberta ? " on" : "")} onClick={() => setObsAberta((v) => !v)}>
-                ⓘ observação
-              </button>
-            )}
+      {/* unidade sem DFT próprio: o caminho de ação vem antes de tudo */}
+      {semDftProprio && (
+        <div className="od-p-sem">
+          <div className="od-p-sem-tx">
+            <AlertCircle size={16} /> Esta unidade ainda <b>não realizou DFT próprio</b>. Você pode montar a descrição de área desta unidade no catálogo.
           </div>
-        )}
-        {/* Nota "dados ilustrativos — prévia da funcionalidade" removida:
-            a partir desta versão o relatório sempre carrega dados reais da
-            unidade selecionada, não a prévia fixa. */}
-      </div>
-
-      {aba === "entregas" && obsAberta && observacao && (
-        <div className="od-p-obsbox">
-          <span>📝</span>
-          <div><b>Observação do dimensionamento — </b>{observacao}</div>
+          <button className="od-p-montar" onClick={() => onMontarNoCatalogo && onMontarNoCatalogo(org.nome, unidade.nome)}>
+            <PlusCircle size={14} /> Montar descrição no catálogo <ArrowLeft size={13} style={{ transform: "rotate(180deg)" }} />
+          </button>
         </div>
       )}
 
-      {/* ===== conteúdo: relatório (iframe) OU entregas (estado vazio/andamento + tabela) ===== */}
-      {aba === "relatorio" ? (
-        <div className="od-p-reportwrap">
-          <iframe title="Relatório da unidade" className="od-p-reportframe" srcDoc={relatorioSrcDoc} />
-        </div>
-      ) : (
-        <Fragment>
-          {semDftProprio ? (
-            <div className="od-p-sem">
-              <div className="od-p-sem-tx">
-                <AlertCircle size={16} /> Esta unidade ainda <b>não realizou DFT próprio</b>. Você pode montar a descrição de área desta unidade no catálogo.
-              </div>
-              <button className="od-p-montar" onClick={() => onMontarNoCatalogo && onMontarNoCatalogo(org.nome, unidade.nome)}>
-                <PlusCircle size={14} /> Montar descrição no catálogo <ArrowLeft size={13} style={{ transform: "rotate(180deg)" }} />
-              </button>
-            </div>
-          ) : !dash && (
-            <div className="od-p-andamento">
-              <TrendingUp size={15} /> Dimensionamento em andamento — sem resultados consolidados. As entregas já levantadas aparecem abaixo.
-            </div>
-          )}
+      {/* ===== o relatório é o conteúdo principal ===== */}
+      <div className="od-p-reportwrap">
+        <iframe title="Relatório da unidade" className="od-p-reportframe" srcDoc={relatorioSrcDoc} />
+      </div>
 
-          {!semDftProprio && (
+      {/* ===== as entregas que sustentam o relatório, recolhidas ===== */}
+      {!semDftProprio && (
+        <Fragment>
+          <button className={"od-p-expand" + (entregasAbertas ? " on" : "")} onClick={() => setEntregasAbertas((v) => !v)}>
+            {entregasAbertas ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+            <FileText size={14} />
+            <span>Ver as {listaFiltrada.length} entregas desta unidade</span>
+            {semServico > 0 && <span className="od-p-expand-chip warn">{semServico} sem serviço</span>}
+            {foraCatalogo > 0 && <span className="od-p-expand-chip mut">{foraCatalogo} fora do catálogo</span>}
+          </button>
+
+          {entregasAbertas && (
             <Fragment>
+              {dash && (
+                <div className="od-p-inds">
+                  <span><TrendingUp size={11} /> último: <b>{formatarPeriodo(dash.periodo)}</b></span>
+                  <span>
+                    <nec.Icon size={11} /> necessidade:{" "}
+                    <b style={{ color: nec.cor }}>
+                      {nec.tipo === "deficit" ? `faltam ${dash.nec}` : nec.tipo === "superavit" ? `${-dash.nec} a mais` : "equilíbrio"}
+                    </b>
+                  </span>
+                  <span><Users size={11} /> <b>{dash.efet}</b> efetivas · est. <b>{dash.estim}</b></span>
+                  <button className="od-p-bilink"
+                    onClick={() => flash("Integração Power BI — próxima fase. Abrirá o painel do DFT filtrado por esta unidade.")}>
+                    <BarChart2 size={11} /> Power BI <ExternalLink size={11} />
+                  </button>
+                  {observacao && (
+                    <button className={"od-p-obsbtn" + (obsAberta ? " on" : "")} onClick={() => setObsAberta((v) => !v)}>
+                      ⓘ observação
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {obsAberta && observacao && (
+                <div className="od-p-obsbox">
+                  <span>📝</span>
+                  <div><b>Observação do dimensionamento — </b>{observacao}</div>
+                </div>
+              )}
+
+              {!dash && (
+                <div className="od-p-andamento">
+                  <TrendingUp size={15} /> Dimensionamento em andamento — sem resultados consolidados. As entregas já levantadas aparecem abaixo.
+                </div>
+              )}
+
               <div className="od-tbl-head">
                 <div className="od-tbl-t">
                   <FileText size={15} /> Entregas do dimensionamento
@@ -6026,7 +6317,6 @@ function PainelUnidade({
     </div>
   );
 }
-
 /* ============================================================
    APP RAIZ — organograma completo (header, busca, árvore, painel)
 ============================================================ */
@@ -6405,7 +6695,17 @@ const OD_CSS = `
 .od-p-tab.on{background:#fff;color:${T.primaryDark};box-shadow:0 1px 3px rgba(13,49,111,.12);}
 .od-p-tabn{font-family:monospace;background:${T.bg};border-radius:6px;padding:1px 6px;font-size:10.5px;}
 .od-p-tab.on .od-p-tabn{background:${T.bg};}
-.od-p-inds{display:flex;align-items:center;gap:14px;font-size:11px;color:${T.sub};font-weight:600;overflow:hidden;flex:1;min-width:0;}
+/* bloco recolhido das entregas, abaixo do relatório */
+.od-p-expand{display:flex;align-items:center;gap:8px;width:100%;margin-top:14px;background:#fff;
+  border:1px solid ${T.line};border-radius:10px;padding:11px 13px;font-family:inherit;font-size:12.5px;
+  font-weight:700;color:${T.navy};cursor:pointer;transition:all .14s;text-align:left;}
+.od-p-expand:hover{border-color:${T.primary};color:${T.primaryDark};}
+.od-p-expand.on{border-color:${T.primary};background:${T.primarySoft};border-bottom-left-radius:0;border-bottom-right-radius:0;}
+.od-p-expand-chip{font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;}
+.od-p-expand-chip.warn{background:#FBF3DC;color:#9A6A00;}
+.od-p-expand-chip.mut{background:${T.bg};color:${T.sub};}
+.od-p-expand-chip:first-of-type{margin-left:auto;}
+.od-p-inds{display:flex;align-items:center;gap:14px;font-size:11px;color:${T.sub};font-weight:600;overflow:hidden;flex-wrap:wrap;min-width:0;padding:12px 2px 4px;}
 .od-p-inds span{white-space:nowrap;}
 .od-p-inds b{color:${T.navy};}
 .od-p-bilink{border:0;background:none;color:${T.primary};font-weight:700;font-size:11px;cursor:pointer;font-family:inherit;

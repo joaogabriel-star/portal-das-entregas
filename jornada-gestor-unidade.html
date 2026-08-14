@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entregas e meses da unidade</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--surface:#fff;--ink:#1B1B1B;--sub:#55606E;--faint:#8C97A6;
+  --line:#E4E7EB;--hair:#EFF2F6;--primary:#1351B4;--primaryDark:#0C326F;--primarySoft:#E8EEF9;
+  --navy:#13315C;--green:#168821;--greenSoft:#E3F2E5;--amber:#B86E00;--amberSoft:#FBEEDB;
+  --coral:#9E3B1F;--coralSoft:#FAECE7;--grey:#9AA6B2;--greySoft:#EDF0F3;--purple:#5B4AA8;--purpleSoft:#ECE9F8;
+  --num:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Raleway,-apple-system,'Segoe UI',sans-serif;color:var(--sub);font-size:14px}
+.stripe{height:3px;display:flex}.stripe i{flex:1}
+.stripe i:nth-child(1){background:var(--green)}.stripe i:nth-child(2){background:#FFCD07}.stripe i:nth-child(3){background:var(--primary)}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.h-linha{padding:11px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-t{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.h-s{font-size:10px;color:var(--faint);font-weight:600;margin-top:1px}
+.h-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pill{font-size:10.5px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;white-space:nowrap}
+.pill.proto{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple);font-weight:800;letter-spacing:.05em;text-transform:uppercase;font-size:8.5px}
+.h-back{font-size:11px;font-weight:700;color:var(--primary);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.h-back:hover{border-color:var(--primary)}
+.bt-pgd{font-size:11px;font-weight:700;border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;
+  border:1px solid var(--line);background:#fff;color:var(--sub);display:inline-flex;align-items:center;gap:7px}
+.bt-pgd:hover{border-color:var(--purple)}
+.bt-pgd.on{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple)}
+.bt-pgd i{width:7px;height:7px;border-radius:50%;background:var(--line);display:inline-block}
+.bt-pgd.on i{background:var(--purple)}
+
+.trilha{display:flex;gap:2px;padding:0 24px;overflow-x:auto;border-top:1px solid var(--hair)}
+.tf{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--faint);
+  white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
+a.tf:hover{color:var(--primary)}
+.tf.on{color:var(--primaryDark);border-bottom-color:var(--primary)}
+.tf-n{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--sub);font-family:var(--num);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tf.on .tf-n{background:var(--primary);color:#fff}
+
+.ctx{background:#fff;border-bottom:1px solid var(--line);padding:9px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctx-u{font-weight:800;color:var(--navy);font-size:13.5px}
+.ctx-p{color:var(--faint);font-weight:600;font-size:10.5px}
+.ctx-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:20px;padding:5px 12px;white-space:nowrap;border:1px solid transparent}
+.chip.neutro{background:var(--bg);border-color:var(--line);color:var(--sub)}
+.chip.neutro b{color:var(--navy);font-family:var(--num)}
+.chip.pend{background:var(--amberSoft);border-color:#EAD9BD;color:var(--amber)}
+.chip.pend b{font-family:var(--num)}
+.chip.plan{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple)}
+.chip.plan b{font-family:var(--num)}
+.chip.ok{background:var(--greenSoft);border-color:#B6DDBB;color:var(--green)}
+.bt-cal{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:0;border-radius:9px;
+  padding:8px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s}
+.bt-cal:hover{background:var(--primaryDark)}
+.bt-cal .qt{background:rgba(255,255,255,.22);border-radius:20px;padding:1px 7px;font-family:var(--num);font-size:10px}
+
+.wrap{max-width:1080px;margin:0 auto;padding:20px 24px 90px}
+.bloco{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:14px}
+.tit{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.sub{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:4px;max-width:76ch}
+.cab{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.cab-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+
+/* ---------- barra de visualização + botão da balança ---------- */
+.segs{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+.seg{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;color:var(--sub);
+  border-radius:8px;padding:6px 11px;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:6px}
+.seg:hover:not(:disabled){background:#fff;color:var(--navy)}
+.seg.on{background:#fff;color:var(--primaryDark);box-shadow:0 1px 3px rgba(19,49,92,.13);font-weight:800}
+.seg:disabled{opacity:.38;cursor:default}
+.seg em{font-style:normal;font-family:var(--num);font-size:9.5px;font-weight:800;color:var(--faint)}
+.seg.on em{color:var(--primary)}
+.bt-bal{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 11px;cursor:pointer;
+  font-family:inherit;font-size:13px;line-height:1;color:var(--sub);display:inline-flex;align-items:center;gap:7px;transition:all .14s}
+.bt-bal:hover{border-color:var(--primary);color:var(--primary)}
+.bt-bal.on{background:var(--primarySoft);border-color:#C4D6F0;color:var(--primaryDark)}
+.bt-bal span{font-size:10.5px;font-weight:800}
+
+/* ---------- grade dos meses ---------- */
+.rolagem{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.gq{width:100%;border-collapse:collapse;min-width:600px}
+.gq thead th{background:var(--bg);border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;
+  font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.gq thead th.med{width:196px}
+.gq thead th.mes{text-align:center;width:112px;padding:0}
+.gq thead th.mes button{width:100%;border:0;background:none;font-family:inherit;cursor:pointer;padding:8px 6px;
+  display:block;transition:background .14s;border-radius:8px}
+.gq thead th.mes button:hover{background:#EAEFF6}
+.gq thead th.mes b{display:block;font-size:11.5px;color:var(--navy);letter-spacing:0;text-transform:capitalize;font-weight:800}
+.gq thead th.mes em{display:block;font-style:normal;font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.gq thead th.mes .tro{opacity:0;font-size:8px;color:var(--faint);font-weight:700;letter-spacing:0;text-transform:none;
+  display:block;margin-top:2px;transition:opacity .14s}
+.gq thead th.mes button:hover .tro{opacity:1}
+.hz-plan{color:var(--purple)}.hz-reg{color:var(--primary)}.hz-curso{color:var(--amber)}
+.gq tbody td{border-bottom:1px solid var(--hair);padding:9px 12px;vertical-align:middle}
+.gq tbody tr.pgd td{border-bottom:1px solid var(--hair);padding:0 12px 12px}
+.gq tbody tr:last-child td{border-bottom:0}
+.gq tbody tr:hover{background:#FCFDFE}
+.e-nome{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.35}
+.e-meta{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.e-cod{font-family:var(--num)}
+.selo{display:inline-flex;align-items:center;gap:5px;font-size:8.5px;font-weight:800;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--faint);background:var(--greySoft);border-radius:20px;padding:2px 8px}
+.med-cel{display:flex;align-items:center;gap:8px}
+.med-cel select{flex:1;min-width:0}
+
+.td-mes{text-align:center;padding:7px 8px !important}
+.cel-meta{display:block;font-size:8.5px;font-weight:800;color:var(--faint);font-family:var(--num);margin-bottom:4px}
+.cel{width:100%;text-align:center;font-family:var(--num);font-size:12.5px;font-weight:700;color:var(--navy);
+  border:1px solid var(--line);border-radius:8px;padding:8px 4px;background:#fff}
+.cel:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.cel.vazio{background:#FCFCFD;border-style:dashed;border-color:#DDE2E8}
+.cel.plano{border-color:#D6CFF0;background:#FBFAFE;color:var(--purple)}
+.cel.plano:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(91,74,168,.12)}
+.cel.plano.vazio{background:#FCFCFD;border-style:dashed;border-color:#DDE2E8;color:var(--navy)}
+.cel-sn{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 4px;background:#FCFCFD;border-style:dashed;
+  font-family:inherit;font-size:11px;font-weight:800;color:var(--faint);cursor:pointer;transition:all .14s}
+.cel-sn:hover{border-color:var(--primary)}
+.cel-sn.sim{background:var(--greenSoft);border:1px solid #B6DDBB;color:var(--green)}
+.cel-sn.nao{background:#fff;border:1px solid var(--line);color:var(--sub)}
+.cel-sn.plano.sim{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple)}
+
+/* rodapé da célula: micro-barra + pontinho de "o que aconteceu" */
+.pe{display:flex;align-items:center;gap:6px;height:9px;margin-top:6px}
+.prog{flex:1;height:3px;border-radius:3px;background:var(--hair);overflow:hidden}
+.prog i{display:block;height:100%;border-radius:3px;background:var(--primary);transition:width .3s ease}
+.prog i.bom{background:var(--green)}
+.prog i.meio{background:var(--primary)}
+.prog i.baixo{background:#D9A44A}
+.ponto{width:9px;height:9px;border-radius:50%;border:1.5px dashed #C9D2DC;background:none;padding:0;
+  cursor:pointer;flex-shrink:0;transition:all .15s}
+.ponto:hover{border-color:var(--amber);background:var(--amberSoft);transform:scale(1.25)}
+.ponto.on{border:0;background:var(--amber)}
+.ponto.on:hover{background:#96590A}
+
+/* ---------- rodapé da tabela ---------- */
+.tp{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.bt-add{border:1px dashed var(--line);background:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--sub);transition:all .14s}
+.bt-add:hover{border-color:var(--primary);color:var(--primary);border-style:solid}
+.convite{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;
+  color:var(--sub);font-weight:600;background:#FCFDFE;border:1px solid var(--hair);border-radius:10px;padding:8px 13px}
+.convite b{color:var(--navy);font-weight:800}
+.convite button{border:0;background:none;font-family:inherit;font-size:11.5px;font-weight:800;
+  color:var(--primary);cursor:pointer;padding:0;text-decoration:underline;white-space:nowrap}
+.convite button:hover{color:var(--primaryDark)}
+
+/* lista leve de lacunas, quando o gestor pede pra ver */
+.ll{border:1px solid var(--hair);border-radius:11px;margin-top:10px;overflow:hidden}
+.ll-i{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.ll-i:last-child{border-bottom:0}
+.ll-e{font-size:12px;font-weight:700;color:var(--navy);line-height:1.35}
+.ll-q{font-size:10px;color:var(--faint);font-weight:600;margin-top:2px}
+.ll-d{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ll-t{font-size:10px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);
+  border-radius:20px;padding:3px 10px}
+.ll-b{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;cursor:pointer;
+  font-family:inherit;font-size:10.5px;font-weight:700;color:var(--primary);white-space:nowrap;transition:all .14s}
+.ll-b:hover{border-color:var(--primary);background:var(--primarySoft)}
+
+/* ---------- balãozinho "o que aconteceu" ---------- */
+.pop{position:fixed;z-index:70;background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 14px 36px -12px rgba(13,49,111,.36);padding:14px 16px;width:296px;display:none}
+.pop.on{display:block}
+.pop-t{font-size:12.5px;font-weight:800;color:var(--navy);line-height:1.35}
+.pop-d{font-size:10px;color:var(--faint);font-weight:600;margin-top:3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+.tag{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;font-family:inherit;
+  font-size:10.5px;font-weight:700;color:var(--sub);cursor:pointer;transition:all .14s}
+.tag:hover{border-color:var(--primary);color:var(--primary)}
+.tag.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.pop-pe{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--hair)}
+.pop-n{font-size:9.5px;color:var(--faint);font-weight:600}
+.pop-ok{margin-left:auto;border:0;background:var(--primary);color:#fff;border-radius:8px;padding:6px 14px;
+  font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.pop-ok:hover{background:var(--primaryDark)}
+
+/* ---------- busca no catálogo ---------- */
+.busca{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.busca input{flex:1;min-width:240px}
+input[type=text],input[type=number],input[type=date],select{font-family:inherit;font-size:12.5px;color:var(--ink);
+  border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:#fff;width:100%}
+input:focus,select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+select.filtro{width:auto;min-width:170px;font-size:11.5px;padding:8px 10px}
+.cx-add{border:1px dashed var(--line);border-radius:12px;padding:16px 18px;margin-top:12px;background:#FCFDFE}
+.cx-t{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:11px;display:flex;align-items:center;gap:10px}
+.cx-t button{margin-left:auto;border:0;background:none;color:var(--faint);font-size:17px;cursor:pointer;line-height:1;padding:0 4px}
+.cx-t button:hover{color:var(--navy)}
+.res{border:1px solid var(--line);border-radius:11px;overflow:hidden;max-height:270px;overflow-y:auto;background:#fff}
+.res-i{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--hair)}
+.res-i:last-child{border-bottom:0}
+.cod{font-family:var(--num);font-size:10px;font-weight:700;background:var(--primarySoft);color:var(--primaryDark);padding:2px 6px;border-radius:4px;white-space:nowrap}
+.res-e{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.4}
+.res-m{font-size:10px;color:var(--faint);font-weight:600;margin-top:3px}
+.conta{font-size:11px;color:var(--faint);font-weight:600;margin-bottom:9px}
+
+.ce-cx{border:1px solid #D6CFF0;border-radius:10px;padding:9px 11px;background:#FBFAFE}
+.ce-cx.ok{border-color:#B6DDBB;background:var(--greenSoft)}
+.ce-cx.sug{border-style:dashed}
+.ce-l{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--purple);margin-bottom:5px;display:block}
+.ce-cx.ok .ce-l{color:var(--green)}
+.obj-l{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.obj-v{font-size:12px;font-weight:700;color:var(--navy);line-height:1.35}
+.obj-v.sug{color:var(--purple)}
+.obj-v.vazio{color:var(--faint);font-weight:600;font-style:italic}
+.obj-eixo{font-size:9px;font-weight:700;color:var(--faint);background:#fff;border:1px solid var(--line);
+  border-radius:20px;padding:2px 8px;white-space:nowrap}
+.obj-eixo.forte{border-color:#B6DDBB;color:var(--green);background:var(--greenSoft)}
+.obj-b{border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer;
+  font-family:inherit;font-size:10px;font-weight:700;color:var(--sub);margin-left:auto;white-space:nowrap}
+.obj-b:hover{border-color:var(--primary);color:var(--primary)}
+.obj-b.usar{background:var(--purple);border-color:var(--purple);color:#fff}
+.obj-b.usar:hover{background:#4A3C90}
+.obj-s{width:auto;max-width:190px;font-size:10.5px;padding:5px 8px}
+
+/* faixa do ciclo do PGD */
+.faixa-pgd{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;border:1px solid #D6CFF0;background:#FBFAFE;
+  border-radius:11px;padding:11px 15px;margin-bottom:13px}
+.fp-l{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--purple);margin-bottom:5px;display:block}
+.fp-s{width:auto;min-width:180px;font-size:11.5px;padding:7px 9px}
+.fp-v{font-size:12px;font-weight:800;color:var(--navy);font-family:var(--num)}
+.fp-v small{display:block;font-family:Raleway;font-size:9px;font-weight:600;color:var(--faint);margin-top:2px}
+.fp-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+
+/* fechamento do ciclo */
+.fc-cab{display:grid;grid-template-columns:1fr 132px 132px 88px;gap:12px;padding:0 0 9px;
+  font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.fc-cab span:not(:first-child){text-align:center}
+@media(max-width:780px){.fc-cab{display:none}}
+.fc-l{display:grid;grid-template-columns:1fr 132px 132px 88px;gap:12px;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--hair)}
+.fc-l:last-of-type{border-bottom:0}
+@media(max-width:780px){.fc-l{grid-template-columns:1fr 1fr;row-gap:8px}}
+.fc-n{text-align:center}
+.fc-n b{display:block;font-family:var(--num);font-size:14px;font-weight:800;color:var(--navy);line-height:1}
+.fc-n span{font-size:8.5px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+.fc-p{text-align:center}
+.fc-p i{font-style:normal;font-family:var(--num);font-size:12px;font-weight:800;border-radius:20px;padding:5px 11px;display:inline-block}
+.fc-p i.bom{background:var(--greenSoft);color:var(--green)}
+.fc-p i.meio{background:var(--primarySoft);color:var(--primaryDark)}
+.fc-p i.baixo{background:var(--amberSoft);color:var(--amber)}
+.fc-p i.nd{background:var(--bg);color:var(--faint)}
+.fc-obj{font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--purple);
+  background:var(--purpleSoft);border-radius:20px;padding:2px 8px}
+.fc-obj.sem{color:var(--faint);background:var(--greySoft)}
+.fc-aviso{margin-top:13px;border:1px solid #EAD9BD;background:var(--amberSoft);border-radius:10px;
+  padding:11px 14px;font-size:11.5px;color:var(--amber);line-height:1.5}
+
+.vazio{border:1px dashed var(--line);border-radius:12px;padding:34px 24px;text-align:center;color:var(--faint);font-size:12px;font-weight:600;line-height:1.7}
+.vazio b{color:var(--navy)}
+
+/* ---------- como está o período ---------- */
+.falta{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-bottom:14px}
+.falta-t{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:12px}
+.falta-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.falta-l li{display:flex;align-items:flex-start;gap:10px;font-size:11.5px;line-height:1.5;color:var(--sub)}
+.falta-l li b{color:var(--navy);font-weight:800}
+.pt{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.pt.at{background:var(--amber)}.pt.ok{background:var(--green)}
+.pt.nt{background:var(--grey)}.pt.pl{background:var(--purple)}.pt.az{background:var(--primary)}
+
+/* ---------- gavetas laterais ---------- */
+.backdrop{position:fixed;inset:0;background:rgba(19,27,40,.26);opacity:0;pointer-events:none;transition:opacity .25s;z-index:55}
+.backdrop.on{opacity:1;pointer-events:auto}
+.aba{position:fixed;top:50%;z-index:45;border:1px solid var(--line);background:#fff;font-family:inherit;
+  font-size:10.5px;font-weight:800;color:var(--sub);cursor:pointer;padding:15px 8px;letter-spacing:.05em;
+  writing-mode:vertical-rl;transform:translateY(-50%);transition:all .16s;
+  box-shadow:0 5px 18px -8px rgba(13,49,111,.32);display:flex;align-items:center;gap:9px}
+.aba:hover{color:var(--primaryDark);border-color:#C4D6F0;background:var(--primarySoft)}
+.aba-esq{left:0;border-left:0;border-radius:0 12px 12px 0}
+.aba-dir{right:0;border-right:0;border-radius:12px 0 0 12px}
+.aba .qt{writing-mode:horizontal-tb;background:var(--primarySoft);color:var(--primaryDark);border-radius:20px;
+  padding:1px 7px;font-family:var(--num);font-size:9.5px}
+.aba-dir .qt{background:var(--amberSoft);color:var(--amber)}
+@media(max-width:900px){.aba{display:none}}
+
+.gav{position:fixed;top:0;height:100vh;background:#fff;z-index:60;display:flex;flex-direction:column;
+  transition:transform .25s cubic-bezier(.4,0,.2,1);width:346px;max-width:92vw}
+.gav-esq{left:0;border-right:1px solid var(--line);box-shadow:10px 0 30px -14px rgba(13,49,111,.3);transform:translateX(-100%)}
+.gav-dir{right:0;border-left:1px solid var(--line);box-shadow:-10px 0 30px -14px rgba(13,49,111,.3);transform:translateX(100%);width:400px}
+.gav.on{transform:translateX(0)}
+.cal-top{padding:16px 20px 13px;border-bottom:1px solid var(--hair);display:flex;align-items:flex-start;gap:12px}
+.cal-t{font-size:13.5px;font-weight:800;color:var(--navy)}
+.cal-s{font-size:10.5px;color:var(--faint);font-weight:600;margin-top:3px;line-height:1.5}
+.cal-x{margin-left:auto;border:0;background:none;color:var(--faint);font-size:19px;cursor:pointer;padding:0 3px;line-height:1;flex-shrink:0}
+.cal-x:hover{color:var(--navy)}
+.cal-corpo{flex:1;overflow-y:auto;padding:16px 20px}
+.cal-faixa{display:flex;align-items:center;gap:8px;margin:0 0 9px}
+.cal-faixa b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.cal-faixa i{flex:1;height:1px;background:var(--hair)}
+.cal-faixa.plan b{color:var(--purple)}
+.grade-m{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px}
+.mes{border:1.5px solid var(--line);border-radius:10px;padding:9px 5px;text-align:center;cursor:pointer;
+  font-family:inherit;background:#fff;transition:all .14s;position:relative}
+.mes:hover{border-color:var(--primary)}
+.mes.sel{border-color:var(--primary);background:var(--primarySoft);box-shadow:0 0 0 2.5px rgba(19,81,180,.15)}
+.mes.futuro{border-style:dashed}
+.mes.futuro:hover{border-color:var(--purple)}
+.mes.futuro.sel{border-style:solid;border-color:var(--purple);background:var(--purpleSoft);box-shadow:0 0 0 2.5px rgba(91,74,168,.15)}
+.mes.travado{cursor:default;background:var(--greySoft);opacity:.72}
+.mes.travado:hover{border-color:var(--line)}
+.mes.hoje{box-shadow:inset 0 0 0 1.5px var(--amber)}
+.mes-n{font-size:11.5px;font-weight:800;color:var(--navy);text-transform:capitalize}
+.mes-e{width:7px;height:7px;border-radius:50%;margin:5px auto 0}
+.mes-e.ok{background:var(--green)}.mes-e.pa{background:var(--amber)}
+.mes-e.pl{background:var(--purple)}.mes-e.br{background:#D3D9E0}
+.mes-r{font-size:8px;font-weight:700;color:var(--faint);margin-top:3px;line-height:1.25}
+.cal-leg{display:grid;gap:5px;margin-top:2px;font-size:10px;color:var(--sub);font-weight:600}
+.cal-leg span{display:inline-flex;align-items:center;gap:7px}
+.cal-leg i{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.cal-sec{margin-top:18px;padding-top:15px;border-top:1px solid var(--hair)}
+.cal-sec-t{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
+.medidor{background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+.medidor-v{display:flex;align-items:baseline;gap:6px}
+.medidor-v b{font-family:var(--num);font-size:21px;font-weight:800;color:var(--navy);line-height:1}
+.medidor-v span{font-size:10.5px;color:var(--faint);font-weight:700}
+.medidor-b{height:5px;border-radius:3px;background:var(--hair);margin-top:9px;overflow:hidden}
+.medidor-b i{display:block;height:100%;border-radius:3px;background:var(--primary);transition:width .4s cubic-bezier(.4,0,.2,1)}
+.medidor-b.pronto i{background:var(--green)}
+.medidor-d{font-size:10.5px;color:var(--sub);font-weight:600;line-height:1.5;margin-top:9px}
+.req{display:grid;gap:7px}
+.req-i{display:flex;align-items:flex-start;gap:9px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.req-i.ok{background:var(--greenSoft);border-color:#B6DDBB}
+.req-m{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--faint);display:flex;
+  align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px}
+.req-i.ok .req-m{background:var(--green);color:#fff}
+.req-t{font-size:11.5px;font-weight:800;color:var(--navy);display:block;line-height:1.3}
+.req-d{font-size:9.5px;color:var(--faint);font-weight:600;display:block;margin-top:2px;line-height:1.4}
+.req-i.ok .req-d{color:#2C7A38}
+.req-l{font-size:10px;font-weight:800;color:var(--primary);text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap;margin-top:2px}
+.recomecar{border:0;background:none;font-family:inherit;font-size:9.5px;font-weight:700;color:var(--faint);
+  cursor:pointer;padding:4px;text-decoration:underline}
+.recomecar:hover{color:var(--coral)}
+.retrato{border:1px solid var(--line);border-radius:10px;padding:10px 13px;margin-bottom:7px;background:#fff}
+.retrato-t{font-size:11.5px;font-weight:800;color:var(--navy)}
+.retrato-d{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:2px;font-family:var(--num)}
+.cal-pe{padding:14px 20px;border-top:1px solid var(--hair);background:#FCFDFE;display:grid;gap:8px}
+
+/* ---------- gaveta da demanda reprimida ---------- */
+.dr-i{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px;background:#fff}
+.dr-e{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.35}
+.dr-cod{font-family:var(--num);font-size:9.5px;color:var(--faint);font-weight:600;margin-top:2px}
+.dr-lin{display:flex;align-items:center;gap:12px;margin-top:11px}
+.dr-lab{font-size:11px;font-weight:700;color:var(--sub);flex:1;line-height:1.35}
+.dr-lab small{display:block;font-size:9px;color:var(--faint);font-weight:600;margin-top:1px}
+.dr-val{width:104px;flex-shrink:0}
+.dr-val .cel{font-size:12.5px}
+.dr-val .cel.calc{border-color:#CBDCF6;background:#F7FAFF}
+.dr-nota{display:block;font-size:8px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--faint);text-align:center;margin-top:3px}
+.dr-nota.corr{color:var(--primary)}
+.dr-op{width:104px;flex-shrink:0;text-align:center;font-family:var(--num);font-size:14px;font-weight:800;
+  color:var(--navy);line-height:1}
+.dr-op small{display:block;font-family:Raleway;font-size:8.5px;font-weight:700;color:var(--faint);
+  text-transform:none;letter-spacing:0;margin-top:3px}
+.dr-sep{height:1px;background:var(--hair);margin:12px 0 0}
+.bt-x{border:0;background:none;color:var(--faint);font-size:15px;font-weight:800;cursor:pointer;padding:3px 6px;border-radius:6px;line-height:1;flex-shrink:0}
+.bt-x:hover{background:var(--coralSoft);color:var(--coral)}
+
+.btn{border:0;border-radius:9px;padding:10px 17px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn.pri{background:var(--primary);color:#fff}
+.btn.pri:hover{background:var(--primaryDark)}
+.btn.ger{background:var(--green);color:#fff}
+.btn.ger:hover{background:#0E6B1A}
+.btn.vazado{background:#fff;color:var(--primary);border:1px solid var(--line)}
+.btn.vazado:hover{border-color:var(--primary)}
+.btn.mini{padding:6px 11px;font-size:11px}
+.btn.larga{width:100%}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.feito{background:var(--greenSoft);color:var(--green);border:1px solid #B6DDBB}
+</style>
+</head>
+<body>
+<div class="stripe"><i></i><i></i><i></i></div>
+<header>
+  <div class="h-linha">
+    <div>
+      <div class="h-t">Entregas e meses da unidade</div>
+      <div class="h-s">Coordenação-Geral de Gestão de Pessoas · 2026</div>
+    </div>
+    <div class="h-dir">
+      <span class="pill proto">Protótipo</span>
+      <button class="bt-pgd" id="btPgd" onclick="alternarPgd()"></button>
+      <a class="h-back" href="./index.html">← Portal</a>
+    </div>
+  </div>
+  <div class="trilha">
+    <div class="tf on"><span class="tf-n">1</span>Entregas e meses</div>
+    <a class="tf" href="./jornada-gestor-planejamento.html"><span class="tf-n">2</span>Planejamento</a>
+    <a class="tf" href="./jornada-gestor-equipe.html"><span class="tf-n">3</span>Equipe e indicadores</a>
+  </div>
+  <div class="ctx" id="ctx"></div>
+</header>
+
+<div class="wrap" id="wrap"></div>
+
+<button class="aba aba-esq" id="abaEsq" onclick="abrirCal()"></button>
+<button class="aba aba-dir" id="abaDir" onclick="abrirFila()"></button>
+
+<div class="backdrop" id="backdrop" onclick="fecharGavetas()"></div>
+<aside class="gav gav-esq" id="cal" aria-label="Meses da unidade"></aside>
+<aside class="gav gav-dir" id="fila" aria-label="Demanda reprimida"></aside>
+<div class="pop" id="pop" role="dialog"></div>
+
+<script>
+/* ============================================================
+   ENTREGAS E MESES — visão do gestor de unidade.
+
+   COMO A TELA SE ORGANIZA (revisão de 31/07)
+   Uma tabela só. Tudo o que era bloco separado virou camada
+   dela ou gaveta lateral:
+     · COMO cada entrega é medida — coluna da própria tabela,
+       recolhida atrás do botão da balança (⚖);
+     · QUANTO foi ou será em cada mês — o corpo da tabela, e o
+       que a tela mostra sempre;
+     · POR QUE não fechou — pontinho discreto na célula onde a
+       lacuna nasce, que abre um balãozinho com as etiquetas;
+     · QUAIS meses — gaveta da ESQUERDA;
+     · DEMANDA REPRIMIDA — gaveta da DIREITA.
+
+   TOM
+   Nada de "% da meta" em vermelho embaixo de cada campo: o
+   atingimento vira uma micro-barra de 3px, sem número, com o
+   detalhe no title. Coral fica reservado para ação destrutiva
+   (remover entrega). Estado do trabalho usa cinza / azul /
+   verde / âmbar.
+
+   VISUALIZAÇÃO
+   A tela não impõe mais o que o gestor deve fazer. Os segmentos
+   Tudo / Planejar / Em curso / Registrar filtram as colunas, e
+   o cabeçalho de cada mês é clicável para trocar entre meta e
+   realizado naquele mês.
+
+   DEMANDA REPRIMIDA
+   O gap principal é meta − realizado, que já está na tabela e não
+   custa campo nenhum: numa área movida a demanda, a meta mensal é
+   basicamente o que se espera que chegue.
+
+   O estoque tem DOIS campos, e não um, porque o campo único do
+   sistema atual não deixa claro se é o de antes ou o de agora:
+     · "Já estava acumulado" — quando o período começou;
+     · "Acumulado hoje"      — agora.
+   O segundo é CALCULADO (já estava + gerada no período) e mostrado
+   preenchido; o gestor só corrige se a conta não bater com a
+   realidade. É ajuda, não mais um campo obrigatório.
+
+   VERSÃO PGD (revisão de 01/08)
+   O botão no topo liga o que só o PGD exige. Duas coisas mudaram
+   depois de ver o Petrvs de verdade:
+
+     · DATAS NÃO SE DIGITAM. O plano de entregas do PGD já tem
+       vigência; escolher o ciclo resolve início e fim de todas
+       as entregas de uma vez. Entrega contínua tem por prazo o
+       último dia da vigência — recomendação da própria cartilha
+       do MGI.
+     · O OBJETIVO CHEGA SUGERIDO, com o motivo à mostra: ou
+       porque outra entrega do mesmo grupo de processos já foi
+       vinculada, ou por quantas palavras-chave batem. Aceitar é
+       um clique, e dá para resolver todas de uma vez. Nada é
+       decidido às escondidas.
+
+   O FECHAMENTO soma tudo o que aconteceu nos meses do ciclo,
+   marcados no calendário ou não — é essa consolidação que o PGD
+   avalia no fim do plano. Percentual não se soma: vira média.
+
+   Abrir com ?pgd=1 já liga o botão — é o modelo 05 da régua.
+
+   Números ilustrativos.
+   ============================================================ */
+
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const ANO = 2026;
+const MES_ATUAL = 6;        // julho
+const MIN_MESES_DFT = 3;
+
+/* ------------------------------------------------------------
+   ETIQUETAS DE CAUSA — lista provisória, FEITA PARA SER TROCADA.
+   Pedro ainda vai levantar as que os gestores usam de verdade.
+   Mexer aqui basta: o balãozinho se ajusta sozinho à quantidade.
+   ------------------------------------------------------------ */
+const MOTIVOS = [
+  "faltou gente",
+  "sistema fora do ar",
+  "prioridade mudou",
+  "demanda cresceu",
+  "travou em outra área",
+  "faltou informação",
+];
+
+const TIPOS = {
+  qtd: {rot:"quantidade",      dica:"quantas vezes no mês", ph:"0", suf:"", acumula:true},
+  pct: {rot:"percentual",      dica:"percentual no mês",    ph:"0", suf:"%", acumula:false},
+  sn:  {rot:"ocorreu sim/não", dica:"aconteceu ou não",     ph:"—", suf:"",  acumula:false},
+};
+
+/* ------------------------------------------------------------
+   CICLO DO PGD
+   Datas por entrega deixaram de ser digitadas: o plano de
+   entregas do PGD já tem vigência, e o prazo de entrega contínua
+   é o último dia dessa vigência — é o que a própria cartilha do
+   MGI recomenda. Escolher o ciclo resolve as duas datas de todas
+   as entregas de uma vez.
+   ------------------------------------------------------------ */
+const CICLOS = [
+  {id:"2026-1", r:"1º semestre de 2026", ini:0,  fim:5},
+  {id:"2026-2", r:"2º semestre de 2026", ini:6,  fim:11},
+  {id:"2026",   r:"Ano de 2026",         ini:0,  fim:11},
+];
+
+/* ------------------------------------------------------------
+   OBJETIVOS DO PEI — estrutura igual à do Petrvs (eixo → objetivo).
+   `termos` é o que permite o vínculo automático: são as palavras
+   que, aparecendo no nome da entrega, indicam o objetivo. Lista
+   provisória, feita para ser trocada pelo PEI real do órgão —
+   que já está cadastrado no Petrvs.
+   ------------------------------------------------------------ */
+const OBJETIVOS = [
+  {id:"o1", eixo:"Atendimento", t:"Reduzir o tempo de resposta aos pedidos dos servidores",
+   termos:"atendimento solicitacao central resposta demanda prazo cadastrais siape"},
+  {id:"o2", eixo:"Direitos",    t:"Assegurar a concessão tempestiva de direitos e benefícios",
+   termos:"aposentadoria pensao beneficio abono permanencia certidao contribuicao concessao provimento movimentacao ato boletim exercicios pagamento"},
+  {id:"o3", eixo:"Saúde",       t:"Ampliar a atenção à saúde do servidor",
+   termos:"saude pericia medica afastamento tratamento licenca siass"},
+  {id:"o4", eixo:"Pessoas",     t:"Desenvolver competências alinhadas à estratégia",
+   termos:"capacitacao desenvolvimento competencia plano anual acao desempenho estagio probatorio avaliacao"},
+  {id:"o5", eixo:"Governança",  t:"Fortalecer a governança e a integridade",
+   termos:"governanca controle integridade norma normativo nota tecnica legislacao indicador monitoramento acumulacao conformidade"},
+];
+const objDe = id => OBJETIVOS.find(o=>o.id===id) || null;
+
+const CATALOGO = [
+  {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", k:"Aposentadoria"},
+  {c:"11420047", e:"Emissão de certidão de tempo de contribuição", m:"Gestão de Pessoas", k:"Aposentadoria"},
+  {c:"11420052", e:"Concessão de pensão civil", m:"Gestão de Pessoas", k:"Benefícios"},
+  {c:"11420068", e:"Análise de acumulação de cargos", m:"Gestão de Pessoas", k:"Conformidade"},
+  {c:"11420073", e:"Instrução de processo de licença capacitação", m:"Gestão de Pessoas", k:"Desenvolvimento"},
+  {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", k:"Perícia"},
+  {c:"11420094", e:"Registro de afastamento para tratamento de saúde", m:"Saúde do Servidor", k:"Afastamentos"},
+  {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", k:"Planejamento"},
+  {c:"11420115", e:"Execução de ação de desenvolvimento", m:"Desenvolvimento de Pessoas", k:"Capacitação"},
+  {c:"11420127", e:"Avaliação de desempenho em estágio probatório", m:"Gestão de Pessoas", k:"Desempenho"},
+  {c:"11420133", e:"Movimentação de servidor entre unidades", m:"Gestão de Pessoas", k:"Movimentação"},
+  {c:"11420146", e:"Provimento de cargo efetivo por concurso", m:"Gestão de Pessoas", k:"Provimento"},
+  {c:"11420159", e:"Cálculo de exercícios anteriores", m:"Gestão de Pessoas", k:"Pagamento"},
+  {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", k:"Controle"},
+  {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", k:"Central"},
+  {c:"11420185", e:"Publicação de ato de pessoal no boletim", m:"Gestão de Pessoas", k:"Atos"},
+  {c:"11420193", e:"Manutenção de dados cadastrais no SIAPE", m:"Gestão de Pessoas", k:"Cadastro"},
+  {c:"11420207", e:"Instrução de processo de abono de permanência", m:"Gestão de Pessoas", k:"Aposentadoria"},
+  {c:"11420214", e:"Nota técnica sobre legislação de pessoal", m:"Governança", k:"Normativo"},
+  {c:"11420228", e:"Monitoramento de indicadores de gestão de pessoas", m:"Governança", k:"Monitoramento"},
+];
+
+/* estado compartilhado com as outras telas da jornada */
+const CHAVE_JORNADA = "jornada-gestor-mgi";
+function lerPassos(){ try{ return JSON.parse(localStorage.getItem(CHAVE_JORNADA)||"{}"); }catch(e){ return {}; } }
+function gravarPasso(k,v){
+  try{ const j=lerPassos(); j[k]=v; localStorage.setItem(CHAVE_JORNADA, JSON.stringify(j)); }catch(e){}
+}
+/* O vínculo entrega→objetivo é o MESMO dado nesta tela e na de
+   planejamento — não duas cópias que divergem na primeira edição.
+   Por isso ele mora no estado compartilhado, e as duas telas
+   gravam e leem daqui. O ciclo vai junto porque resolve as datas. */
+function gravarPlanejamento(){
+  const objs={}; est.entregas.forEach(e=>{ if(e.obj) objs[e.c]=e.obj; });
+  gravarPasso("planejamento", {ciclo:est.ciclo, objs});
+}
+function lerPlanejamento(){
+  const p = lerPassos().planejamento; if(!p) return;
+  if(p.ciclo && CICLOS.some(c=>c.id===p.ciclo)) est.ciclo = p.ciclo;
+  const objs = p.objs||{};
+  est.entregas.forEach(e=>{ if(objs[e.c] && objDe(objs[e.c])) e.obj = objs[e.c]; });
+}
+function limparPassos(){ try{ localStorage.removeItem(CHAVE_JORNADA); }catch(e){} }
+function limparPasso(k){ try{ const j=lerPassos(); delete j[k]; localStorage.setItem(CHAVE_JORNADA, JSON.stringify(j)); }catch(e){} }
+
+const est = {
+  unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
+  pgd: new URLSearchParams(location.search).get("pgd")==="1",
+  ciclo:"2026-1",       // vigência do plano de entregas no PGD; resolve as datas de todas
+  entregas:[
+    {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", tipo:"qtd", obj:null},
+    {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", tipo:"qtd", obj:null},
+    {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", tipo:"pct", obj:null},
+    {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", tipo:"sn", obj:null},
+    {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", tipo:"qtd", obj:null},
+  ],
+  meta:new Map(),        // "cod|mes" → planejado
+  real:new Map(),        // "cod|mes" → realizado
+  antes:new Map(),       // cod → o que já estava acumulado
+  agora:new Map(),       // cod → correção manual do calculado (só se o gestor discordar)
+  causas:new Map(),      // "cod|mes" → array de etiquetas
+  mesesSel:new Set([3,4,5]),
+  modo:new Map(),        // mes → "meta" | "real"  (troca manual pelo cabeçalho)
+  visao:"tudo",          // tudo | planejar | curso | registrar
+  medidaAberta:false, buscaAberta:false, verLacunas:false,
+  gaveta:null,           // null | "cal" | "fila"
+  pop:null,              // {cod, i} do balãozinho aberto
+  termo:"", macro:"",
+  retratos:[],
+};
+
+(function semear(){
+  const base = {
+    "11420031":{meta:[40,40,40,40,40,40,40,40,40,40,40,40], real:[38,41,35,36,40,33]},
+    "11420089":{meta:[110,110,110,120,120,120,120,120,120,120,120,120], real:[112,98,120,105,120,118]},
+    "11420108":{meta:[100,100,100,100,100,100,100,100,100,100,100,100], real:[100,100,80,100,90,100]},
+    "11420164":{meta:["sim","sim","sim","sim","sim","sim","sim","sim","sim","sim","sim","sim"], real:["sim","sim","nao","sim","nao","sim"]},
+    "11420178":{meta:[700,700,700,700,700,700,700,700,700,700,700,700], real:[640,712,688,655,700,672]},
+  };
+  for(const [cod,v] of Object.entries(base)){
+    v.meta.forEach((m,i)=>{ if(m!=null) est.meta.set(cod+"|"+i, m); });
+    (v.real||[]).forEach((r,i)=>{ if(r!=null) est.real.set(cod+"|"+i, r); });
+  }
+  est.antes.set("11420031", 12);
+  est.antes.set("11420089", 30);
+  est.antes.set("11420178", 180);
+  est.causas.set("11420178|0", ["faltou gente"]);
+  est.retratos.push({id:1, rot:"DFT jan–mar/"+ANO, meses:[0,1,2], em:"12/04/"+ANO, nec:"5,20", qtd:5, pessoas:8});
+})();
+
+const $ = id => document.getElementById(id);
+const chave = (c,i) => c+"|"+i;
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const fmt = n => (n==null||isNaN(n)) ? "—" : Math.round(n).toLocaleString("pt-BR");
+const cheio = v => v!==undefined && v!=="" && v!==null;
+const temMeta = (c,i) => cheio(est.meta.get(chave(c,i)));
+const temReal = (c,i) => cheio(est.real.get(chave(c,i)));
+const mesesEmDft = () => new Set(est.retratos.flatMap(r=>r.meses));
+const acumula = e => TIPOS[e.tipo].acumula;
+
+function horizonte(i){
+  if(mesesEmDft().has(i)) return "fechado";
+  if(i < MES_ATUAL) return "passado";
+  if(i === MES_ATUAL) return "corrente";
+  return "futuro";
+}
+
+/* o que a coluna pede: meta ou realizado. O horizonte dá o padrão,
+   o gestor troca clicando no cabeçalho do mês. */
+function modoDe(i){
+  const m=est.modo.get(i);
+  if(m) return m;
+  return horizonte(i)==="futuro" ? "meta" : "real";
+}
+function rotuloModo(i){
+  const m=modoDe(i);
+  if(m==="meta") return {txt:"meta", cls:"hz-plan"};
+  return horizonte(i)==="corrente" ? {txt:"em curso", cls:"hz-curso"} : {txt:"realizado", cls:"hz-reg"};
+}
+
+function statusMes(i){
+  if(horizonte(i)==="fechado") return {k:"ok", r:"fechado"};
+  if(!est.entregas.length) return {k:"br", r:"em branco"};
+  const n=est.entregas.length;
+  if(horizonte(i)==="futuro"){
+    const p=est.entregas.filter(e=>temMeta(e.c,i)).length;
+    if(!p) return {k:"br", r:"sem plano"};
+    return p<n ? {k:"pl", r:p+" de "+n} : {k:"pl", r:"planejado"};
+  }
+  const p=est.entregas.filter(e=>temReal(e.c,i)).length;
+  if(!p) return {k:"br", r: horizonte(i)==="corrente" ? "em curso" : "sem registro"};
+  return p<n ? {k:"pa", r:p+" de "+n} : {k:"ok", r:"registrado"};
+}
+
+const mesesFechaveis = () => MESES.map((_,i)=>i)
+  .filter(i => i<MES_ATUAL && est.entregas.length && est.entregas.every(e=>temReal(e.c,i)));
+function mesesIneditos(){ const u=mesesEmDft(); return mesesFechaveis().filter(i=>!u.has(i)); }
+const mesesPlanejados = () => MESES.map((_,i)=>i)
+  .filter(i => horizonte(i)==="futuro" && est.entregas.length && est.entregas.every(e=>temMeta(e.c,i)));
+
+function atingimento(e,i){
+  const m=est.meta.get(chave(e.c,i)), r=est.real.get(chave(e.c,i));
+  if(!cheio(m)||!cheio(r)) return null;
+  if(e.tipo==="sn") return (r==="sim") ? 100 : 0;
+  const mm=+m; if(!mm) return null;
+  return Math.round(100*(+r)/mm);
+}
+/* cores da micro-barra — nenhuma delas é coral. Coral só destrói. */
+const faixaAt = p => p==null ? "" : p>=100 ? "bom" : p>=70 ? "meio" : "baixo";
+
+/* ============================================================
+   CICLO DO PGD E OBJETIVO AUTOMÁTICO
+   ============================================================ */
+const cicloAtual = () => CICLOS.find(c=>c.id===est.ciclo) || CICLOS[0];
+const ultimoDia = m => new Date(ANO, m+1, 0).getDate();
+/* as datas de TODA entrega saem do ciclo — ninguém digita data */
+function datasDoCiclo(){
+  const c=cicloAtual();
+  return {ini:`01/${String(c.ini+1).padStart(2,"0")}/${ANO}`,
+          fim:`${ultimoDia(c.fim)}/${String(c.fim+1).padStart(2,"0")}/${ANO}`};
+}
+const mesesDoCiclo = () => { const c=cicloAtual(); const o=[]; for(let i=c.ini;i<=c.fim;i++) o.push(i); return o; };
+
+/* Sugestão do objetivo, em duas camadas e nessa ordem:
+     1. MEMÓRIA — se outra entrega do mesmo grupo de processos já
+        foi vinculada, é quase certo que esta vai no mesmo lugar;
+     2. TERMOS — quantas palavras-chave do objetivo aparecem no
+        nome da entrega.
+   A confiança fica à mostra: o gestor aceita ou troca, nunca
+   descobre depois que algo foi decidido por ele às escondidas. */
+function sugerirObjetivo(e){
+  const irmao = est.entregas.find(x=>x.c!==e.c && x.m===e.m && x.obj);
+  if(irmao) return {id:irmao.obj, via:`outra entrega de ${e.m}`, forte:true};
+  const nome = norm(e.e), macro = norm(e.m);
+  let melhor=null, max=0, viaMacro=false;
+  for(const o of OBJETIVOS){
+    const ts = o.termos.split(" ").filter(Boolean);
+    const pNome  = ts.filter(t=>nome.includes(t)).length;
+    const pMacro = ts.filter(t=>macro.includes(t)).length;
+    /* o grupo de processos pesa o dobro: é a classificação oficial da
+       entrega, sinal mais confiável que uma palavra solta do título.
+       Sem esse peso, "resposta a demanda de órgão de CONTROLE" ia
+       parar em "tempo de RESPOSTA" só por empate de contagem. */
+    const p = pNome + pMacro*2;
+    if(p>max){ max=p; melhor=o; viaMacro=pMacro>0; }
+  }
+  if(!melhor || !max) return null;
+  const via = viaMacro ? `grupo de processos`
+            : `${max} ${max===1?"termo":"termos"} em comum`;
+  return {id:melhor.id, via, forte:max>=3};
+}
+const semObjetivo = () => est.entregas.filter(e=>!e.obj);
+const sugeriveis = () => semObjetivo().filter(e=>sugerirObjetivo(e));
+
+function vincularSugeridas(){
+  /* em duas passadas: as fortes primeiro, para que a memória
+     do grupo de processos ajude as fracas na segunda volta */
+  for(const passo of [true,false])
+    for(const e of est.entregas){
+      if(e.obj) continue;
+      const s=sugerirObjetivo(e);
+      if(s && s.forte===passo) e.obj=s.id;
+    }
+  gravarPlanejamento();
+  render();
+}
+
+/* fechamento do ciclo: soma tudo o que aconteceu nos meses do
+   ciclo, esteja ou não marcado no calendário */
+function fechamentoCiclo(e){
+  let meta=0, real=0, mm=0, mr=0;
+  for(const i of mesesDoCiclo()){
+    const m=est.meta.get(chave(e.c,i)), r=est.real.get(chave(e.c,i));
+    if(e.tipo==="sn"){
+      if(cheio(m)){ meta+= m==="sim"?1:0; mm++; }
+      if(cheio(r)){ real+= r==="sim"?1:0; mr++; }
+      continue;
+    }
+    if(cheio(m)){ meta+=+m; mm++; }
+    if(cheio(r)){ real+=+r; mr++; }
+  }
+  /* percentual não se soma: a leitura do ciclo é a média dos meses */
+  if(e.tipo==="pct"){
+    return {meta: mm?meta/mm:null, real: mr?real/mr:null, mm, mr, media:true};
+  }
+  return {meta: mm?meta:null, real: mr?real:null, mm, mr, media:false};
+}
+
+/* ============================================================
+   DEMANDA REPRIMIDA
+   gerada no período = Σ (meta − realizado), só nas entregas que
+   acumulam. Acumulado hoje = já estava + gerada, salvo correção.
+   ============================================================ */
+function geradaNoPeriodo(e){
+  if(!acumula(e)) return null;
+  let s=0, meses=0;
+  for(let i=0;i<MESES.length;i++){
+    const m=est.meta.get(chave(e.c,i)), r=est.real.get(chave(e.c,i));
+    if(!cheio(m)||!cheio(r)) continue;
+    s += (+m)-(+r); meses++;
+  }
+  return meses ? {s, meses} : {s:0, meses:0};
+}
+function acumuladoHoje(e){
+  const g=geradaNoPeriodo(e);
+  if(!g) return null;
+  const jaEstava = +est.antes.get(e.c) || 0;
+  const calc = jaEstava + g.s;
+  const corr = est.agora.get(e.c);
+  return cheio(corr) ? {v:+corr, calc, corrigido:true} : {v:calc, calc, corrigido:false};
+}
+
+/* lacunas: onde o realizado ficou abaixo da meta.
+   Só nos meses que o gestor marcou — o convite fala do período que
+   ele está olhando, não do ano inteiro. */
+function lacunas(){
+  const out=[];
+  for(const e of est.entregas){
+    for(const i of est.mesesSel){
+      if(modoDe(i)==="meta") continue;
+      const m=est.meta.get(chave(e.c,i)), r=est.real.get(chave(e.c,i));
+      if(!cheio(m)||!cheio(r)) continue;
+      if(e.tipo==="sn"){ if(m==="sim"&&r==="nao") out.push({e,i,falta:null}); continue; }
+      const d=(+m)-(+r);
+      if(d>0) out.push({e,i,falta:d});
+    }
+  }
+  return out.sort((a,b)=>a.i-b.i || (b.falta||0)-(a.falta||0));
+}
+const causasDe = (c,i) => est.causas.get(chave(c,i)) || [];
+const temLacuna = (e,i) => {
+  if(modoDe(i)==="meta") return false;
+  const m=est.meta.get(chave(e.c,i)), r=est.real.get(chave(e.c,i));
+  if(!cheio(m)||!cheio(r)) return false;
+  if(e.tipo==="sn") return m==="sim" && r==="nao";
+  return (+m)-(+r) > 0;
+};
+const semCausa = () => lacunas().filter(x=>!causasDe(x.e.c,x.i).length);
+
+/* meses visíveis: os marcados no calendário, filtrados pelo segmento */
+function mesesVisiveis(){
+  const sel=[...est.mesesSel].sort((a,b)=>a-b);
+  if(est.visao==="tudo") return sel;
+  return sel.filter(i=>{
+    const h=horizonte(i);
+    if(est.visao==="planejar")  return h==="futuro";
+    if(est.visao==="curso")     return h==="corrente";
+    return h==="passado" || h==="fechado";
+  });
+}
+function contaVisao(v){
+  const sel=[...est.mesesSel];
+  if(v==="tudo") return sel.length;
+  return sel.filter(i=>{
+    const h=horizonte(i);
+    if(v==="planejar") return h==="futuro";
+    if(v==="curso")    return h==="corrente";
+    return h==="passado" || h==="fechado";
+  }).length;
+}
+
+function pendencias(){
+  const sel=[...est.mesesSel].sort((a,b)=>a-b);
+  let registrar=0, planejar=0; const porMes=[], prontos=[];
+  for(const i of sel){
+    const plan = modoDe(i)==="meta";
+    const faltam = est.entregas.filter(e => plan ? !temMeta(e.c,i) : !temReal(e.c,i)).length;
+    if(plan) planejar+=faltam; else registrar+=faltam;
+    if(faltam) porMes.push({i, faltam, plan}); else prontos.push({i, plan});
+  }
+  return {registrar, planejar, porMes, prontos, sel};
+}
+
+/* Dois passos, não três: pessoas e indicadores viraram uma tela só
+   (decidido em 31/07). O piso de 3 meses registrados continua. */
+function requisitos(){
+  const ined=mesesIneditos(), j=lerPassos();
+  return [
+    {ok: ined.length>=MIN_MESES_DFT, t:`${MIN_MESES_DFT} meses registrados`,
+     d: ined.length>=MIN_MESES_DFT
+        ? `${ined.map(i=>MESES[i]).join(", ")} — encerrados e ainda não usados`
+        : `${ined.length} de ${MIN_MESES_DFT} — só mês já encerrado conta`},
+    {ok: !!j.equipe, t:"Equipe e indicadores",
+     d: j.equipe ? `${j.equipe.qtd} pessoas · ${j.equipe.equivalente} equivalente · ${j.equipe.confirmados} de ${j.equipe.total} confirmados`
+                 : "ainda não confirmados",
+     href:"./jornada-gestor-equipe.html"},
+  ];
+}
+const tudoPronto = () => requisitos().every(r=>r.ok);
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){ renderPgd(); renderCtx(); renderCorpo(); renderCal(); renderFila(); renderAbas(); }
+
+function renderPgd(){
+  const b=$("btPgd");
+  b.className = "bt-pgd" + (est.pgd?" on":"");
+  b.innerHTML = `<i></i>${est.pgd?"Campos do PGD ligados":"Completar para o PGD"}`;
+}
+
+function renderCtx(){
+  const p=pendencias(), n=est.mesesSel.size;
+  $("ctx").innerHTML = `
+    <span class="ctx-u">${est.unidade.s}</span>
+    <span class="ctx-p">${est.unidade.pai}</span>
+    <div class="ctx-dir">
+      ${p.registrar?`<span class="chip pend"><b>${p.registrar}</b> a registrar</span>`:``}
+      ${p.planejar?`<span class="chip plan"><b>${p.planejar}</b> a planejar</span>`:``}
+      <span class="chip neutro"><b>${est.entregas.length}</b> entregas</span>
+      <button class="bt-cal" onclick="abrirCal()">Meses<span class="qt">${n}</span></button>
+    </div>`;
+}
+
+function renderAbas(){
+  const n=est.mesesSel.size, q=est.entregas.filter(acumula).length;
+  $("abaEsq").innerHTML = `Meses <span class="qt">${n}</span>`;
+  $("abaDir").innerHTML = q ? `Demanda reprimida <span class="qt">${q}</span>` : `Demanda reprimida`;
+  $("abaDir").style.display = q ? "" : "none";
+}
+
+function renderCorpo(){
+  $("wrap").innerHTML = blocoGrade() + blocoFechamento() + blocoPeriodo();
+  if(est.buscaAberta){ const c=$("campoBusca"); if(c){ c.focus(); c.setSelectionRange(c.value.length,c.value.length); } }
+}
+
+/* ---------- a tabela, que agora é a tela inteira ---------- */
+function blocoGrade(){
+  const sel=mesesVisiveis();
+  const cabeca = `
+    <div class="cab">
+      <div><div class="tit">Entregas da unidade</div>
+        <div class="sub">${textoDeApoio(sel)}</div></div>
+      <div class="cab-dir">
+        ${barraVisao()}
+        <button class="bt-bal ${est.medidaAberta?"on":""}" onclick="alternarMedida()"
+          title="mostrar ou esconder como cada entrega é medida">⚖<span>medida</span></button>
+      </div>
+    </div>`;
+
+  if(!est.mesesSel.size){
+    return `<div class="bloco">${cabeca}
+      <div class="vazio">Abra os <b>meses</b> na aba da esquerda e marque os que quer trabalhar.<br>
+        Mês que já passou pede o realizado; mês por vir pede a meta.</div>
+      ${rodapeTabela()}</div>`;
+  }
+  if(!est.entregas.length){
+    return `<div class="bloco">${cabeca}
+      <div class="vazio">A unidade ainda não tem entregas.<br>Use <b>+ entregas</b> abaixo para trazer do catálogo.</div>
+      ${rodapeTabela()}</div>`;
+  }
+  if(!sel.length){
+    const nome = {planejar:"para planejar", curso:"em curso", registrar:"para registrar"}[est.visao];
+    return `<div class="bloco">${cabeca}
+      <div class="vazio">Nenhum dos meses marcados está <b>${nome}</b>.<br>
+        Volte para <b>Tudo</b> ou marque outros meses na aba da esquerda.</div>
+      ${rodapeTabela()}</div>`;
+  }
+
+  return `<div class="bloco">${cabeca}
+    ${est.pgd?faixaCiclo():``}
+    <div class="rolagem"><table class="gq">
+      <thead><tr>
+        <th>Entrega</th>
+        ${est.medidaAberta?`<th class="med">Como é medida</th>`:``}
+        ${sel.map(i=>{
+          const r=rotuloModo(i);
+          return `<th class="mes"><button onclick="trocarModo(${i})"
+            title="clique para alternar entre meta e realizado em ${MESES[i]}">
+            <b>${MESES[i]}</b><em class="${r.cls}">${r.txt}</em>
+            <span class="tro">⇄ trocar</span></button></th>`;
+        }).join("")}
+      </tr></thead>
+      <tbody>${est.entregas.map(e=>linha(e,sel)).join("")}</tbody>
+    </table></div>
+    ${rodapeTabela()}
+  </div>`;
+}
+
+/* uma faixa só, com o que o PGD precisa saber do plano inteiro:
+   a vigência (que resolve todas as datas) e quantos objetivos
+   ainda faltam vincular */
+function faixaCiclo(){
+  const d=datasDoCiclo(), s=sugeriveis().length, f=semObjetivo().length;
+  return `<div class="faixa-pgd">
+    <div class="fp-i"><label class="fp-l">Ciclo do plano no PGD</label>
+      <select class="fp-s" onchange="setCiclo(this.value)">
+        ${CICLOS.map(c=>`<option value="${c.id}" ${est.ciclo===c.id?"selected":""}>${c.r}</option>`).join("")}
+      </select></div>
+    <div class="fp-i"><label class="fp-l">Datas de todas as entregas</label>
+      <div class="fp-v">${d.ini} → ${d.fim}<small>saem do ciclo, ninguém digita</small></div></div>
+    <div class="fp-dir">
+      ${f ? `<span class="chip plan"><b>${f}</b> sem objetivo</span>` : `<span class="chip ok">objetivos vinculados</span>`}
+      ${s ? `<button class="btn pri mini" onclick="vincularSugeridas()">vincular ${s} ${s===1?"sugerida":"sugeridas"}</button>` : ``}
+    </div>
+  </div>`;
+}
+
+function textoDeApoio(sel){
+  if(!est.mesesSel.size) return `Escolha os meses e preencha o que já saiu ou o que se espera.`;
+  const temPlan=sel.some(i=>modoDe(i)==="meta"), temReg=sel.some(i=>modoDe(i)!=="meta");
+  if(temPlan&&temReg) return `Meses por vir pedem a meta; meses encerrados pedem o realizado. O cabeçalho de cada mês diz qual é qual — e pode ser trocado com um clique.`;
+  if(temPlan) return `Defina a meta de cada entrega nos meses à frente.`;
+  return `A meta aparece acima do campo e você registra o que saiu.`;
+}
+
+function barraVisao(){
+  const itens=[["tudo","Tudo"],["planejar","Planejar"],["curso","Em curso"],["registrar","Registrar"]];
+  return `<div class="segs">${itens.map(([k,r])=>{
+    const n=contaVisao(k), vazio = k!=="tudo" && n===0;
+    return `<button class="seg ${est.visao===k?"on":""}" ${vazio?"disabled":""}
+      onclick="setVisao('${k}')">${r}${n?`<em>${n}</em>`:``}</button>`;
+  }).join("")}</div>`;
+}
+
+function linha(e,sel){
+  const medida = est.medidaAberta
+    ? `<td class="med"><div class="med-cel">
+        <select onchange="setTipo('${e.c}',this.value)" title="${TIPOS[e.tipo].dica}">
+          ${Object.entries(TIPOS).map(([k,t])=>
+            `<option value="${k}" ${e.tipo===k?"selected":""}>${t.rot}</option>`).join("")}
+        </select>
+        <button class="bt-x" onclick="remover('${e.c}')" title="tirar da unidade">×</button>
+      </div></td>`
+    : ``;
+  const pgdLinha = (est.medidaAberta && est.pgd)
+    ? `<tr class="pgd"><td colspan="${2+sel.length}">${caixaObjetivo(e)}</td></tr>`
+    : ``;
+  return `<tr>
+    <td><div class="e-nome">${e.e}</div>
+      <div class="e-meta"><span class="e-cod">${e.c}</span>
+        ${est.medidaAberta?`<span>${e.m}</span>`:`<span class="selo">⚖ ${TIPOS[e.tipo].rot}</span>`}</div></td>
+    ${medida}
+    ${sel.map(i=>`<td class="td-mes">${celula(e,i)}</td>`).join("")}
+  </tr>${pgdLinha}`;
+}
+
+/* O objetivo do PEI não se pergunta em branco: a tela chega com a
+   sugestão pronta e o porquê dela ao lado. Um clique aceita. */
+function caixaObjetivo(e){
+  if(e.obj){
+    const o=objDe(e.obj);
+    return `<div class="ce-cx ok">
+      <label class="ce-l">Objetivo estratégico</label>
+      <div class="obj-l"><span class="obj-v">✓ ${o.t}</span>
+        <span class="obj-eixo">${o.eixo}</span>
+        <button class="obj-b" onclick="limparObj('${e.c}')">trocar</button></div>
+    </div>`;
+  }
+  const s=sugerirObjetivo(e);
+  if(s){
+    const o=objDe(s.id);
+    return `<div class="ce-cx sug">
+      <label class="ce-l">Objetivo estratégico · sugerido</label>
+      <div class="obj-l"><span class="obj-v sug">${o.t}</span>
+        <span class="obj-eixo ${s.forte?"forte":""}">${s.via}</span>
+        <button class="obj-b usar" onclick="setObj('${e.c}','${s.id}')">usar</button>
+        ${seletorObj(e,"outro")}</div>
+    </div>`;
+  }
+  return `<div class="ce-cx">
+    <label class="ce-l">Objetivo estratégico</label>
+    <div class="obj-l"><span class="obj-v vazio">sem sugestão — escolha</span>${seletorObj(e,"escolher")}</div>
+  </div>`;
+}
+
+function seletorObj(e,rot){
+  return `<select class="obj-s" onchange="setObj('${e.c}',this.value)">
+    <option value="">${rot}…</option>
+    ${OBJETIVOS.map(o=>`<option value="${o.id}" ${e.obj===o.id?"selected":""}>${o.eixo} · ${o.t}</option>`).join("")}
+  </select>`;
+}
+
+const celula = (e,i) => modoDe(i)==="meta" ? celulaPlano(e,i) : celulaRegistro(e,i);
+
+function celulaPlano(e,i){
+  const v=est.meta.get(chave(e.c,i));
+  const corpo = e.tipo==="sn"
+    ? `<button class="cel-sn plano ${v==="sim"?"sim":v==="nao"?"nao":""}" onclick="girarSN('${e.c}',${i},'meta')">
+        ${v==="sim"?"prevista":v==="nao"?"não prevista":"—"}</button>`
+    : `<input type="number" class="cel plano ${cheio(v)?"":"vazio"}" min="0" placeholder="${TIPOS[e.tipo].ph}"
+        value="${cheio(v)?v:""}" title="meta de ${MESES[i]}" oninput="setValor('meta','${e.c}',${i},this.value,this)">`;
+  return corpo + `<div class="pe" id="pe${e.c}_${i}"></div>`;
+}
+
+function celulaRegistro(e,i){
+  const k=chave(e.c,i), m=est.meta.get(k), r=est.real.get(k);
+  const suf=TIPOS[e.tipo].suf;
+  const linhaMeta = cheio(m)
+    ? `<span class="cel-meta">meta ${e.tipo==="sn" ? (m==="sim"?"prevista":"não prevista") : m+suf}</span>`
+    : `<span class="cel-meta" style="opacity:.5">sem meta</span>`;
+  const corpo = e.tipo==="sn"
+    ? `<button class="cel-sn ${r==="sim"?"sim":r==="nao"?"nao":""}" onclick="girarSN('${e.c}',${i},'real')">
+        ${r==="sim"?"sim":r==="nao"?"não":"—"}</button>`
+    : `<input type="number" class="cel ${cheio(r)?"":"vazio"}" min="0" placeholder="${TIPOS[e.tipo].ph}"
+        value="${cheio(r)?r:""}" title="realizado de ${MESES[i]}" oninput="setValor('real','${e.c}',${i},this.value,this)">`;
+  return linhaMeta + corpo + `<div class="pe" id="pe${e.c}_${i}">${rodapeCelula(e,i)}</div>`;
+}
+
+/* micro-barra + pontinho. Sem número, sem vermelho: o detalhe
+   fica no title, e a cor só distingue "fechou" de "ficou perto"
+   de "ficou longe". */
+function rodapeCelula(e,i){
+  if(modoDe(i)==="meta") return "";
+  const at=atingimento(e,i);
+  if(at==null) return "";
+  const k=chave(e.c,i);
+  const larg=Math.max(3, Math.min(100, at));
+  const suf=TIPOS[e.tipo].suf;
+  const detalhe = e.tipo==="sn"
+    ? (est.real.get(k)==="sim" ? "ocorreu, como previsto" : "estava prevista e não ocorreu")
+    : `${fmt(est.real.get(k))}${suf} de ${fmt(est.meta.get(k))}${suf}`;
+  const barra = `<div class="prog" title="${detalhe}"><i class="${faixaAt(at)}" style="width:${larg}%"></i></div>`;
+  if(!temLacuna(e,i)) return barra;
+  const c=causasDe(e.c,i);
+  const dica = c.length ? c.join(", ") : "o que aconteceu?";
+  return barra + `<button class="ponto ${c.length?"on":""}" title="${dica}"
+    onclick="abrirPop(event,'${e.c}',${i})" aria-label="${dica}"></button>`;
+}
+
+/* ---------- rodapé da tabela: acrescentar + convite das lacunas ---------- */
+function rodapeTabela(){
+  const L=lacunas(), sc=semCausa().length;
+  const convite = L.length ? `
+    <div class="convite">
+      ${sc ? `<span><b>${sc}</b> ${sc===1?"resultado ficou":"resultados ficaram"} abaixo do previsto. Se quiser, conte o que aconteceu.</span>`
+           : `<span>Tudo o que ficou abaixo do previsto já tem uma anotação sua.</span>`}
+      <button onclick="verLacunas()">${est.verLacunas?"esconder":`ver ${L.length===1?"o item":"os "+L.length}`}</button>
+    </div>` : ``;
+  return `<div class="tp">
+      <button class="bt-add" onclick="abrirBusca()">${est.buscaAberta?"− fechar catálogo":"+ entregas"}</button>
+      ${convite}
+    </div>
+    ${est.verLacunas?listaLacunas(L):``}
+    ${est.buscaAberta?caixaBusca():``}`;
+}
+
+function listaLacunas(L){
+  if(!L.length) return "";
+  return `<div class="ll">${L.map(x=>{
+    const c=causasDe(x.e.c,x.i);
+    const num = x.falta!=null
+      ? `${fmt(est.real.get(chave(x.e.c,x.i)))} de ${fmt(est.meta.get(chave(x.e.c,x.i)))}`
+      : `estava prevista e não ocorreu`;
+    return `<div class="ll-i">
+      <div><div class="ll-e">${x.e.e}</div>
+        <div class="ll-q">${MESES[x.i]}/${ANO} · ${num}</div></div>
+      <div class="ll-d">
+        ${c.map(m=>`<span class="ll-t">${m}</span>`).join("")}
+        <button class="ll-b" onclick="abrirPop(event,'${x.e.c}',${x.i})">${c.length?"mudar":"o que aconteceu?"}</button>
+      </div>
+    </div>`;}).join("")}</div>`;
+}
+
+function caixaBusca(){
+  const res=buscar(), jaTem=c=>est.entregas.some(e=>e.c===c);
+  return `<div class="cx-add">
+    <div class="cx-t">Acrescentar do catálogo<button onclick="abrirBusca()" title="fechar">×</button></div>
+    <div class="busca">
+      <input type="text" id="campoBusca" placeholder="procure por palavra ou código"
+        value="${est.termo.replace(/"/g,"&quot;")}" oninput="digitar(this.value)">
+      <select class="filtro" onchange="setMacro(this.value)">
+        <option value="">todos os grupos de processos</option>
+        ${[...new Set(CATALOGO.map(x=>x.m))].sort().map(m=>
+          `<option value="${m}" ${est.macro===m?"selected":""}>${m}</option>`).join("")}
+      </select>
+    </div>
+    <div class="conta">${res.length} ${res.length===1?"entrega encontrada":"entregas encontradas"}
+      · <a href="./index.html" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">abrir o catálogo completo ↗</a></div>
+    <div class="res">${res.length ? res.map(x=>`
+      <div class="res-i">
+        <span class="cod">${x.c}</span>
+        <div><div class="res-e">${x.e}</div><div class="res-m">${[x.m,x.k].filter(Boolean).join(" · ")}</div></div>
+        ${jaTem(x.c) ? `<button class="btn feito mini" disabled>já na unidade</button>`
+          : `<button class="btn vazado mini" onclick="adicionar('${x.c}')">acrescentar</button>`}
+      </div>`).join("")
+      : `<div class="vazio">Nada encontrado com esses filtros.</div>`}</div>
+  </div>`;
+}
+
+function buscar(){
+  const t=norm(est.termo).trim();
+  return CATALOGO.filter(x=>{
+    if(est.macro && x.m!==est.macro) return false;
+    if(t.length>=2 && !norm(x.e).includes(t) && !String(x.c).includes(t)) return false;
+    return true;
+  });
+}
+
+/* ---------- fechamento do ciclo: o que o PGD avalia ---------- */
+function blocoFechamento(){
+  if(!est.pgd || !est.entregas.length) return "";
+  const c=cicloAtual(), d=datasDoCiclo(), ms=mesesDoCiclo();
+  const linhas=est.entregas.map(e=>{
+    const f=fechamentoCiclo(e), suf=TIPOS[e.tipo].suf;
+    const pct = (f.meta && f.real!=null) ? Math.round(100*f.real/f.meta) : null;
+    const val = v => v==null ? "—" : (e.tipo==="sn" ? `${fmt(v)} ${fmt(v)===1?"mês":"meses"}` : fmt(v)+suf);
+    return `<div class="fc-l">
+      <div><div class="e-nome">${e.e}</div>
+        <div class="e-meta"><span class="e-cod">${e.c}</span>
+          <span>${f.media?`média de ${f.mr||f.mm} ${(f.mr||f.mm)===1?"mês":"meses"}`:`soma de ${f.mr||f.mm} ${(f.mr||f.mm)===1?"mês":"meses"}`}</span>
+          ${e.obj?`<span class="fc-obj">${objDe(e.obj).eixo}</span>`:`<span class="fc-obj sem">sem objetivo</span>`}</div></div>
+      <div class="fc-n"><b>${val(f.meta)}</b><span>meta do ciclo</span></div>
+      <div class="fc-n"><b>${val(f.real)}</b><span>realizado</span></div>
+      <div class="fc-p">${pct==null?`<i class="nd">—</i>`
+        :`<i class="${pct>=100?"bom":pct>=70?"meio":"baixo"}">${pct}%</i>`}</div>
+    </div>`;}).join("");
+  const semObj=semObjetivo().length;
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Fechamento do ciclo no PGD</div>
+        <div class="sub">Soma de tudo o que aconteceu entre <b>${d.ini}</b> e <b>${d.fim}</b> —
+          ${ms.length} ${ms.length===1?"mês":"meses"}, marcados no calendário ou não.
+          É esta consolidação que o PGD avalia no fim do plano.</div></div>
+    </div>
+    <div class="fc-cab"><span>Entrega</span><span>Meta do ciclo</span><span>Realizado</span><span>Atingido</span></div>
+    ${linhas}
+    ${semObj?`<div class="fc-aviso"><b>${semObj}</b> ${semObj===1?"entrega ainda não tem":"entregas ainda não têm"}
+      objetivo estratégico. O PGD pede a vinculação — abra a <b>⚖ medida</b> para resolver.</div>`:``}
+  </div>`;
+}
+
+/* ---------- como está o período: começa pelo que já está feito ---------- */
+function blocoPeriodo(){
+  const p=pendencias(), itens=[];
+
+  if(p.prontos.length){
+    const reg=p.prontos.filter(x=>!x.plan).map(x=>MESES[x.i]);
+    const pl =p.prontos.filter(x=> x.plan).map(x=>MESES[x.i]);
+    if(reg.length) itens.push({k:"ok", txt:`<b>${reg.join(", ")}</b> ${reg.length===1?"está":"estão"} com todas as entregas preenchidas.`});
+    if(pl.length)  itens.push({k:"pl", txt:`<b>${pl.join(", ")}</b> ${pl.length===1?"já tem meta":"já têm meta"} em todas as entregas.`});
+  }
+  for(const x of p.porMes) itens.push({k: x.plan?"pl":"az",
+    txt: x.plan
+      ? `Faltam <b>${x.faltam}</b> ${x.faltam===1?"meta":"metas"} em <b>${MESES[x.i]}</b>.`
+      : `Faltam <b>${x.faltam}</b> ${x.faltam===1?"registro":"registros"} em <b>${MESES[x.i]}</b>.`});
+  if(!p.sel.length) itens.push({k:"nt", txt:`Nenhum mês marcado ainda — abra a aba <b>Meses</b>, à esquerda.`});
+
+  const reqs=requisitos(), prontos=reqs.filter(r=>r.ok), pend=reqs.filter(r=>!r.ok);
+  for(const r of prontos) itens.push({k:"ok", txt:`<b>${r.t}</b> — ${r.d}.`});
+  if(!pend.length) itens.push({k:"ok", txt:`Os dois passos estão fechados — dá para gerar o DFT.`});
+  else itens.push(...pend.map(r=>({k:"at", txt:`<b>${r.t}</b>: ${r.d}.`})));
+
+  return `<div class="falta">
+    <div class="falta-t">Como está o período</div>
+    <ul class="falta-l">${itens.map(x=>`<li><span class="pt ${x.k}"></span><span>${x.txt}</span></li>`).join("")}</ul>
+  </div>`;
+}
+
+/* ---------- gaveta esquerda: meses ---------- */
+function renderCal(){
+  const ined=mesesIneditos(), plan=mesesPlanejados();
+  const reqs=requisitos(), reqOk=reqs.filter(r=>r.ok).length, tudo=reqOk===reqs.length;
+  const passados = MESES.map((_,i)=>i).filter(i=>i<=MES_ATUAL);
+  const futuros  = MESES.map((_,i)=>i).filter(i=>i>MES_ATUAL);
+
+  const caixa = i => {
+    const s=statusMes(i), travado=horizonte(i)==="fechado", sel=est.mesesSel.has(i);
+    const fut=horizonte(i)==="futuro", hoje=i===MES_ATUAL;
+    return `<button class="mes ${sel?"sel":""} ${travado?"travado":""} ${fut?"futuro":""} ${hoje?"hoje":""}"
+      onclick="${travado?`avisarTravado(${i})`:`alternarMes(${i})`}" title="${travado?"já entrou num DFT gerado":s.r}">
+      <div class="mes-n">${MESES[i]}</div><div class="mes-e ${s.k}"></div>
+      <div class="mes-r">${travado?"no DFT":s.r}</div></button>`;
+  };
+
+  $("cal").innerHTML = `
+    <div class="cal-top">
+      <div><div class="cal-t">Meses da ${est.unidade.s}</div>
+        <div class="cal-s">Marque os meses que quer trabalhar. Para trás você registra o que saiu; para a frente você planeja.</div></div>
+      <button class="cal-x" onclick="fecharGavetas()" title="fechar">×</button>
+    </div>
+    <div class="cal-corpo">
+      <div class="cal-faixa"><b>${ANO} · registrar</b><i></i></div>
+      <div class="grade-m">${passados.map(caixa).join("")}</div>
+      <div class="cal-faixa plan"><b>${ANO} · planejar</b><i></i></div>
+      <div class="grade-m">${futuros.map(caixa).join("")}</div>
+      <div class="cal-leg">
+        <span><i style="background:var(--green)"></i>registrado</span>
+        <span><i style="background:var(--amber)"></i>parcial</span>
+        <span><i style="background:var(--purple)"></i>planejado</span>
+        <span><i style="background:#D3D9E0"></i>em branco</span>
+      </div>
+
+      <div class="cal-sec">
+        <div class="cal-sec-t">Planejamento à frente</div>
+        <div class="medidor">
+          <div class="medidor-v"><b>${plan.length}</b><span>de ${futuros.length} meses planejados</span></div>
+          <div class="medidor-b ${plan.length===futuros.length?"pronto":""}"><i style="width:${Math.round(100*plan.length/Math.max(1,futuros.length))}%"></i></div>
+          <div class="medidor-d">${plan.length===futuros.length
+            ? `O ano está planejado até dezembro.`
+            : `Lançar a meta antes de o mês começar é o que permite comparar depois.`}</div>
+        </div>
+      </div>
+
+      <div class="cal-sec">
+        <div class="cal-sec-t">Para gerar o DFT</div>
+        <div class="medidor" style="margin-bottom:9px">
+          <div class="medidor-v"><b>${reqOk}</b><span>de ${reqs.length} passos prontos</span></div>
+          <div class="medidor-b ${tudo?"pronto":""}"><i style="width:${Math.round(100*reqOk/reqs.length)}%"></i></div>
+          <div class="medidor-d">${tudo ? `Os dois passos estão fechados.`
+            : `Falta${reqs.length-reqOk>1?"m":""} ${reqs.length-reqOk}.`}</div>
+        </div>
+        <div class="req">${reqs.map(r=>`<div class="req-i ${r.ok?"ok":""}">
+          <span class="req-m">${r.ok?"✓":"○"}</span>
+          <span><span class="req-t">${r.t}</span><span class="req-d">${r.d}</span></span>
+          ${!r.ok&&r.href?`<a class="req-l" href="${r.href}">ir →</a>`:``}
+        </div>`).join("")}</div>
+      </div>
+
+      ${est.retratos.length ? `<div class="cal-sec">
+        <div class="cal-sec-t">DFTs já gerados</div>
+        ${est.retratos.map(r=>`<div class="retrato">
+          <div class="retrato-t">${r.rot}</div>
+          <div class="retrato-d">${r.em} · ${r.qtd} entregas${r.pessoas?` · ${r.pessoas} pessoas`:``} · equivalente ${r.nec}</div></div>`).join("")}
+      </div>` : ""}
+      <div style="text-align:center;margin-top:14px">
+        <button class="recomecar" onclick="recomecar()">recomeçar a demonstração</button></div>
+    </div>
+    <div class="cal-pe">
+      <button class="btn ger larga" ${tudo?"":"disabled"} onclick="gerarDft()">
+        ${tudo?`Gerar DFT de ${ined.length} meses`:`Gerar DFT — falta${reqs.length-reqOk>1?"m":""} ${reqs.length-reqOk} passo${reqs.length-reqOk>1?"s":""}`}</button>
+      <button class="btn vazado larga" onclick="fecharGavetas()">Continuar preenchendo</button>
+    </div>`;
+}
+
+/* ---------- gaveta direita: demanda reprimida ---------- */
+function renderFila(){
+  const linhas=est.entregas.filter(acumula);
+  $("fila").innerHTML = `
+    <div class="cal-top">
+      <div><div class="cal-t">Demanda reprimida</div>
+        <div class="cal-s">Só entrega contável acumula. O que está acumulado hoje já vem calculado —
+          confira e corrija se não bater com a realidade.</div></div>
+      <button class="cal-x" onclick="fecharGavetas()" title="fechar">×</button>
+    </div>
+    <div class="cal-corpo">
+      ${linhas.length ? linhas.map(e=>{
+        const g=geradaNoPeriodo(e), r=acumuladoHoje(e);
+        const jaEstava=est.antes.get(e.c);
+        return `<div class="dr-i">
+          <div class="dr-e">${e.e}</div>
+          <div class="dr-cod">${e.c}</div>
+          <div class="dr-lin">
+            <div class="dr-lab">Já estava acumulado<small>quando o período começou</small></div>
+            <div class="dr-val"><input type="number" class="cel ${cheio(jaEstava)?"":"vazio"}" min="0" placeholder="0"
+              value="${cheio(jaEstava)?jaEstava:""}" oninput="setAntes('${e.c}',this.value)"></div>
+          </div>
+          <div class="dr-lin">
+            <div class="dr-lab">Gerada no período<small>meta menos realizado, mês a mês</small></div>
+            <div class="dr-op" id="g${e.c}">${g.meses?(g.s>0?"+":"")+fmt(g.s):"—"}
+              <small>${g.meses?`${g.meses} ${g.meses===1?"mês":"meses"}`:"sem dados"}</small></div>
+          </div>
+          <div class="dr-sep"></div>
+          <div class="dr-lin">
+            <div class="dr-lab">Acumulado hoje<small>soma das duas linhas acima</small></div>
+            <div class="dr-val"><input type="number" class="cel calc" min="0" placeholder="0" id="h${e.c}"
+                value="${r.v}" oninput="setAgora('${e.c}',this.value)">
+              <span class="dr-nota ${r.corrigido?"corr":""}" id="r${e.c}">${r.corrigido?"corrigido por você":"calculado"}</span></div>
+          </div>
+        </div>`;}).join("")
+      : `<div class="vazio">Nenhuma entrega da unidade é medida em <b>quantidade</b>.<br>
+          Percentual e sim/não não acumulam.</div>`}
+    </div>
+    <div class="cal-pe">
+      <button class="btn vazado larga" onclick="fecharGavetas()">Voltar às entregas</button>
+    </div>`;
+}
+
+/* ============================================================
+   AÇÕES
+   ============================================================ */
+function alternarPgd(){ est.pgd=!est.pgd; if(est.pgd) est.medidaAberta=true; render(); }
+
+function abrirCal(){ est.gaveta="cal"; aplicarGavetas(); }
+function abrirFila(){ est.gaveta="fila"; aplicarGavetas(); }
+function fecharGavetas(){ est.gaveta=null; aplicarGavetas(); }
+function aplicarGavetas(){
+  $("cal").classList.toggle("on", est.gaveta==="cal");
+  $("fila").classList.toggle("on", est.gaveta==="fila");
+  $("backdrop").classList.toggle("on", !!est.gaveta);
+  $("abaEsq").style.visibility = est.gaveta==="cal" ? "hidden" : "visible";
+  $("abaDir").style.visibility = est.gaveta==="fila" ? "hidden" : "visible";
+  fecharPop();
+}
+
+function alternarMes(i){ est.mesesSel.has(i) ? est.mesesSel.delete(i) : est.mesesSel.add(i); render(); }
+function avisarTravado(i){
+  alert(MESES[i]+"/"+ANO+" já entrou num DFT gerado.\n\nOs números dele ficam como estavam na geração.");
+}
+function setVisao(v){ est.visao=v; renderCorpo(); }
+function trocarModo(i){
+  est.modo.set(i, modoDe(i)==="meta" ? "real" : "meta");
+  renderCorpo(); renderCtx(); renderCal();
+}
+function alternarMedida(){ est.medidaAberta=!est.medidaAberta; renderCorpo(); }
+function abrirBusca(){ est.buscaAberta=!est.buscaAberta; renderCorpo(); }
+function verLacunas(){ est.verLacunas=!est.verLacunas; renderCorpo(); }
+function setMacro(v){ est.macro=v; renderCorpo(); }
+let tmr=null;
+function digitar(v){ est.termo=v; clearTimeout(tmr); tmr=setTimeout(renderCorpo,150); }
+function adicionar(cod){
+  const x=CATALOGO.find(y=>y.c===cod); if(!x) return;
+  if(est.entregas.some(e=>e.c===cod)) return;
+  est.entregas.push({c:x.c, e:x.e, m:x.m, tipo:"qtd", obj:null});
+  render();
+}
+function remover(cod){
+  est.entregas=est.entregas.filter(e=>e.c!==cod);
+  for(const mapa of [est.meta, est.real, est.causas])
+    for(const k of [...mapa.keys()]) if(String(k).startsWith(cod+"|")) mapa.delete(k);
+  est.antes.delete(cod); est.agora.delete(cod);
+  render();
+}
+function setTipo(cod,t){
+  const e=est.entregas.find(x=>x.c===cod); if(!e) return;
+  e.tipo=t;
+  for(const mapa of [est.meta, est.real])
+    for(const k of [...mapa.keys()]) if(String(k).startsWith(cod+"|")) mapa.delete(k);
+  render();
+}
+function setCiclo(v){ est.ciclo=v; gravarPlanejamento(); renderCorpo(); }
+function setObj(cod,v){
+  const e=est.entregas.find(x=>x.c===cod); if(!e) return;
+  e.obj = v || null;
+  gravarPlanejamento();
+  renderCorpo();
+}
+function limparObj(cod){ setObj(cod, null); }
+
+/* digitar não repinta a grade inteira: o campo perderia o foco */
+function setValor(qual,cod,i,v,el){
+  const mapa = qual==="meta" ? est.meta : est.real;
+  v==="" ? mapa.delete(chave(cod,i)) : mapa.set(chave(cod,i), v);
+  el.classList.toggle("vazio", v==="");
+  const e=est.entregas.find(x=>x.c===cod);
+  const pe=$("pe"+cod+"_"+i);
+  if(pe && e) pe.innerHTML = rodapeCelula(e,i);
+  atualizarResumos();
+}
+function girarSN(cod,i,qual){
+  const mapa = qual==="meta" ? est.meta : est.real;
+  const v=mapa.get(chave(cod,i));
+  const prox = v===undefined ? "sim" : v==="sim" ? "nao" : undefined;
+  prox===undefined ? mapa.delete(chave(cod,i)) : mapa.set(chave(cod,i), prox);
+  render();
+}
+function setAntes(cod,v){
+  v==="" ? est.antes.delete(cod) : est.antes.set(cod, +v);
+  atualizarReprimida(cod);
+}
+function setAgora(cod,v){
+  /* só guarda como correção se divergir do calculado — assim o campo não
+     vira "preenchido pelo gestor" só porque ele clicou nele */
+  const e=est.entregas.find(x=>x.c===cod); if(!e) return;
+  const g=geradaNoPeriodo(e), calc=(+est.antes.get(cod)||0)+(g?g.s:0);
+  if(v==="" || +v===calc) est.agora.delete(cod); else est.agora.set(cod, +v);
+  const r=$("r"+cod);
+  if(r){ const c=est.agora.has(cod); r.textContent=c?"corrigido por você":"calculado"; r.className="dr-nota"+(c?" corr":""); }
+}
+function atualizarReprimida(cod){
+  const e=est.entregas.find(x=>x.c===cod); if(!e||!acumula(e)) return;
+  const g=geradaNoPeriodo(e), r=acumuladoHoje(e);
+  const gEl=$("g"+cod);
+  if(gEl) gEl.innerHTML = `${g.meses?(g.s>0?"+":"")+fmt(g.s):"—"}<small>${g.meses?`${g.meses} ${g.meses===1?"mês":"meses"}`:"sem dados"}</small>`;
+  const campo=$("h"+cod);
+  if(campo && !r.corrigido) campo.value = r.v;
+}
+function atualizarResumos(){
+  renderCtx(); renderAbas();
+  for(const e of est.entregas.filter(acumula)) atualizarReprimida(e.c);
+  const f=document.querySelector(".falta"); if(f) f.outerHTML = blocoPeriodo();
+  const tp=document.querySelector(".tp"); if(tp && !est.buscaAberta && !est.verLacunas){
+    const d=document.createElement("div"); d.innerHTML=rodapeTabela();
+    tp.replaceWith(...d.childNodes);
+  }
+  renderCal();
+}
+
+/* ---------- balãozinho "o que aconteceu" ---------- */
+function abrirPop(ev, cod, i){
+  ev.stopPropagation();
+  est.pop={cod, i, alvo:ev.currentTarget};
+  pintarPop();
+  posicionarPop(ev.currentTarget);
+  $("pop").classList.add("on");
+}
+function pintarPop(){
+  if(!est.pop) return;
+  const {cod,i}=est.pop;
+  const e=est.entregas.find(x=>x.c===cod); if(!e) return;
+  const k=chave(cod,i), c=causasDe(cod,i), suf=TIPOS[e.tipo].suf;
+  const detalhe = e.tipo==="sn"
+    ? "estava prevista e não ocorreu"
+    : `saiu ${fmt(est.real.get(k))}${suf} de ${fmt(est.meta.get(k))}${suf}`;
+  $("pop").innerHTML = `
+    <div class="pop-t">O que aconteceu em ${MESES[i]}?</div>
+    <div class="pop-d">${e.e} · ${detalhe}</div>
+    <div class="tags">${MOTIVOS.map(mo=>`
+      <button class="tag ${c.includes(mo)?"on":""}" onclick="girarCausa(event,'${cod}',${i},'${mo}')">${mo}</button>`).join("")}</div>
+    <div class="pop-pe">
+      <span class="pop-n">${c.length ? `${c.length} ${c.length===1?"anotação":"anotações"}` : "opcional — pode fechar sem escolher"}</span>
+      <button class="pop-ok" onclick="fecharPop()">pronto</button>
+    </div>`;
+}
+function posicionarPop(alvo){
+  const p=$("pop"), r=alvo.getBoundingClientRect();
+  p.style.visibility="hidden"; p.classList.add("on");
+  const alt=p.offsetHeight, larg=p.offsetWidth;
+  let x = r.left + r.width/2 - larg/2;
+  let y = r.bottom + 9;
+  x = Math.max(12, Math.min(x, window.innerWidth - larg - 12));
+  if(y + alt > window.innerHeight - 12) y = Math.max(12, r.top - alt - 9);
+  p.style.left=x+"px"; p.style.top=y+"px"; p.style.visibility="visible";
+}
+function fecharPop(){ est.pop=null; $("pop").classList.remove("on"); }
+/* Marcar uma etiqueta NÃO pode repintar o balão inteiro: o botão
+   clicado sairia do DOM no meio do próprio clique, e o "clicou
+   fora" lá embaixo fecharia o balão na cara do gestor. Aqui só a
+   classe do botão e o rodapé mudam. */
+function girarCausa(ev,cod,i,motivo){
+  ev.stopPropagation();
+  const k=chave(cod,i);
+  const atual=est.causas.get(k)||[];
+  const nova = atual.includes(motivo) ? atual.filter(x=>x!==motivo) : [...atual, motivo];
+  nova.length ? est.causas.set(k, nova) : est.causas.delete(k);
+  ev.currentTarget.classList.toggle("on", nova.includes(motivo));
+  const n=$("pop").querySelector(".pop-n");
+  if(n) n.textContent = nova.length
+    ? `${nova.length} ${nova.length===1?"anotação":"anotações"}`
+    : "opcional — pode fechar sem escolher";
+  /* o pontinho e a lista precisam refletir a escolha sem fechar o balão */
+  const pe=$("pe"+cod+"_"+i);
+  const e=est.entregas.find(x=>x.c===cod);
+  if(pe && e) pe.innerHTML = rodapeCelula(e,i);
+  if(est.verLacunas){
+    const ll=document.querySelector(".ll");
+    if(ll){ const d=document.createElement("div"); d.innerHTML=listaLacunas(lacunas()); ll.replaceWith(d.firstElementChild); }
+  }
+  const tp=document.querySelector(".convite");
+  if(tp){ const sc=semCausa().length;
+    tp.querySelector("span").innerHTML = sc
+      ? `<b>${sc}</b> ${sc===1?"resultado ficou":"resultados ficaram"} abaixo do previsto. Se quiser, conte o que aconteceu.`
+      : `Tudo o que ficou abaixo do previsto já tem uma anotação sua.`;
+  }
+}
+
+function recomecar(){ limparPassos(); location.reload(); }
+function gerarDft(){
+  const ined=mesesIneditos();
+  if(!tudoPronto()) return;
+  const j=lerPassos();
+  const rot="DFT "+MESES[ined[0]]+"–"+MESES[ined[ined.length-1]]+"/"+ANO;
+  est.retratos.push({id:est.retratos.length+1, rot, meses:[...ined],
+    em:new Date().toLocaleDateString("pt-BR"), nec:(j.equipe&&j.equipe.equivalente)||"—",
+    qtd:est.entregas.length, pessoas:(j.equipe&&j.equipe.qtd)||null});
+  limparPasso("equipe");
+  est.mesesSel=new Set();
+  render();
+  alert(rot+" gerado.\n\nOs meses entraram no retrato e ficam travados.");
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Escape") return;
+  if(est.pop) fecharPop(); else if(est.gaveta) fecharGavetas();
+});
+document.addEventListener("click", e=>{
+  if(est.pop && !$("pop").contains(e.target)) fecharPop();
+});
+window.addEventListener("resize", ()=>{ if(est.pop) fecharPop(); });
+document.addEventListener("scroll", ()=>{ if(est.pop) fecharPop(); }, true);
+
+lerPlanejamento();
+render();
+</script>
+</body>
+</html>
