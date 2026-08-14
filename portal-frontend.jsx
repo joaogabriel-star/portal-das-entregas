@@ -277,7 +277,7 @@ export default function PortalEntregas(){
   const [unidade,setUnidade]=useState(()=>lerUnidadeSalva().unidade);
   const [preview,setPreview]=useState(false);
   const [toast,setToast]=useState(null);
-  /* Conversor agora é uma visualização (mode==="conversor"), não um modal */
+  /* Conversor agora vive dentro do Início (segunda porta), não é modal nem modo próprio */
   const [flags,setFlags]=useState([]);
   const [flagFor,setFlagFor]=useState(null);
   const [novaFor,setNovaFor]=useState(null);     // propor nova entrega (texto)
@@ -285,6 +285,7 @@ export default function PortalEntregas(){
   const [secao,setSecao]=useState("inicio");     // navegação principal: inicio · catalogo
   const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
   const [escopo,setEscopo]=useState("sel");      // níveis: "sel" (o que a IA achou) · "tudo" (catálogo inteiro)
+  const [vistaEntrega,setVistaEntrega]=useState("lista"); // nível 4: "lista" · "arvore"
   const [trocarUnidade,setTrocarUnidade]=useState(false); // modal de cadastro/troca da unidade
   const [descDrawer,setDescDrawer]=useState(false);
   const [descView,setDescView]=useState("lista");
@@ -440,8 +441,8 @@ export default function PortalEntregas(){
         orgao={orgao} unidade={unidade} completo={etapasFeitas} ir={irParaEtapa}/>}
       {secao==="inicio" && loading && <BancoLoading/>}
 
-      {/* Importar PGD e Conversor vivem DENTRO do Catálogo, como visualizações
-          da barra de modos (mode==="pgd" e mode==="conversor"). */}
+      {/* Importar PGD é uma visualização da barra (mode==="pgd"); o Conversor
+          passou a viver dentro do Início, como a segunda porta de entrada. */}
 
       {secao==="catalogo" && <div className="px-wrap">
         <div className="px-toolbar">
@@ -484,29 +485,22 @@ export default function PortalEntregas(){
 
         <div className="px-modes-row">
           <div className="px-modes">
-            <button className={`px-mode ${mode==="marcos"?"on":""}`} onClick={()=>setMode("marcos")} title="Marcos referenciais"><Bot size={15}/> <span className="px-mode-lbl">Marcos referenciais</span></button>
+            {/* os 5 passos do trabalho: começar → descer os níveis → chegar na entrega */}
+            <button className={`px-mode ${mode==="marcos"?"on":""}`} onClick={()=>setMode("marcos")} title="Início — traga os documentos da unidade"><Home size={15}/> <span className="px-mode-lbl">Início</span></button>
             <button className={`px-mode ${mode==="macro"?"on":""}`} onClick={()=>setMode("macro")} title="Macroprocessos"><Layers size={15}/> <span className="px-mode-lbl">Macroprocessos</span></button>
             <button className={`px-mode ${mode==="processo"?"on":""}`} onClick={()=>setMode("processo")} title="Processo"><PieChart size={15}/> <span className="px-mode-lbl">Processo</span></button>
             <button className={`px-mode ${mode==="servico"?"on":""}`} onClick={()=>setMode("servico")} title="Serviço"><Sparkles size={15}/> <span className="px-mode-lbl">Serviço</span></button>
-            <button className={`px-mode ${mode==="lista"?"on":""}`} onClick={()=>setMode("lista")} title="Lista"><LayoutGrid size={15}/> <span className="px-mode-lbl">Lista</span></button>
-            <button className={`px-mode ${mode==="arvore"?"on":""}`} onClick={()=>setMode("arvore")} title="Árvore"><Network size={15}/> <span className="px-mode-lbl">Árvore</span></button>
-            <button className={`px-mode nova ${mode==="nova"?"on":""}`} onClick={()=>setMode("nova")} title="Criar/propor uma nova entrega ao banco"><FilePlus2 size={15}/> <span className="px-mode-lbl">Nova entrega</span></button>
+            <button className={`px-mode ${mode==="lista"?"on":""}`} onClick={()=>setMode("lista")} title="Entrega"><LayoutGrid size={15}/> <span className="px-mode-lbl">Entrega</span></button>
             <span className="px-modes-sep"/>
-            <Tip pos="bottom" text="Assistente de Entregas: descreva o que sua área faz e a IA sugere as entregas do catálogo — abre aqui mesmo, na área das visualizações.">
-              <button className={`px-mode cta-bot ${mode==="assistente"?"on":""}`} onClick={()=>setMode("assistente")}><Bot size={15}/> <span className="px-mode-lbl">Assistente IA</span></button>
-            </Tip>
+            {/* ferramentas de apoio */}
             <Tip pos="bottom" text="Importar PGD: a esteira de conversão do ciclo mensal — cada registro do PGD vira uma entrega do catálogo, com triagem humana e pré-inclusão na lista da unidade.">
               <button className={`px-mode cta-pgd ${mode==="pgd"?"on":""}`} onClick={()=>setMode("pgd")}><Upload size={15}/> <span className="px-mode-lbl">Importar PGD</span></button>
             </Tip>
-            <Tip pos="bottom" text="Conversor: traga seu PGD, regimento interno ou planejamento estratégico — a IA enquadra cada item no catálogo e você inclui direto na descrição da área.">
-              <button className={`px-mode cta-conv ${mode==="conversor"?"on":""}`} onClick={()=>setMode("conversor")}><Wand2 size={15}/> <span className="px-mode-lbl">Conversor</span></button>
+            <Tip pos="bottom" text="Assistente de Entregas: descreva o que sua área faz e a IA sugere as entregas do catálogo — abre aqui mesmo, na área das visualizações.">
+              <button className={`px-mode cta-bot ${mode==="assistente"?"on":""}`} onClick={()=>setMode("assistente")}><Bot size={15}/> <span className="px-mode-lbl">Assistente IA</span></button>
             </Tip>
-            <span className="px-modes-sep"/>
-            <Tip pos="bottom" text="Central de Revisão: console do curador para tratar entregas similares, sem serviço vinculado ou sinalizadas pelo uso do portal.">
-              <button className={`px-mode ${mode==="revisao"?"on":""}`} onClick={()=>setMode("revisao")}><ShieldCheck size={15}/> <span className="px-mode-lbl">Revisão</span>{flags.length>0 && <span className="px-mode-badge">{flags.length}</span>}</button>
-            </Tip>
-            <Tip pos="bottom" text="Descrição da área em tela cheia: veja com mais espaço a lista de entregas que você já está descrevendo.">
-              <button className={`px-mode ${mode==="descricao"?"on":""}`} onClick={()=>{setMode("descricao");setDescCollapsed(true);}}><ClipboardList size={15}/> <span className="px-mode-lbl">Descrição</span>{sel.length>0 && <span className="px-mode-badge">{sel.length}</span>}</button>
+            <Tip pos="bottom" text="Revisão do banco: console do curador para tratar entregas similares, sem serviço vinculado ou sinalizadas pelo uso do portal.">
+              <button className={`px-mode ${mode==="revisao"?"on":""}`} onClick={()=>setMode("revisao")}><ShieldCheck size={15}/> <span className="px-mode-lbl">Revisão do banco</span>{flags.length>0 && <span className="px-mode-badge">{flags.length}</span>}</button>
             </Tip>
           </div>
         </div>
@@ -521,8 +515,25 @@ export default function PortalEntregas(){
           <main className="px-main">
             {loading ? <BancoLoading/> : <>
               {bancoStatus==="fallback" && <div className="px-banco-aviso"><AlertTriangle size={14}/> Banco completo (<b>banco.json</b>) não encontrado — exibindo amostra de demonstração. Em produção, publique o arquivo junto ao portal para as 31.241 entregas.</div>}
-              {mode==="lista" && <ListaEnriquecida res={res} searching={searching} query={dquery} selSet={selSet} add={add} rem={rem} exp={exp} setExp={setExp} onFlag={setFlagFor} onPropose={t=>setNovaFor(t||"")} compare={compare} toggleCompare={toggleCompare} justAdded={justAdded}/>}
-              {mode==="arvore" && <ArvoreDecomposicao res={res} add={add} rem={rem} selSet={selSet}/>}
+              {/* nível 4: a entrega. Lista e árvore são duas leituras do mesmo
+                  recorte, então viraram uma tela só com alternador. */}
+              {mode==="lista" && <>
+                <div className="px-vista-row">
+                  <TrilhaNiveis nivel="lista" trilha={{macro:macroF,processo:catF,servico:servF}}
+                    ir={irNivel} limpar={limparTrilha}/>
+                  <div className="px-vista">
+                    <button className={vistaEntrega==="lista"?"on":""} onClick={()=>setVistaEntrega("lista")} title="Ver como lista">
+                      <LayoutGrid size={13}/> Lista
+                    </button>
+                    <button className={vistaEntrega==="arvore"?"on":""} onClick={()=>setVistaEntrega("arvore")} title="Ver como árvore">
+                      <Network size={13}/> Árvore
+                    </button>
+                  </div>
+                </div>
+                {vistaEntrega==="lista"
+                  ? <ListaEnriquecida res={res} searching={searching} query={dquery} selSet={selSet} add={add} rem={rem} exp={exp} setExp={setExp} onFlag={setFlagFor} onPropose={t=>setNovaFor(t||"")} compare={compare} toggleCompare={toggleCompare} justAdded={justAdded}/>
+                  : <ArvoreDecomposicao res={res} add={add} rem={rem} selSet={selSet}/>}
+              </>}
               {mode==="sunburst" && <Sunburst res={res} add={add} rem={rem} selSet={selSet} compare={compare} toggleCompare={toggleCompare} onFlag={setFlagFor} justAdded={justAdded}/>}
               {mode==="nova" && <NovaEntregaCatalogo onFlash={flash} onPropose={t=>setNovaFor(t||"")}/>}
               {mode==="marcos" && <MarcosReferenciais onAdd={add} onDone={()=>setMode("macro")}
@@ -530,22 +541,20 @@ export default function PortalEntregas(){
                 resposta={marcosResposta} setResposta={setMarcosResposta}
                 qtd={marcosQtd} setQtd={setMarcosQtd}
                 erro={marcosErro} setErro={setMarcosErro}
-                orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>}
+                orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}
+                conversor={<ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes}
+                  orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}/>}
               {(mode==="macro"||mode==="processo"||mode==="servico") &&
                 <NivelCatalogo nivel={mode} sel={sel} selSet={selSet} add={add} rem={rem}
                   escopo={escopo} setEscopo={setEscopo}
                   trilha={{macro:macroF,processo:catF,servico:servF}}
                   descer={descerNivel} irNivel={irNivel} limparTrilha={limparTrilha}
                   onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
-              {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
-              {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
+              {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("marcos")}/>}
               {mode==="revisao" && <CentralRevisao embutido flags={flags} onClose={()=>setMode("lista")}/>}
-              {mode==="descricao" && <div className="px-desc-expandida">
-                <div className="px-doc-h"><div className="px-doc-t"><ClipboardList size={16}/> Descrição da Área</div><span className="px-doc-badge">{sel.length}</span></div>
-                {docHeader}
-                <DescPanel sel={sel} notes={notes} setNote={setNote} rem={rem} onInject={()=>sel.length&&setPreview(true)} orgao={orgao} unidade={unidade}/>
-              </div>}
+              {/* A Descrição da Área deixou de ter botão próprio na barra: vive no
+                  painel lateral e no botão flutuante, que é onde ela é usada. */}
             </>}
           </main>
 
@@ -732,8 +741,11 @@ function NovaEntregaCatalogo({onFlash,onPropose}){
    os achados à Descrição da Área e leva para a aba Macroprocessos.
 ============================================================================ */
 function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,setQtd,erro,setErro,
-                             orgao,unidade,setOrgao,setUnidade}){
+                             orgao,unidade,setOrgao,setUnidade,conversor}){
   const [carregando,setCarregando]=useState(false);
+  // duas portas de entrada para o mesmo destino: os documentos institucionais
+  // (marcos) ou o que a unidade já tem pronto em outro formato (conversor)
+  const [porta,setPorta]=useState("marcos");
   const codMap=useMemo(()=>{const m=new Map();ENTREGAS.forEach(e=>m.set(e.codigo,e));return m;},[]);
   // Os 4 documentos institucionais são sugestões fixas; além deles a unidade
   // pode anexar quantos outros quiser (PGD, planejamento estratégico, etc.),
@@ -818,6 +830,21 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
     }finally{ setCarregando(false); }
   }
 
+  if(porta==="conversor") return (
+    <div style={{padding:"32px 24px",maxWidth:"1080px"}}>
+      <div className="px-etapa1-cad" style={{maxWidth:"720px"}}>
+        <div className="px-etapa1-cad-h"><Building2 size={14}/> <b>Unidade</b>
+          <span>fica salva neste computador</span></div>
+        <DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>
+      </div>
+      <div className="px-porta">
+        <button onClick={()=>setPorta("marcos")}><Bot size={13}/> Marcos referenciais</button>
+        <button className="on"><Wand2 size={13}/> Conversor</button>
+      </div>
+      {conversor}
+    </div>
+  );
+
   return (
     <div style={{padding:"32px 24px",maxWidth:"720px"}}>
       {/* etapa 1 do caminho: quem é a unidade + o que ela produz, no mesmo lugar */}
@@ -826,6 +853,11 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
           <span>fica salva neste computador</span></div>
         <DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>
       </div>
+
+      {conversor && <div className="px-porta">
+        <button className="on"><Bot size={13}/> Marcos referenciais</button>
+        <button onClick={()=>setPorta("conversor")}><Wand2 size={13}/> Conversor</button>
+      </div>}
 
       <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
         <Bot size={15}/>
@@ -2902,7 +2934,7 @@ const PGD_DEMO_LINHAS=[
 ];
 // itens de exemplo já "enquadrados" (só para ilustrar a tela na abertura — códigos reais do banco)
 /* ============================================================================
-   CONVERSOR UNIFICADO — vive dentro do Catalogo (mode==="conversor").
+   CONVERSOR UNIFICADO — vive dentro do Início (mode==="marcos", porta "conversor").
    Modelo de esteira do painel PGD->DFT (todas as linhas de uma vez, confianca
    a mostra, triagem por linha) + poderes do conversor avulso (anexar planilha/
    PDF/Word, IA real via backend, incluir na descricao da area, exportar).
@@ -3396,6 +3428,20 @@ const css=`
 .px-nivel-t{flex:1;font-size:12.5px;font-weight:600;color:${C.ink};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .px-nivel-go{color:${C.faint};flex-shrink:0;}
 .px-nivel-nome:hover .px-nivel-go{color:${C.primary};}
+/* ---- Início: duas portas de entrada (marcos referenciais / conversor) ---- */
+.px-porta{display:inline-flex;gap:3px;background:${C.bg};border:1px solid ${C.line};border-radius:10px;padding:3px;margin-bottom:18px;}
+.px-porta button{display:inline-flex;align-items:center;gap:7px;border:none;background:none;font-family:inherit;
+  font-size:12.5px;font-weight:700;color:${C.faint};padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .14s;}
+.px-porta button:hover{color:${C.navy};}
+.px-porta button.on{background:#fff;color:${C.primaryDark};box-shadow:0 1px 3px rgba(19,49,92,.12);}
+/* ---- nível 4: alternador lista / árvore ---- */
+.px-vista-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 24px 0;}
+.px-vista-row .px-trilha{flex:1;margin-bottom:0;min-width:280px;}
+.px-vista{display:inline-flex;gap:2px;background:${C.bg};border:1px solid ${C.line};border-radius:9px;padding:3px;flex-shrink:0;}
+.px-vista button{display:inline-flex;align-items:center;gap:6px;border:none;background:none;font-family:inherit;
+  font-size:11.5px;font-weight:700;color:${C.faint};padding:6px 12px;border-radius:7px;cursor:pointer;transition:all .14s;}
+.px-vista button:hover{color:${C.navy};}
+.px-vista button.on{background:#fff;color:${C.primaryDark};box-shadow:0 1px 3px rgba(19,49,92,.12);}
 /* ---- etapa 1: cadastro da unidade no topo dos marcos referenciais ---- */
 .px-etapa1-cad{background:#fff;border:1px solid ${C.line};border-radius:12px;padding:14px 16px;margin-bottom:20px;}
 .px-etapa1-cad-h{display:flex;align-items:center;gap:7px;font-size:13px;color:${C.navy};margin-bottom:2px;}
