@@ -345,7 +345,7 @@ export default function PortalEntregas(){
 
   const total=ENTREGAS.length;
   const searching=!!(dquery.trim()||natF||macroF||catF||servF||orgF);
-  const modes=[["lista","Lista",LayoutGrid],["marcos","Marcos referenciais",Bot],["macro","Macroprocessos",Layers],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow]];
+  const modes=[["lista","Lista",LayoutGrid],["marcos","Marcos referenciais",Bot],["macro","Macroprocessos",Layers],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow],["mentoria","Mentoria",Users]];
 
   const docHeader=(<DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>);
 
@@ -474,6 +474,7 @@ export default function PortalEntregas(){
                 qtd={marcosQtd} setQtd={setMarcosQtd}
                 erro={marcosErro} setErro={setMarcosErro}/>}
               {mode==="macro" && <Macroprocessos sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
+              {mode==="mentoria" && <PainelMentoria/>}
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
@@ -519,7 +520,20 @@ export default function PortalEntregas(){
       {descView==="cadeia" && <CadeiaValor sel={sel} rem={rem} objUnidade={objUnidade} setObjUnidade={setObjUnidade} objOrgao={objOrgao} setObjOrgao={setObjOrgao} onClose={()=>setDescView("lista")}/>}
 
       {compareOpen && <CompareModal items={compare} onClose={()=>setCompareOpen(false)} onAdd={add} selSet={selSet} onDrop={c=>setCompare(x=>x.filter(e=>e.codigo!==c))} onClear={()=>{setCompare([]);setCompareOpen(false);}}/>}
-      {preview && <PreviewDFT sel={sel} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={()=>{setPreview(false);flash("Descrição enviada ao DFT (demonstração).");}}/>}
+      {preview && <PreviewDFT sel={sel} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={async()=>{
+        const resp=await fetch(`${API_BASE}/api/mentoria/submissoes`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            orgao, unidade,
+            conteudo:{entregas:sel.map(e=>({codigo:e.codigo,entrega:e.entrega,macro:e.macro,categoria:e.categoria,servico:e.servico})),notes},
+          }),
+        });
+        const dados=await resp.json().catch(()=>({}));
+        if(!resp.ok) throw new Error(dados.erro||"Erro ao enviar ao DFT.");
+        setPreview(false);
+        flash(dados.temMentorVinculado?"Descrição enviada ao DFT — mentor já notificado.":"Descrição enviada ao DFT — aguardando atribuição de mentor.");
+      }}/>}
       {flagFor && <FlagModal entrega={flagFor} onClose={()=>setFlagFor(null)} onSubmit={(f)=>{setFlags(s=>[...s,f]);setFlagFor(null);flash("Sinalização enviada à curadoria do banco.");}}/>}
       {novaFor!==null && <FlagModal nova proposta={novaFor} onClose={()=>setNovaFor(null)} onSubmit={(f)=>{setFlags(s=>[...s,f]);setNovaFor(null);flash("Proposta de nova entrega enviada à curadoria.");}}/>}
       {/* Revisão e Qualidade do banco agora são visualizações (mode==="revisao"/"qualidade") dentro do Catálogo, não overlays/seções próprias. */}
@@ -1006,6 +1020,248 @@ function gerarPdfRelatorioMacroprocessos(resultados,orgao,unidade){
   lk.download="relatorio-macroprocessos-"+(unidade||"unidade").replace(/[^a-z0-9]+/gi,"-").toLowerCase().slice(0,40)+".pdf";
   document.body.appendChild(lk); lk.click(); lk.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+/* ============================================================================
+   PAINEL DE MENTORIA — login de mentor (JWT, backend /api/mentoria) e
+   acompanhamento dos vínculos mentor↔unidade: Descrições da Área recebidas
+   e checklist das 14 oficinas de cada vínculo. Admin também cadastra
+   mentores novos e cria vínculos (atribui um mentor a um órgão/unidade).
+============================================================================ */
+const MENTORIA_TOKEN_KEY="px-mentoria-token";
+
+function mentoriaAuthHeader(token){ return token?{Authorization:`Bearer ${token}`}:{}; }
+
+function decodificarJwt(token){
+  try{
+    const payload=token.split(".")[1];
+    return JSON.parse(atob(payload.replace(/-/g,"+").replace(/_/g,"/")));
+  }catch{ return null; }
+}
+
+const STATUS_OFICINA=[["pendente","Pendente"],["agendada","Agendada"],["realizada","Realizada"],["cancelada","Cancelada"]];
+
+function PainelMentoria(){
+  const [token,setToken]=useState(()=>localStorage.getItem(MENTORIA_TOKEN_KEY));
+  const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
+
+  const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
+  const [erroLogin,setErroLogin]=useState(""); const [entrando,setEntrando]=useState(false);
+
+  const [vinculos,setVinculos]=useState([]); const [verTodos,setVerTodos]=useState(false);
+  const [vinculoSel,setVinculoSel]=useState(null);
+  const [oficinas,setOficinas]=useState([]); const [submissoes,setSubmissoes]=useState([]);
+  const [carregando,setCarregando]=useState(false);
+  const [aviso,setAviso]=useState("");
+
+  const [mentores,setMentores]=useState([]);
+  const [novoMentor,setNovoMentor]=useState({nome:"",email:"",senha:""});
+  const [novoVinculo,setNovoVinculo]=useState({mentorId:"",orgao:"",unidade:""});
+
+  async function login(ev){
+    ev.preventDefault();
+    if(entrando) return;
+    setEntrando(true); setErroLogin("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/login`,{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email,senha}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Falha no login.");
+      localStorage.setItem(MENTORIA_TOKEN_KEY,dados.token);
+      setToken(dados.token);
+    }catch(err){ setErroLogin(err.message||"Não consegui entrar."); }
+    finally{ setEntrando(false); }
+  }
+  function sair(){ localStorage.removeItem(MENTORIA_TOKEN_KEY); setToken(null); setVinculoSel(null); }
+
+  async function carregarVinculos(todos){
+    setCarregando(true); setAviso("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/vinculos${todos?"?todos=true":""}`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao carregar vínculos.");
+      setVinculos(dados);
+    }catch(err){ setAviso(err.message||"Erro ao carregar vínculos."); }
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ if(token) carregarVinculos(verTodos); },[token,verTodos]);
+
+  async function abrirVinculo(v){
+    setVinculoSel(v); setAviso(""); setCarregando(true);
+    try{
+      const [rOf,rSub]=await Promise.all([
+        fetch(`${API_BASE}/api/mentoria/oficinas/${v.id}`,{headers:mentoriaAuthHeader(token)}),
+        fetch(`${API_BASE}/api/mentoria/submissoes/${v.id}`,{headers:mentoriaAuthHeader(token)}),
+      ]);
+      const [dadosOf,dadosSub]=await Promise.all([rOf.json(),rSub.json()]);
+      if(!rOf.ok) throw new Error(dadosOf.erro||"Erro ao carregar oficinas.");
+      if(!rSub.ok) throw new Error(dadosSub.erro||"Erro ao carregar submissões.");
+      setOficinas(dadosOf); setSubmissoes(dadosSub);
+    }catch(err){ setAviso(err.message||"Erro ao abrir vínculo."); }
+    finally{ setCarregando(false); }
+  }
+
+  async function atualizarOficina(id,campos){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/oficinas/${id}`,{
+        method:"PATCH",
+        headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify(campos),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao atualizar oficina.");
+      setOficinas(list=>list.map(o=>o.id===id?dados:o));
+    }catch(err){ setAviso(err.message||"Erro ao atualizar oficina."); }
+  }
+
+  async function carregarMentores(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/mentores`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setMentores(dados);
+    }catch{}
+  }
+  useEffect(()=>{ if(token&&mentor?.isAdmin) carregarMentores(); },[token,mentor?.isAdmin]);
+
+  async function criarMentor(ev){
+    ev.preventDefault(); setAviso("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/mentores`,{
+        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify(novoMentor),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao criar mentor.");
+      setNovoMentor({nome:"",email:"",senha:""});
+      carregarMentores();
+    }catch(err){ setAviso(err.message||"Erro ao criar mentor."); }
+  }
+
+  async function criarVinculo(ev){
+    ev.preventDefault(); setAviso("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/vinculos`,{
+        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({...novoVinculo,mentorId:Number(novoVinculo.mentorId)}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao criar vínculo.");
+      setNovoVinculo({mentorId:"",orgao:"",unidade:""});
+      carregarVinculos(verTodos);
+    }catch(err){ setAviso(err.message||"Erro ao criar vínculo."); }
+  }
+
+  if(!token){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"360px"}}>
+        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
+          <Users size={15}/>
+          <span>Acesso de mentor do DFT — acompanhe as unidades sob sua responsabilidade e as 14 oficinas de cada uma.</span>
+        </div>
+        <form onSubmit={login} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          <input type="email" required placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          <input type="password" required placeholder="Senha" value={senha} onChange={e=>setSenha(e.target.value)}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          {erroLogin && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erroLogin}</div>}
+          <button className="px-mode cta-bot" disabled={entrando} type="submit">
+            <Users size={15}/> <span className="px-mode-lbl">{entrando?"Entrando…":"Entrar"}</span>
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:"32px 24px",maxWidth:"920px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"16px"}}>
+        <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>Mentoria {mentor?.isAdmin && <span style={{fontSize:"11px",fontWeight:700,color:C.primary}}>· admin</span>}</h2>
+        <button className="px-mode" onClick={sair}><X size={14}/> <span className="px-mode-lbl">Sair</span></button>
+      </div>
+      {aviso && <div className="px-anexo-erro" style={{marginBottom:"14px"}}><AlertTriangle size={12}/> {aviso}</div>}
+
+      {mentor?.isAdmin && <div style={{display:"flex",flexWrap:"wrap",gap:"16px",marginBottom:"22px"}}>
+        <form onSubmit={criarMentor} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",flex:"1 1 260px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Cadastrar mentor</div>
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            <input required placeholder="Nome" value={novoMentor.nome} onChange={e=>setNovoMentor(s=>({...s,nome:e.target.value}))}
+              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+            <input required type="email" placeholder="E-mail" value={novoMentor.email} onChange={e=>setNovoMentor(s=>({...s,email:e.target.value}))}
+              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+            <input required type="password" placeholder="Senha provisória" value={novoMentor.senha} onChange={e=>setNovoMentor(s=>({...s,senha:e.target.value}))}
+              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+            <button className="px-mode" type="submit" style={{alignSelf:"flex-start"}}><Plus size={12}/> <span className="px-mode-lbl">Cadastrar</span></button>
+          </div>
+        </form>
+        <form onSubmit={criarVinculo} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",flex:"1 1 260px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Atribuir mentor a uma unidade</div>
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            <select required value={novoVinculo.mentorId} onChange={e=>setNovoVinculo(s=>({...s,mentorId:e.target.value}))}
+              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}>
+              <option value="">Selecione o mentor…</option>
+              {mentores.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+            </select>
+            <input required placeholder="Órgão" value={novoVinculo.orgao} onChange={e=>setNovoVinculo(s=>({...s,orgao:e.target.value}))}
+              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+            <input required placeholder="Unidade" value={novoVinculo.unidade} onChange={e=>setNovoVinculo(s=>({...s,unidade:e.target.value}))}
+              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+            <button className="px-mode" type="submit" style={{alignSelf:"flex-start"}}><Plus size={12}/> <span className="px-mode-lbl">Vincular</span></button>
+          </div>
+        </form>
+      </div>}
+
+      <div style={{display:"flex",gap:"18px",flexWrap:"wrap"}}>
+        <div style={{flex:"1 1 260px",minWidth:"240px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
+            <div style={{fontSize:"11px",fontWeight:700,opacity:.7}}>Unidades vinculadas</div>
+            {mentor?.isAdmin && <label style={{fontSize:"11px",display:"flex",gap:"5px",alignItems:"center",cursor:"pointer"}}>
+              <input type="checkbox" checked={verTodos} onChange={e=>setVerTodos(e.target.checked)}/> ver todas
+            </label>}
+          </div>
+          {carregando && !vinculos.length && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+          {!carregando && !vinculos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma unidade vinculada ainda.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            {vinculos.map(v=>(
+              <button key={v.id} onClick={()=>abrirVinculo(v)}
+                style={{textAlign:"left",padding:"9px 11px",border:`1px solid ${vinculoSel?.id===v.id?C.primary:C.line}`,borderRadius:"8px",background:vinculoSel?.id===v.id?C.primarySoft:"#fff",cursor:"pointer",fontSize:"12.5px"}}>
+                <b>{v.orgao}</b><br/><span style={{color:C.sub}}>{v.unidade}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {vinculoSel && <div style={{flex:"2 1 420px",minWidth:"320px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Descrições da Área recebidas</div>
+          {!submissoes.length && <div style={{fontSize:"12px",color:C.faint,marginBottom:"16px"}}>Nenhuma submissão recebida ainda para esta unidade.</div>}
+          {submissoes.map(s=>(
+            <div key={s.id} style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"9px 11px",fontSize:"12px",marginBottom:"8px"}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <b>{(s.conteudo?.entregas||[]).length} entrega(s)</b>
+                <span style={{color:C.faint}}>{new Date(s.criado_em).toLocaleDateString("pt-BR")}</span>
+              </div>
+              <div style={{color:C.sub}}>status: {s.status}</div>
+            </div>
+          ))}
+
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,margin:"16px 0 8px"}}>As 14 oficinas de mentoria</div>
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            {oficinas.map(o=>(
+              <div key={o.id} style={{display:"flex",alignItems:"center",gap:"8px",border:`1px solid ${C.line}`,borderRadius:"8px",padding:"7px 10px",fontSize:"12px"}}>
+                <span style={{width:"20px",fontWeight:700,color:C.faint}}>{o.numero}</span>
+                <span style={{flex:1}}>{o.titulo||`Oficina ${o.numero}`}</span>
+                <select value={o.status} onChange={e=>atualizarOficina(o.id,{status:e.target.value})}
+                  style={{padding:"4px 6px",border:`1px solid ${C.line}`,borderRadius:"6px",fontSize:"11.5px"}}>
+                  {STATUS_OFICINA.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
 }
 
 function DocHeaderEdit({orgao,unidade,setOrgao,setUnidade}){
@@ -1874,7 +2130,18 @@ function ArvoreDecomposicao({res,add,rem,selSet}){
 
 /* ---------- preview do que será gravado no DFT ---------- */
 function PreviewDFT({sel,notes,orgao,unidade,onClose,onConfirm}){
+  const [enviando,setEnviando]=useState(false);
+  const [erro,setErro]=useState("");
   const comObs=sel.filter(e=>notes&&notes[e.codigo]&&notes[e.codigo].trim()).length;
+
+  async function confirmar(){
+    if(enviando) return;
+    setEnviando(true); setErro("");
+    try{ await onConfirm(); }
+    catch(err){ setErro(err.message||"Não consegui enviar ao DFT. Tente novamente."); }
+    finally{ setEnviando(false); }
+  }
+
   return (<div className="px-modal-bg" onClick={onClose}>
     <div className="px-modal" onClick={e=>e.stopPropagation()}>
       <div className="px-modal-h">
@@ -1890,9 +2157,10 @@ function PreviewDFT({sel,notes,orgao,unidade,onClose,onConfirm}){
             <span className="px-mt-obs">{ob&&ob.trim()?ob:<i>—</i>}</span>
           </div>); })}
       </div>
+      {erro && <div className="px-anexo-erro" style={{marginTop:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
       <div className="px-modal-acts">
-        <button className="px-btn-ghost" onClick={onClose}>Voltar e ajustar</button>
-        <button className="px-btn-primary" onClick={onConfirm}><Send size={14}/> Confirmar e enviar ao DFT</button>
+        <button className="px-btn-ghost" onClick={onClose} disabled={enviando}>Voltar e ajustar</button>
+        <button className="px-btn-primary" onClick={confirmar} disabled={enviando}><Send size={14}/> {enviando?"Enviando…":"Confirmar e enviar ao DFT"}</button>
       </div>
     </div>
   </div>);
