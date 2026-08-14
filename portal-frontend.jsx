@@ -345,7 +345,7 @@ export default function PortalEntregas(){
 
   const total=ENTREGAS.length;
   const searching=!!(dquery.trim()||natF||macroF||catF||servF||orgF);
-  const modes=[["lista","Lista",LayoutGrid],["marcos","Marcos referenciais",Bot],["macro","Macroprocessos",Layers],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow],["mentoria","Mentoria",Users]];
+  const modes=[["lista","Lista",LayoutGrid],["marcos","Marcos referenciais",Bot],["macro","Macroprocessos",Layers],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow]];
 
   const docHeader=(<DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>);
 
@@ -360,7 +360,7 @@ export default function PortalEntregas(){
           <div><div className="px-logo-w">Catálogo de Serviços</div><div className="px-logo-s">SIGEPE · SISDIP / DFT</div></div>
         </div>
         <nav className="px-nav" aria-label="Seções do portal">
-          {[["inicio","Início",Home],["catalogo","Catálogo",LayoutGrid]].map(([id,lbl,Ic])=>(
+          {[["inicio","Início",Home],["catalogo","Catálogo",LayoutGrid],["mentoria","Mentoria",Users]].map(([id,lbl,Ic])=>(
             <button key={id} className={`px-nav-item ${secao===id?"on":""}`}
               onClick={()=>setSecao(id)}><Ic size={14}/><span>{lbl}</span></button>
           ))}
@@ -474,7 +474,6 @@ export default function PortalEntregas(){
                 qtd={marcosQtd} setQtd={setMarcosQtd}
                 erro={marcosErro} setErro={setMarcosErro}/>}
               {mode==="macro" && <Macroprocessos sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
-              {mode==="mentoria" && <PainelMentoria/>}
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
@@ -503,6 +502,8 @@ export default function PortalEntregas(){
           </aside>}
         </div>
       </div>}
+
+      {secao==="mentoria" && <div className="px-wrap"><PainelMentoria/></div>}
 
       {/* botões flutuantes (apenas na seção Catálogo) */}
       {secao==="catalogo" && navPanel && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
