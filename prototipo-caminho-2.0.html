@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Protótipo — Caminho 2.0</title>
+<style>
+  :root{
+    --primary:#1351B4; --primary-dark:#0C326F; --primary-soft:#E8EEF9;
+    --green:#168821; --green-soft:#E3F2E5;
+    --navy:#13315C; --yellow:#FFCD07;
+    --ink:#1B2430; --sub:#5B6472; --line:#E4E7EB; --bg:#F4F6F9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Raleway",Arial,sans-serif;background:var(--bg);color:var(--ink);}
+  .wrap{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
+
+  /* aviso de protótipo */
+  .aviso{background:#FFF7E0;border:1px solid #E8D28A;color:#6B5300;font-size:13px;
+    padding:10px 14px;border-radius:8px;margin-bottom:28px;text-align:center;}
+
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--sub);font-size:14px;margin:0 0 32px;}
+
+  /* trilha de passos */
+  .trilha{display:flex;align-items:center;gap:0;margin-bottom:36px;}
+  .passo-btn{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:none;
+    cursor:pointer;font-family:inherit;padding:0;flex:1;}
+  .bola{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:14px;border:2px solid var(--line);color:var(--sub);background:#fff;transition:.15s;}
+  .passo-btn.ativo .bola{border-color:var(--primary);background:var(--primary);color:#fff;}
+  .passo-btn.feito .bola{border-color:var(--green);background:var(--green);color:#fff;}
+  .passo-label{font-size:12.5px;color:var(--sub);font-weight:600;text-align:center;}
+  .passo-btn.ativo .passo-label{color:var(--primary);}
+  .passo-btn.feito .passo-label{color:var(--green);}
+  .trilho{flex:0 0 60px;height:2px;background:var(--line);margin:0 -4px 22px;}
+  .trilho.feito{background:var(--green);}
+
+  /* card do passo */
+  .card{background:#fff;border-radius:14px;border:1px solid var(--line);padding:32px;
+    box-shadow:0 2px 14px rgba(20,40,80,.05);}
+  .card-badge{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);
+    font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:14px;}
+  .card h2{font-size:19px;margin:0 0 6px;}
+  .card p.d{color:var(--sub);font-size:14px;margin:0 0 24px;max-width:560px;}
+
+  /* passo 1: form */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:600px;}
+  label{display:block;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;
+    font-family:inherit;background:#fbfcfd;}
+  input:focus,select:focus{outline:2px solid var(--primary-soft);border-color:var(--primary);}
+
+  /* passo 2 e 3: destino em destaque */
+  .destino{display:flex;gap:18px;align-items:flex-start;background:var(--bg);border:1px dashed var(--line);
+    border-radius:12px;padding:20px;max-width:600px;}
+  .destino-ic{width:44px;height:44px;border-radius:10px;flex:0 0 44px;display:flex;align-items:center;
+    justify-content:center;font-size:20px;}
+  .destino b{display:block;font-size:14.5px;margin-bottom:3px;}
+  .destino span{font-size:13px;color:var(--sub);}
+
+  .lista-check{margin:18px 0 0;padding:0;list-style:none;max-width:600px;}
+  .lista-check li{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--sub);padding:6px 0;
+    border-bottom:1px solid #F0F2F5;}
+  .lista-check li:last-child{border-bottom:none;}
+  .lista-check .ok{color:var(--green);font-weight:700;}
+
+  .rodape{display:flex;justify-content:space-between;align-items:center;margin-top:28px;}
+  .btn{border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:inherit;display:inline-flex;align-items:center;gap:8px;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-ghost{background:none;color:var(--sub);}
+  .btn-primary:disabled{opacity:.4;cursor:default;}
+
+  /* ciclo (repete pra próxima unidade) */
+  .ciclo{margin-top:40px;display:flex;align-items:center;gap:14px;padding:18px 20px;background:#fff;
+    border:1px solid var(--line);border-radius:12px;}
+  .ciclo-ic{font-size:22px;flex:0 0 auto;}
+  .ciclo b{display:block;font-size:14px;}
+  .ciclo span{font-size:13px;color:var(--sub);}
+
+  /* nota lateral explicando a ideia */
+  .nota{margin-top:36px;font-size:13px;color:var(--sub);background:#fff;border:1px solid var(--line);
+    border-radius:10px;padding:16px 18px;line-height:1.6;}
+  .nota b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="aviso">Protótipo — só pra dar uma noção da ideia. Nada aqui está ligado ao site de verdade.</div>
+
+  <h1>Portal das Entregas — novo caminho de entrada</h1>
+  <p class="sub">Em vez do menu de cartões, o cliente segue um caminho: cadastra a unidade → sobe o Marco Referencial → recebe o Macroprocesso e o Catálogo prontos. Depois, repete pra próxima unidade.</p>
+
+  <div class="trilha" id="trilha"></div>
+
+  <div class="card" id="card"></div>
+
+  <div class="ciclo">
+    <span class="ciclo-ic">🔁</span>
+    <div>
+      <b>Ao terminar, o caminho pergunta: "Cadastrar outra unidade?"</b>
+      <span>Volta pro passo 1 já com o órgão preenchido — só troca a unidade. Cada unidade gera seu próprio Marco Referencial e Catálogo.</span>
+    </div>
+  </div>
+
+  <div class="nota">
+    <b>O que muda de verdade:</b> hoje a tela inicial é uma vitrine de 7 cartões (Catálogo, Conversor, Curadoria, Assistente, Marcos Referenciais, Importar PGD, Visão por Órgão) e o cliente escolhe por onde entrar.
+    Na 2.0, a entrada vira só isso aqui: um caminho de 3 passos. Os outros recursos (Conversor, Curadoria, Assistente, Importar PGD, Visão por Órgão) continuam existindo, só deixam de estar na porta de entrada —
+    ficam acessíveis a partir do Catálogo/Macroprocesso já gerado, como próximo passo opcional.
+  </div>
+
+</div>
+
+<script>
+const passos = [
+  {
+    n:1, label:"Órgão e unidade",
+    badge:"Passo 1 de 3",
+    titulo:"Cadastrar órgão e unidade",
+    desc:"Antes de qualquer coisa, o cliente diz quem ele é. Isso já veio de alguma forma (DocHeaderEdit no Catálogo hoje) — aqui vira o ponto de partida, não uma opção escondida.",
+    corpo:`
+      <div class="form-grid">
+        <div><label>Órgão</label><input placeholder="Ex.: Ministério da Gestão e da Inovação" /></div>
+        <div><label>Unidade</label><input placeholder="Ex.: Coordenação-Geral de Recursos Humanos" /></div>
+      </div>
+    `,
+    rodape:`<button class="btn btn-ghost" disabled>← Voltar</button><button class="btn btn-primary" onclick="ir(2)">Continuar → Marco Referencial</button>`
+  },
+  {
+    n:2, label:"Marco Referencial",
+    badge:"Passo 2 de 3",
+    titulo:"Envie o Marco Referencial da unidade",
+    desc:"O cliente já cai direto aqui — sem precisar achar o cartão certo. Anexa os documentos e a IA identifica os macroprocessos, processos e serviços da unidade.",
+    corpo:`
+      <div class="destino">
+        <div class="destino-ic" style="background:#E2F1F4;color:#0C7B93;">📎</div>
+        <div>
+          <b>Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado, Regimento Interno</b>
+          <span>Mesmo fluxo de IA que já existe hoje em "Marcos Referenciais" — só que agora é passo obrigatório do caminho, não um cartão opcional.</span>
+        </div>
+      </div>
+      <ul class="lista-check">
+        <li><span class="ok">✓</span> Cadeia de Valor.pdf</li>
+        <li><span class="ok">✓</span> Estrutura Organizacional.pdf</li>
+        <li>○ Relatório de Gestão Integrado</li>
+        <li>○ Regimento Interno</li>
+      </ul>
+    `,
+    rodape:`<button class="btn btn-ghost" onclick="ir(1)">← Voltar</button><button class="btn btn-primary" onclick="ir(3)">Continuar → Macroprocesso</button>`
+  },
+  {
+    n:3, label:"Macroprocesso e Catálogo",
+    badge:"Passo 3 de 3",
+    titulo:"Macroprocessos identificados — Catálogo gerado",
+    desc:"Resultado do passo anterior: a IA devolve os macroprocessos da unidade, já enquadrados no catálogo oficial de 31.241 entregas.",
+    corpo:`
+      <div class="destino">
+        <div class="destino-ic" style="background:var(--primary-soft);color:var(--primary);">📚</div>
+        <div>
+          <b>7 macroprocessos identificados · 42 entregas enquadradas no catálogo</b>
+          <span>A partir daqui o cliente cai no Catálogo de verdade (o que já existe hoje), com a área da unidade pré-selecionada.</span>
+        </div>
+      </div>
+      <ul class="lista-check">
+        <li><span class="ok">✓</span> Gestão de Pessoas — 18 entregas</li>
+        <li><span class="ok">✓</span> Gestão Orçamentária e Financeira — 11 entregas</li>
+        <li><span class="ok">✓</span> Governança e Estratégia — 9 entregas</li>
+        <li><span class="ok">✓</span> ... mais 4 macroprocessos</li>
+      </ul>
+    `,
+    rodape:`<button class="btn btn-ghost" onclick="ir(2)">← Voltar</button><button class="btn btn-primary" onclick="ir(1)">✓ Concluir e cadastrar outra unidade</button>`
+  }
+];
+
+let atual = 1;
+
+function renderTrilha(){
+  const el = document.getElementById('trilha');
+  el.innerHTML = passos.map((p,i)=>{
+    const cls = p.n < atual ? 'feito' : (p.n === atual ? 'ativo' : '');
+    const bolaTxt = p.n < atual ? '✓' : p.n;
+    let html = `<button class="passo-btn ${cls}" onclick="ir(${p.n})">
+      <span class="bola">${bolaTxt}</span>
+      <span class="passo-label">${p.label}</span>
+    </button>`;
+    if(i < passos.length-1){
+      const trilhoCls = p.n < atual ? 'feito' : '';
+      html += `<span class="trilho ${trilhoCls}"></span>`;
+    }
+    return html;
+  }).join('');
+}
+
+function renderCard(){
+  const p = passos.find(x=>x.n===atual);
+  document.getElementById('card').innerHTML = `
+    <span class="card-badge">${p.badge}</span>
+    <h2>${p.titulo}</h2>
+    <p class="d">${p.desc}</p>
+    ${p.corpo}
+    <div class="rodape">${p.rodape}</div>
+  `;
+}
+
+function ir(n){ atual = n; renderTrilha(); renderCard(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+ir(1);
+</script>
+</body>
+</html>

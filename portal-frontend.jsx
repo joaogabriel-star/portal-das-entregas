@@ -345,7 +345,6 @@ export default function PortalEntregas(){
 
   const total=ENTREGAS.length;
   const searching=!!(dquery.trim()||natF||macroF||catF||servF||orgF);
-  const modes=[["lista","Lista",LayoutGrid],["marcos","Marcos referenciais",Bot],["macro","Macroprocessos",Layers],["arvore","Árvore",Network],["sunburst","Explosão solar",Sun],["cadeia","Cadeia de valor",Workflow]];
 
   const docHeader=(<DocHeaderEdit orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}/>);
 
@@ -373,13 +372,9 @@ export default function PortalEntregas(){
 
       {!loading && secao==="inicio" && <PainelNumeros stats={stats} bancoStatus={bancoStatus}/>}
 
-      {secao==="inicio" && !loading && <SecaoInicio stats={stats}
+      {secao==="inicio" && !loading && <SecaoInicioCaminho stats={stats}
+        orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}
         onCatalogo={()=>setSecao("catalogo")}
-        onOrgaos={()=>{ if(typeof window!=="undefined") window.location.href="./organizacoes.html"; }}
-        onChat={()=>{setSecao("catalogo");setMode("assistente");}}
-        onConversor={()=>{setSecao("catalogo");setMode("conversor");}}
-        onRevisao={()=>{setSecao("catalogo");setMode("revisao");}}
-        onPGD={()=>{setSecao("catalogo");setMode("pgd");}}
         onMarcos={()=>{setSecao("catalogo");setMode("marcos");}}/>}
       {secao==="inicio" && loading && <BancoLoading/>}
 
@@ -427,9 +422,12 @@ export default function PortalEntregas(){
 
         <div className="px-modes-row">
           <div className="px-modes">
-            {modes.filter(([id])=>id!=="cadeia").map(([id,lbl,Ic])=>(
-              <button key={id} className={`px-mode ${mode===id?"on":""}`} onClick={()=>setMode(id)} title={lbl}><Ic size={15}/> <span className="px-mode-lbl">{lbl}</span></button>
-            ))}
+            <button className={`px-mode ${mode==="marcos"?"on":""}`} onClick={()=>setMode("marcos")} title="Marcos referenciais"><Bot size={15}/> <span className="px-mode-lbl">Marcos referenciais</span></button>
+            <button className={`px-mode ${mode==="macro"?"on":""}`} onClick={()=>setMode("macro")} title="Macroprocessos"><Layers size={15}/> <span className="px-mode-lbl">Macroprocessos</span></button>
+            <button className={`px-mode ${mode==="processo"?"on":""}`} onClick={()=>setMode("processo")} title="Processo"><PieChart size={15}/> <span className="px-mode-lbl">Processo</span></button>
+            <button className={`px-mode ${mode==="servico"?"on":""}`} onClick={()=>setMode("servico")} title="Serviço"><Sparkles size={15}/> <span className="px-mode-lbl">Serviço</span></button>
+            <button className={`px-mode ${mode==="lista"?"on":""}`} onClick={()=>setMode("lista")} title="Lista"><LayoutGrid size={15}/> <span className="px-mode-lbl">Lista</span></button>
+            <button className={`px-mode ${mode==="arvore"?"on":""}`} onClick={()=>setMode("arvore")} title="Árvore"><Network size={15}/> <span className="px-mode-lbl">Árvore</span></button>
             <button className={`px-mode nova ${mode==="nova"?"on":""}`} onClick={()=>setMode("nova")} title="Criar/propor uma nova entrega ao banco"><FilePlus2 size={15}/> <span className="px-mode-lbl">Nova entrega</span></button>
             <span className="px-modes-sep"/>
             <Tip pos="bottom" text="Assistente de Entregas: descreva o que sua área faz e a IA sugere as entregas do catálogo — abre aqui mesmo, na área das visualizações.">
@@ -474,6 +472,8 @@ export default function PortalEntregas(){
                 qtd={marcosQtd} setQtd={setMarcosQtd}
                 erro={marcosErro} setErro={setMarcosErro}/>}
               {mode==="macro" && <Macroprocessos sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
+              {mode==="processo" && <ArvoreSelecaoIA titulo="Processo" campo="categoria" icone={PieChart} sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")}/>}
+              {mode==="servico" && <ArvoreSelecaoIA titulo="Serviço" campo="servico" icone={Sparkles} sel={sel} selSet={selSet} add={add} onGoLista={()=>setMode("lista")} onGoNova={()=>setMode("nova")}/>}
               {mode==="conversor" && <ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes} orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}
               {mode==="assistente" && <Assistente onAdd={add}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("conversor")}/>}
@@ -714,10 +714,57 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
    nível, busca para adicionar mais, link para propor o que não existe, e
    exportação em PDF no formato "Relatório de Macroprocessos".
 ============================================================================ */
+/* Busca genérica para adicionar entregas fora do que a IA já encontrou —
+   compartilhada por Macroprocessos, Processo e Serviço. */
+function BuscaAdicionar({selSet,add,onGoNova}){
+  const [busca,setBusca]=useState("");
+  const candidatos=useMemo(()=>{
+    const q=norm(busca.trim()); if(!q) return [];
+    return ENTREGAS.filter(e=>!selSet.has(e.codigo) &&
+      (norm(e.entrega).includes(q)||norm(e.macro).includes(q)||norm(e.categoria).includes(q)||e.codigo.includes(busca.trim()))
+    ).slice(0,8);
+  },[busca,selSet]);
+  function adicionarBusca(e){ if(!selSet.has(e.codigo)){ add(e); setBusca(""); } }
+  return (
+    <div style={{position:"relative",marginTop:"18px"}}>
+      <label style={{display:"block",fontSize:"11.5px",fontWeight:700,color:C.navy,marginBottom:"6px"}}>Buscar entrega para adicionar</label>
+      <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar entrega para adicionar…"
+        style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+      {busca.trim() && candidatos.length===0 && (
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"8px",marginTop:"4px",padding:"10px 12px",fontSize:"12px",color:C.sub,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+          <span>Nenhuma entrega encontrada para "{busca.trim()}".</span>
+          <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoNova}>Propor macroprocesso, processo e serviço novos</button>
+        </div>
+      )}
+      {candidatos.length>0 && (
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"8px",marginTop:"4px",overflow:"hidden"}}>
+          {candidatos.map(c=>(
+            <div key={c.codigo} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",padding:"7px 10px",fontSize:"12px",borderBottom:"1px solid #EFF2F6"}}>
+              <span><b>{c.codigo}</b> — {c.entrega}</span>
+              <button className="px-mode" style={{padding:"3px 8px"}} onClick={()=>adicionarBusca(c)}><Plus size={12}/> Adicionar</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Estado vazio compartilhado — aparece quando a Descrição da Área ainda não tem nada
+   (antes de rodar os Marcos Referenciais, ou depois de limpar a seleção). */
+function VazioSelecaoIA({Icone}){
+  return (
+    <div style={{border:`1px dashed ${C.line}`,borderRadius:"10px",padding:"22px",textAlign:"center",color:C.sub,fontSize:"13px"}}>
+      <Icone size={22} color={C.faint} style={{marginBottom:"8px"}}/>
+      <div>Nada aqui ainda. Vá em <b>Marcos Referenciais</b> pra deixar a IA identificar automaticamente, ou adicione manualmente na busca abaixo.</div>
+    </div>
+  );
+}
+
 function Macroprocessos({sel,selSet,add,onGoLista,onGoNova,orgao,unidade}){
   const agrupado=useMemo(()=>{
     const porNat=new Map();
-    ENTREGAS.forEach(e=>{
+    sel.forEach(e=>{
       if(!porNat.has(e.natureza)) porNat.set(e.natureza,new Map());
       const porMac=porNat.get(e.natureza);
       if(!porMac.has(e.macro)) porMac.set(e.macro,new Map());
@@ -734,28 +781,12 @@ function Macroprocessos({sel,selSet,add,onGoLista,onGoNova,orgao,unidade}){
       const tot=macros.reduce((s,m)=>s+m.tot,0);
       return {nat,macros,tot};
     });
-  },[]);
+  },[sel]);
 
-  const [busca,setBusca]=useState("");
-  const candidatos=useMemo(()=>{
-    const q=norm(busca.trim()); if(!q) return [];
-    return ENTREGAS.filter(e=>!selSet.has(e.codigo) &&
-      (norm(e.entrega).includes(q)||norm(e.macro).includes(q)||norm(e.categoria).includes(q)||e.codigo.includes(busca.trim()))
-    ).slice(0,8);
-  },[busca,selSet]);
-  function adicionarBusca(e){ if(!selSet.has(e.codigo)){ add(e); setBusca(""); } }
-
-  const [natAberta,setNatAberta]=useState(()=>{
-    const s=new Set();
-    agrupado.forEach(N=>{ if(N.macros.some(M=>M.cats.some(C=>C.itens.some(e=>selSet.has(e.codigo))))) s.add(N.nat); });
-    return s;
-  });
+  const [natAberta,setNatAberta]=useState(()=>new Set(agrupado.map(N=>N.nat)));
   const [macAberto,setMacAberto]=useState(()=>{
     const s=new Set();
-    agrupado.forEach(N=>N.macros.forEach(M=>{
-      const key=N.nat+"|"+M.mac;
-      if(M.cats.some(C=>C.itens.some(e=>selSet.has(e.codigo)))) s.add(key);
-    }));
+    agrupado.forEach(N=>N.macros.forEach(M=>s.add(N.nat+"|"+M.mac)));
     return s;
   });
   function alternar(setFn){ return key=>setFn(prev=>{ const s=new Set(prev); s.has(key)?s.delete(key):s.add(key); return s; }); }
@@ -767,7 +798,7 @@ function Macroprocessos({sel,selSet,add,onGoLista,onGoNova,orgao,unidade}){
   }
   function recolherTudo(){ setNatAberta(new Set()); setMacAberto(new Set()); }
 
-  const totCat=useMemo(()=>new Set(ENTREGAS.map(e=>e.categoria)).size,[]);
+  const totMac=useMemo(()=>agrupado.reduce((s,N)=>s+N.macros.length,0),[agrupado]);
 
   return (
     <div style={{padding:"32px 24px",maxWidth:"920px"}}>
@@ -781,82 +812,145 @@ function Macroprocessos({sel,selSet,add,onGoLista,onGoNova,orgao,unidade}){
         {sel.length} entrega{sel.length===1?"":"s"} selecionada{sel.length===1?"":"s"} na Descrição da Área · Órgão: {orgao||"—"} · Unidade: {unidade||"—"}{" "}
         <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoLista}>Ver na Lista completa</button>
       </p>
-      <div style={{position:"relative",marginBottom:"18px"}}>
-        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar entrega para adicionar…"
-          style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px",boxSizing:"border-box"}}/>
-        {busca.trim() && candidatos.length===0 && (
-          <div style={{border:`1px solid ${C.line}`,borderRadius:"8px",marginTop:"4px",padding:"10px 12px",fontSize:"12px",color:C.sub,display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-            <span>Nenhuma entrega encontrada para "{busca.trim()}".</span>
-            <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoNova}>Propor macroprocesso, processo e serviço novos</button>
+
+      {sel.length===0 ? <VazioSelecaoIA Icone={Layers}/> : (
+        <div className="px-tree">
+          <div className="px-treebar">
+            <div className="px-treebar-l"><b>Descrição da Área</b> <span>· {agrupado.length} naturezas · {totMac} macroprocessos · {sel.length} entregas</span></div>
+            <div className="px-treebar-r">
+              <button onClick={expandirTudo}>Expandir tudo</button><span>/</span>
+              <button onClick={recolherTudo}>Recolher tudo</button>
+            </div>
           </div>
-        )}
-        {candidatos.length>0 && (
-          <div style={{border:`1px solid ${C.line}`,borderRadius:"8px",marginTop:"4px",overflow:"hidden"}}>
-            {candidatos.map(c=>(
-              <div key={c.codigo} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",padding:"7px 10px",fontSize:"12px",borderBottom:"1px solid #EFF2F6"}}>
-                <span><b>{c.codigo}</b> — {c.entrega}</span>
-                <button className="px-mode" style={{padding:"3px 8px"}} onClick={()=>adicionarBusca(c)}><Plus size={12}/> Adicionar</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="px-tree">
-        <div className="px-treebar">
-          <div className="px-treebar-l"><b>Catálogo de serviços</b> <span>· {agrupado.length} naturezas · {totCat} categorias · {ENTREGAS.length.toLocaleString("pt-BR")} entregas</span></div>
-          <div className="px-treebar-r">
-            <button onClick={expandirTudo}>Expandir tudo</button><span>/</span>
-            <button onClick={recolherTudo}>Recolher tudo</button>
-          </div>
-        </div>
-        {agrupado.map(N=>{
-          const nat=NAT[N.nat]; const aberta=natAberta.has(N.nat);
-          let selNat=0; N.macros.forEach(M=>M.cats.forEach(C=>C.itens.forEach(e=>{if(selSet.has(e.codigo))selNat++;})));
-          return (
-            <div className="px-natacc" key={N.nat}>
-              <button className="px-nathead" onClick={()=>toggleNat(N.nat)} style={{borderLeftColor:nat.cor}}>
-                {aberta?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
-                <span className="px-nathead-dot" style={{background:nat.cor}}/>
-                <span className="px-nathead-t">{nat.rot}</span>
-                <span className="px-nathead-meta">{N.macros.length} macroprocessos · {N.tot.toLocaleString("pt-BR")} entregas</span>
-                {selNat>0 && <span className="px-catsel"><Check size={9}/> {selNat}</span>}
-              </button>
-              {aberta && <div className="px-natbody">
-                {N.macros.map(M=>{
-                  const key=N.nat+"|"+M.mac; const macOpen=macAberto.has(key);
-                  let selMac=0; M.cats.forEach(C=>C.itens.forEach(e=>{if(selSet.has(e.codigo))selMac++;}));
-                  return (
-                    <div className="px-macacc" key={key}>
-                      <button className="px-machead" onClick={()=>toggleMac(key)}>
-                        {macOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
-                        <GitBranch size={13} color={nat.cor}/>
-                        <span className="px-machead-t">{M.mac}</span>
-                        <span className="px-machead-meta">{M.cats.length} categorias · {M.tot}</span>
-                        {selMac>0 && <span className="px-catsel sm"><Check size={9}/> {selMac}</span>}
-                      </button>
-                      {macOpen && <div className="px-macbody">
-                        {M.cats.map(C=>{
-                          const selCat=C.itens.filter(e=>selSet.has(e.codigo)).length;
-                          return (
+          {agrupado.map(N=>{
+            const nat=NAT[N.nat]; const aberta=natAberta.has(N.nat);
+            return (
+              <div className="px-natacc" key={N.nat}>
+                <button className="px-nathead" onClick={()=>toggleNat(N.nat)} style={{borderLeftColor:nat.cor}}>
+                  {aberta?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
+                  <span className="px-nathead-dot" style={{background:nat.cor}}/>
+                  <span className="px-nathead-t">{nat.rot}</span>
+                  <span className="px-nathead-meta">{N.macros.length} macroprocessos · {N.tot.toLocaleString("pt-BR")} entregas</span>
+                </button>
+                {aberta && <div className="px-natbody">
+                  {N.macros.map(M=>{
+                    const key=N.nat+"|"+M.mac; const macOpen=macAberto.has(key);
+                    return (
+                      <div className="px-macacc" key={key}>
+                        <button className="px-machead" onClick={()=>toggleMac(key)}>
+                          {macOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
+                          <GitBranch size={13} color={nat.cor}/>
+                          <span className="px-machead-t">{M.mac}</span>
+                          <span className="px-machead-meta">{M.cats.length} categorias · {M.tot}</span>
+                        </button>
+                        {macOpen && <div className="px-macbody">
+                          {M.cats.map(C=>(
                             <div className="px-catacc" key={C.cat}>
                               <div className="px-cathead" style={{cursor:"default"}}>
-                                <span className={`px-dot${selCat>0?" sel":""}`} style={{background:nat.cor}}/>
+                                <span className="px-dot sel" style={{background:nat.cor}}/>
                                 <span className="px-cathead-t">{C.cat}</span>
                                 <span className="px-catcount">{C.itens.length}</span>
-                                {selCat>0 && <span className="px-catsel"><Check size={9}/> {selCat}</span>}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>}
-                    </div>
-                  );
-                })}
-              </div>}
+                          ))}
+                        </div>}
+                      </div>
+                    );
+                  })}
+                </div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <BuscaAdicionar selSet={selSet} add={add} onGoNova={onGoNova}/>
+    </div>
+  );
+}
+
+/* ---------- Processo e Serviço — mesma árvore do Macroprocessos, só que
+   agrupada por categoria (Processo) ou serviço (Serviço) em vez de
+   macroprocesso. Sempre a partir da Descrição da Área (o que a IA achou nos
+   Marcos Referenciais, editável na Lista), nunca o catálogo inteiro. ---------- */
+function ArvoreSelecaoIA({titulo,campo,icone,sel,selSet,add,onGoLista,onGoNova}){
+  const agrupado=useMemo(()=>{
+    const SEM_SERVICO="Sem serviço específico";
+    const porNat=new Map();
+    sel.forEach(e=>{
+      // ~73% das entregas do banco não têm serviço próprio cadastrado — nesse
+      // caso o carregamento (ingestBanco) usa o nome da categoria como
+      // serviço, só pra nunca deixar o campo vazio nos filtros gerais. Aqui,
+      // na aba Serviço, isso enganaria (pareceria igual à aba Processo), então
+      // detectamos o caso (servico===categoria) e agrupamos à parte.
+      const semServicoProprio = campo==="servico" && e.servico===e.categoria;
+      const chave = semServicoProprio ? SEM_SERVICO : (e[campo]||"—");
+      if(!porNat.has(e.natureza)) porNat.set(e.natureza,new Map());
+      const porGrupo=porNat.get(e.natureza);
+      if(!porGrupo.has(chave)) porGrupo.set(chave,[]);
+      porGrupo.get(chave).push(e);
+    });
+    return NAT_ORDER.filter(n=>porNat.has(n)).map(nat=>{
+      const grupos=[...porNat.get(nat)].map(([nome,itens])=>({nome,itens,semServico:nome===SEM_SERVICO}))
+        .sort((a,b)=> (a.semServico!==b.semServico) ? (a.semServico?1:-1) : a.nome.localeCompare(b.nome));
+      const tot=grupos.reduce((s,g)=>s+g.itens.length,0);
+      return {nat,grupos,tot};
+    });
+  },[sel,campo]);
+
+  const [natAberta,setNatAberta]=useState(()=>new Set(agrupado.map(N=>N.nat)));
+  function toggleNat(id){ setNatAberta(prev=>{ const s=new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; }); }
+  function expandirTudo(){ setNatAberta(new Set(agrupado.map(N=>N.nat))); }
+  function recolherTudo(){ setNatAberta(new Set()); }
+
+  const totGrupos=useMemo(()=>agrupado.reduce((s,N)=>s+N.grupos.length,0),[agrupado]);
+  const rot=titulo.toLowerCase();
+
+  return (
+    <div style={{padding:"32px 24px",maxWidth:"920px"}}>
+      <h2 style={{margin:"0 0 4px",fontSize:"18px",color:C.navy}}>{titulo}</h2>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
+        {sel.length} entrega{sel.length===1?"":"s"} na Descrição da Área{" "}
+        <button className="px-mode" style={{padding:"3px 8px"}} onClick={onGoLista}>Ver na Lista completa</button>
+      </p>
+
+      {sel.length===0 ? <VazioSelecaoIA Icone={icone}/> : (
+        <div className="px-tree">
+          <div className="px-treebar">
+            <div className="px-treebar-l"><b>Descrição da Área</b> <span>· {agrupado.length} naturezas · {totGrupos} {rot}{totGrupos===1?"":"s"} · {sel.length} entregas</span></div>
+            <div className="px-treebar-r">
+              <button onClick={expandirTudo}>Expandir tudo</button><span>/</span>
+              <button onClick={recolherTudo}>Recolher tudo</button>
             </div>
-          );
-        })}
-      </div>
+          </div>
+          {agrupado.map(N=>{
+            const nat=NAT[N.nat]; const aberta=natAberta.has(N.nat);
+            return (
+              <div className="px-natacc" key={N.nat}>
+                <button className="px-nathead" onClick={()=>toggleNat(N.nat)} style={{borderLeftColor:nat.cor}}>
+                  {aberta?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
+                  <span className="px-nathead-dot" style={{background:nat.cor}}/>
+                  <span className="px-nathead-t">{nat.rot}</span>
+                  <span className="px-nathead-meta">{N.grupos.length} {rot}{N.grupos.length===1?"":"s"} · {N.tot} entregas</span>
+                </button>
+                {aberta && <div className="px-natbody">
+                  {N.grupos.map(G=>(
+                    <div className="px-catacc" key={G.nome}>
+                      <div className="px-cathead" style={{cursor:"default",opacity:G.semServico?.7:1}}>
+                        <span className="px-dot sel" style={{background:G.semServico?C.faint:nat.cor}}/>
+                        <span className="px-cathead-t" style={{fontStyle:G.semServico?"italic":"normal",color:G.semServico?C.faint:undefined}}>{G.nome}</span>
+                        <span className="px-catcount">{G.itens.length}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <BuscaAdicionar selSet={selSet} add={add} onGoNova={onGoNova}/>
     </div>
   );
 }
@@ -1104,8 +1198,69 @@ function BancoLoading(){
   </div>);
 }
 
+/* ---------- Início 2.0 — caminho guiado: cadastro → Marcos Referenciais → Macroprocessos/Catálogo ---------- */
+function SecaoInicioCaminho({stats,orgao,unidade,setOrgao,setUnidade,onCatalogo,onMarcos}){
+  const [o,setO]=useState(orgao||"");
+  const [u,setU]=useState(unidade||"");
+  const pronto = o.trim() && u.trim();
+  const fmt=n=>Number(n||0).toLocaleString("pt-BR");
+
+  const seguir=()=>{
+    if(!pronto) return;
+    setOrgao(o.trim()); setUnidade(u.trim());
+    onMarcos();
+  };
+
+  const passos=[
+    {n:1, ic:Building2, t:"Órgão e unidade"},
+    {n:2, ic:Bot,        t:"Marcos Referenciais"},
+    {n:3, ic:LayoutGrid, t:"Macroprocessos e Catálogo"},
+  ];
+
+  return (
+    <section className="px-caminho">
+      <div className="px-caminho-hero">
+        <h1>O trabalho do serviço público federal,<br/>organizado em um só lugar.</h1>
+        <p>{o.trim() ? <>Rota de cadastro de <b>{o.trim()}</b>{u.trim() && <> — {u.trim()}</>}</> : "Comece cadastrando o órgão e a unidade — o restante do caminho segue sozinho."}</p>
+        <div className="px-home-nums">
+          <span><b>{fmt(stats.total)}</b> entregas</span><i/>
+          <span><b>{fmt(stats.servs)}</b> serviços</span><i/>
+          <span><b>{fmt(stats.macros)}</b> macroprocessos</span>
+        </div>
+      </div>
+
+      <div className="px-caminho-trilha">
+        {passos.map((p,i)=>{ const Ic=p.ic; return (<Fragment key={p.n}>
+          <div className={`px-caminho-passo ${p.n===1?"ativo":"futuro"}`}>
+            <span className="px-caminho-bola"><Ic size={16}/></span>
+            <span className="px-caminho-label">{p.t}</span>
+          </div>
+          {i<passos.length-1 && <span className="px-caminho-trilho"/>}
+        </Fragment>); })}
+      </div>
+
+      <div className="px-caminho-card">
+        <span className="px-caminho-badge">Passo 1 de 3</span>
+        <h2>Cadastrar órgão e unidade</h2>
+        <p className="px-caminho-d">Depois de cadastrar, você já entra direto nos Marcos Referenciais — a IA identifica os macroprocessos e monta o Catálogo da unidade a partir deles.</p>
+        <div className="px-caminho-form">
+          <label>Órgão<input value={o} onChange={e=>setO(e.target.value)} placeholder="Ex.: Ministério da Gestão e da Inovação" autoFocus/></label>
+          <label>Unidade<input value={u} onChange={e=>setU(e.target.value)} placeholder="Ex.: Coordenação-Geral de Recursos Humanos" onKeyDown={e=>{ if(e.key==="Enter") seguir(); }}/></label>
+        </div>
+        <div className="px-caminho-foot">
+          <button className="px-caminho-skip" onClick={onCatalogo}>Ir direto ao catálogo</button>
+          <button className="px-caminho-go" disabled={!pronto} onClick={seguir}>Continuar → Marcos Referenciais <ArrowRight size={15}/></button>
+        </div>
+      </div>
+
+      <div className="px-home-foot">SGP · MGI — SIGEPE · SISDIP/DFT</div>
+    </section>
+  );
+}
+
 /* ---------- capa de abertura (clara e serena) ---------- */
-/* ---------- Início — porta de entrada do portal (seção, não overlay) ---------- */
+/* ---------- Início — porta de entrada do portal (seção, não overlay; versão em cartões, mantida por
+   compatibilidade — foi substituída pelo caminho guiado acima e não é mais renderizada) ---------- */
 function SecaoInicio({stats,onCatalogo,onOrgaos,onChat,onConversor,onRevisao,onPGD,onMarcos}){
   const fmt=n=>Number(n||0).toLocaleString("pt-BR");
   const caminhos=[
@@ -2952,6 +3107,34 @@ const css=`
 .px-home-card-d{font-size:12px;line-height:1.55;color:${C.sub};min-height:36px;}
 .px-home-card-go{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:2px;}
 .px-home-foot{text-align:center;margin-top:40px;font-size:11px;color:${C.faint};letter-spacing:.4px;}
+/* ---- Início 2.0: caminho guiado ---- */
+.px-caminho{max-width:640px;margin:0 auto;padding:44px 28px 60px;animation:fadeUp .35s ease;}
+.px-caminho-hero{text-align:center;margin:0 auto 32px;}
+.px-caminho-hero h1{font-size:27px;line-height:1.25;font-weight:800;color:${C.navy};letter-spacing:-.4px;margin:0 0 12px;}
+.px-caminho-hero p{font-size:14px;line-height:1.6;color:${C.sub};margin:0 auto 18px;}
+.px-caminho-hero p b{color:${C.primaryDark};}
+.px-caminho-trilha{display:flex;align-items:flex-start;margin-bottom:26px;}
+.px-caminho-passo{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
+.px-caminho-bola{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid ${C.line};background:#fff;color:${C.faint};flex-shrink:0;}
+.px-caminho-passo.ativo .px-caminho-bola{border-color:${C.primary};background:${C.primary};color:#fff;}
+.px-caminho-label{font-size:11.5px;font-weight:700;color:${C.faint};text-align:center;line-height:1.3;}
+.px-caminho-passo.ativo .px-caminho-label{color:${C.primary};}
+.px-caminho-trilho{flex:0 0 44px;height:2px;background:${C.line};margin:16px -2px 0;}
+.px-caminho-card{background:#fff;border:1px solid ${C.line};border-radius:16px;padding:30px;box-shadow:0 2px 16px rgba(19,49,92,.06);}
+.px-caminho-badge{display:inline-flex;align-items:center;background:${C.primarySoft};color:${C.primary};font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:20px;margin-bottom:14px;}
+.px-caminho-card h2{font-size:18px;margin:0 0 6px;color:${C.ink};}
+.px-caminho-d{font-size:13px;line-height:1.6;color:${C.sub};margin:0 0 22px;max-width:480px;}
+.px-caminho-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+@media(max-width:560px){.px-caminho-form{grid-template-columns:1fr;}}
+.px-caminho-form label{display:block;font-size:11.5px;font-weight:700;color:${C.navy};margin-bottom:6px;}
+.px-caminho-form input{width:100%;padding:10px 12px;border:1px solid ${C.line};border-radius:9px;font-size:14px;font-family:inherit;background:#fbfcfd;box-sizing:border-box;}
+.px-caminho-form input:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.px-caminho-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.px-caminho-skip{background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:700;color:${C.faint};cursor:pointer;padding:6px 0;}
+.px-caminho-skip:hover{color:${C.sub};}
+.px-caminho-go{display:inline-flex;align-items:center;gap:8px;background:${C.primary};color:#fff;border:none;border-radius:9px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.px-caminho-go:hover{background:${C.primaryDark};}
+.px-caminho-go:disabled{opacity:.4;cursor:default;}
 /* ---- seção PGD ---- */
 .px-pgd-switch{display:inline-flex;gap:4px;background:#fff;border:1px solid ${C.line};border-radius:11px;padding:4px;margin-bottom:14px;}
 .px-pgd-switch button{display:flex;align-items:center;gap:8px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:${C.faint};padding:8px 15px;border-radius:8px;cursor:pointer;transition:all .14s;}
