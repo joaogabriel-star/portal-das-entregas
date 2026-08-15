@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mapa da Unidade — protótipo</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#1351B4; --primary-dark:#0C326F; --primary-soft:#E8EEF9;
+  --green:#168821; --green-soft:#E3F2E5; --navy:#13315C; --yellow:#FFCD07;
+  --amber:#B86E00; --amber-soft:#FBEEDB; --coral:#9E3B1F; --coral-soft:#FBEDE4;
+  --ink:#1B1B1B; --sub:#55606E; --faint:#8C97A6; --line:#E4E7EB; --bg:#F4F6F9;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Raleway',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;}
+button,input,textarea{font-family:inherit;}
+.faixa{display:flex;height:4px;} .faixa span{flex:1;}
+
+/* ---------- cabeçalho ---------- */
+header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:40;}
+.h-t{font-size:17px;font-weight:800;color:var(--navy);}
+.h-s{font-size:11.5px;color:var(--faint);}
+.h-proto{background:var(--amber-soft);color:var(--amber);font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
+.h-unid{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.h-unid input{border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:600;color:var(--navy);width:230px;background:#fbfcfd;}
+.h-unid input:focus{outline:2px solid var(--primary-soft);border-color:var(--primary);}
+.h-num{display:flex;align-items:center;gap:6px;background:var(--green-soft);color:var(--green);font-size:12px;font-weight:800;padding:7px 12px;border-radius:9px;}
+
+/* ---------- passo 1: atribuições ---------- */
+.origem{background:#fff;border-bottom:1px solid var(--line);padding:16px 20px;}
+.origem-h{display:flex;align-items:center;gap:9px;margin-bottom:4px;}
+.origem-h b{font-size:14px;color:var(--navy);}
+.passo-n{width:21px;height:21px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:11.5px;font-weight:800;flex-shrink:0;}
+.origem-d{font-size:12.5px;color:var(--sub);line-height:1.55;margin:0 0 12px;max-width:780px;}
+.origem-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+@media(max-width:900px){.origem-grid{grid-template-columns:1fr;}}
+.origem textarea{width:100%;height:132px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.6;background:#fbfcfd;resize:vertical;}
+.origem textarea:focus{outline:2px solid var(--primary-soft);border-color:var(--primary);}
+.btn{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;transition:all .14s;}
+.btn-p{background:var(--primary);color:#fff;} .btn-p:hover{background:var(--primary-dark);}
+.btn-g{background:none;color:var(--sub);border:1px solid var(--line);} .btn-g:hover{border-color:var(--primary);color:var(--primary-dark);}
+.btn:disabled{opacity:.45;cursor:default;}
+.atribs{display:flex;flex-direction:column;gap:7px;max-height:190px;overflow-y:auto;padding-right:4px;}
+.atrib{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;}
+.atrib-t{font-size:12px;line-height:1.5;color:var(--ink);}
+.atrib-m{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:10.5px;color:var(--faint);font-weight:700;}
+.atrib-m b{color:var(--primary);}
+.atrib-ver{background:none;border:none;color:var(--primary);font-weight:800;font-size:10.5px;cursor:pointer;padding:0;text-decoration:underline;}
+.origem-vazio{font-size:12.5px;color:var(--faint);border:1px dashed var(--line);border-radius:10px;padding:22px;text-align:center;}
+
+/* ---------- corpo: colunas + mapa ---------- */
+.corpo{display:flex;gap:0;align-items:stretch;height:calc(100vh - 62px);}
+.cols{flex:1;display:flex;overflow-x:auto;min-width:0;}
+.col{flex:0 0 258px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#fff;min-width:0;}
+.col.apagada{background:#FCFDFE;}
+.col-h{padding:10px 12px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:inherit;z-index:2;}
+.col-t{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;}
+.col-n{margin-left:auto;background:var(--bg);color:var(--sub);border-radius:20px;padding:1px 7px;font-size:10px;letter-spacing:0;}
+.col-pai{font-size:10.5px;color:var(--faint);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.col-busca{margin-top:7px;position:relative;}
+.col-busca input{width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 9px 6px 26px;font-size:11.5px;background:#fbfcfd;}
+.col-busca input:focus{outline:2px solid var(--primary-soft);border-color:var(--primary);}
+.col-busca svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);opacity:.4;}
+.col-body{flex:1;overflow-y:auto;padding:4px;}
+.item{display:flex;align-items:flex-start;gap:7px;padding:7px 8px;border-radius:8px;cursor:pointer;transition:background .12s;}
+.item:hover{background:var(--bg);}
+.item.aberto{background:var(--primary-soft);}
+.item-cx{width:16px;height:16px;flex-shrink:0;border:1.5px solid var(--line);border-radius:4px;background:#fff;display:grid;place-items:center;margin-top:1px;cursor:pointer;transition:all .12s;}
+.item-cx:hover{border-color:var(--primary);}
+.item-cx.on{background:var(--green);border-color:var(--green);}
+.item-cx.parcial{background:#fff;border-color:var(--green);}
+.item-cx.parcial i{width:8px;height:2px;background:var(--green);border-radius:2px;}
+.item-cx svg{color:#fff;}
+.item-tx{flex:1;min-width:0;}
+.item-nome{font-size:12px;line-height:1.4;color:var(--ink);font-weight:600;word-break:break-word;}
+.item.aberto .item-nome{color:var(--primary-dark);}
+.item-meta{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:10px;color:var(--faint);font-weight:700;}
+.item-cod{font-family:ui-monospace,monospace;font-size:9.5px;background:var(--bg);border-radius:4px;padding:1px 5px;}
+.pill-ia{display:inline-flex;align-items:center;gap:3px;background:var(--primary-soft);color:var(--primary);font-size:9px;font-weight:800;padding:1px 6px;border-radius:20px;}
+.pill-novo{background:var(--amber-soft);color:var(--amber);font-size:9px;font-weight:800;padding:1px 6px;border-radius:20px;}
+.item-go{color:var(--faint);flex-shrink:0;margin-top:1px;}
+.item:hover .item-go{color:var(--primary);}
+.nat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.col-vazio{font-size:11.5px;color:var(--faint);padding:18px 12px;text-align:center;line-height:1.5;}
+.col-criar{margin:6px 4px;border:1px dashed var(--line);border-radius:8px;padding:8px;font-size:11.5px;font-weight:700;color:var(--sub);cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center;background:none;width:calc(100% - 8px);}
+.col-criar:hover{border-color:var(--primary);color:var(--primary-dark);border-style:solid;}
+.col-criar.travado{opacity:.5;cursor:not-allowed;}
+.col-criar.travado:hover{border-color:var(--line);color:var(--sub);border-style:dashed;}
+
+/* ---------- painel do mapa ---------- */
+.mapa{flex:0 0 320px;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;}
+@media(max-width:1100px){.mapa{flex:0 0 270px;}}
+.mapa-h{padding:12px 14px;border-bottom:1px solid var(--line);}
+.mapa-h b{font-size:13.5px;color:var(--navy);display:flex;align-items:center;gap:7px;}
+.mapa-nums{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
+.mapa-num{background:var(--bg);border-radius:8px;padding:6px 9px;flex:1;min-width:60px;}
+.mapa-num b{display:block;font-size:15px;color:var(--navy);}
+.mapa-num span{font-size:9.5px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.mapa-body{flex:1;overflow-y:auto;padding:8px;}
+.mapa-vazio{font-size:12px;color:var(--faint);text-align:center;padding:28px 14px;line-height:1.6;}
+.m-mac{margin-bottom:6px;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+.m-mac-h{display:flex;align-items:center;gap:7px;padding:8px 9px;background:#FCFDFE;cursor:pointer;}
+.m-mac-h b{font-size:11.5px;flex:1;line-height:1.35;word-break:break-word;}
+.m-mac-n{font-size:9.5px;background:var(--bg);border-radius:20px;padding:1px 7px;color:var(--sub);font-weight:800;}
+.m-proc{padding:5px 9px 5px 22px;border-top:1px solid #F2F4F7;}
+.m-proc-t{font-size:11px;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:6px;}
+.m-serv{font-size:10.5px;color:var(--faint);padding:3px 0 3px 12px;display:flex;align-items:center;gap:6px;}
+.m-ent{display:flex;align-items:flex-start;gap:6px;font-size:10.5px;color:var(--sub);padding:3px 0 3px 12px;line-height:1.4;}
+.m-ent button{background:none;border:none;color:var(--faint);cursor:pointer;padding:0;flex-shrink:0;display:grid;place-items:center;}
+.m-ent button:hover{color:var(--coral);}
+.mapa-foot{border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:7px;}
+.mapa-foot .btn{flex:1;justify-content:center;padding:9px 10px;font-size:12px;}
+
+/* ---------- barra de estado / desfazer ---------- */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
+  padding:11px 16px;border-radius:10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:12px;
+  box-shadow:0 8px 24px rgba(19,49,92,.3);z-index:80;animation:sobe .2s ease;}
+@keyframes sobe{from{opacity:0;transform:translate(-50%,8px);}to{opacity:1;transform:translate(-50%,0);}}
+.toast button{background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:800;font-size:11.5px;
+  padding:5px 11px;border-radius:7px;cursor:pointer;}
+.toast button:hover{background:rgba(255,255,255,.28);}
+
+/* ---------- modal criar ---------- */
+.modal-bg{position:fixed;inset:0;background:rgba(19,49,92,.45);display:grid;place-items:center;z-index:90;padding:20px;}
+.modal{background:#fff;border-radius:14px;padding:22px;width:min(620px,100%);max-height:88vh;overflow-y:auto;}
+.modal h3{margin:0 0 4px;font-size:16px;color:var(--navy);}
+.modal p.d{font-size:12.5px;color:var(--sub);line-height:1.55;margin:0 0 16px;}
+.modal label{display:block;font-size:11px;font-weight:800;color:var(--navy);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em;}
+.modal input,.modal select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px;background:#fbfcfd;}
+.modal input:focus,.modal select:focus{outline:2px solid var(--primary-soft);border-color:var(--primary);}
+.verd{display:flex;align-items:flex-start;gap:8px;border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.5;margin-top:14px;font-weight:600;}
+.verd.ok{background:var(--green-soft);color:var(--green);}
+.verd.atencao{background:var(--amber-soft);color:var(--amber);}
+.verd.bloqueio{background:var(--coral-soft);color:var(--coral);}
+.simil{margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;}
+.simil-i{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:11px;}
+.simil-pct{font-weight:800;font-size:10px;border-radius:6px;padding:2px 6px;background:var(--bg);color:var(--sub);flex-shrink:0;}
+.modal-foot{display:flex;justify-content:flex-end;gap:9px;margin-top:18px;}
+.carregando{padding:60px 20px;text-align:center;color:var(--faint);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="faixa"><span style="background:var(--green)"></span><span style="background:var(--yellow)"></span><span style="background:var(--primary)"></span></div>
+
+<header>
+  <div>
+    <div class="h-t">Mapa da Unidade</div>
+    <div class="h-s">retrate o que a sua área faz — macroprocesso › processo › serviço › entrega</div>
+  </div>
+  <span class="h-proto">Protótipo</span>
+  <div class="h-unid">
+    <input id="inpOrgao" placeholder="Órgão" value="Enap"/>
+    <input id="inpUnidade" placeholder="Unidade" value="Diretoria de Concursos Públicos"/>
+    <span class="h-num" id="numMapa">0 entregas</span>
+  </div>
+</header>
+
+<section class="origem" id="secOrigem">
+  <div class="origem-h"><span class="passo-n">1</span><b>De onde partimos</b></div>
+  <p class="origem-d">Cole as atribuições da unidade — do regimento, do decreto de estrutura, da cadeia de valor. O portal lê cada atribuição e procura, no catálogo oficial de 31 mil entregas, o que mais se parece com aquilo. Nada é decidido por você: o resultado vira <b>sugestão</b> dentro do mapa, e você confirma, descarta ou procura outra coisa.</p>
+  <div class="origem-grid">
+    <div>
+      <textarea id="txtAtrib" spellcheck="false"></textarea>
+      <div style="display:flex;gap:8px;margin-top:9px;">
+        <button class="btn btn-p" id="btnLer">Ler atribuições e sugerir</button>
+        <button class="btn btn-g" id="btnLimparAtrib">Limpar</button>
+      </div>
+    </div>
+    <div>
+      <div id="listaAtribs" class="atribs"></div>
+    </div>
+  </div>
+</section>
+
+<div class="corpo">
+  <div class="cols" id="cols"></div>
+  <aside class="mapa">
+    <div class="mapa-h">
+      <b>O retrato da unidade</b>
+      <div class="mapa-nums" id="mapaNums"></div>
+    </div>
+    <div class="mapa-body" id="mapaBody"></div>
+    <div class="mapa-foot">
+      <button class="btn btn-g" id="btnLimparMapa">Recomeçar</button>
+      <button class="btn btn-p" id="btnExportar">Exportar</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ============================================================================
+   Protótipo do Mapa da Unidade.
+   Roda com o banco.json de verdade (as 31.241 entregas). A leitura das
+   atribuições é feita aqui mesmo, por semelhança de palavras — no portal esse
+   passo é da IA, mas o comportamento da tela é o mesmo: vira sugestão, e quem
+   decide é o usuário.
+============================================================================ */
+let ENTREGAS=[];
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const NAT={finalistico:{rot:"Finalístico",cor:"#168821"},governanca:{rot:"Governança",cor:"#B86E00"},suporte:{rot:"Suporte",cor:"#1351B4"}};
+const SEM_SERVICO="— sem serviço específico —";
+
+/* regras de criação: só o finalístico é aberto nos três níveis de cima */
+const PODE_CRIAR={finalistico:{macro:true,processo:true,servico:true},
+                  governanca:{macro:false,processo:false,servico:true},
+                  suporte:{macro:false,processo:false,servico:true}};
+
+const NIVEIS=[
+  {id:"macro",    rot:"Macroprocesso", campo:"macro"},
+  {id:"processo", rot:"Processo",      campo:"categoria"},
+  {id:"servico",  rot:"Serviço",       campo:"servico"},
+  {id:"entrega",  rot:"Entrega",       campo:null},
+];
+
+const estado={
+  trilha:{macro:null,processo:null,servico:null},
+  mapa:new Set(),          // códigos escolhidos
+  sugeridos:new Set(),     // códigos que vieram da leitura das atribuições
+  atribs:[],               // [{texto, codigos:[]}]
+  busca:{macro:"",processo:"",servico:"",entrega:""},
+  novos:[],                // níveis criados à mão neste protótipo
+  desfazer:null,
+};
+
+const SEED=`I - planejar, coordenar e supervisionar a execução logística e operacional dos concursos públicos sob responsabilidade da Enap e promover a integração entre os diferentes atores envolvidos;
+II - monitorar os processos de logística e segurança, e desenvolver estratégias de mitigação de riscos e de contingências para a aplicação de provas de concursos públicos;
+III - coordenar a elaboração de normas, editais, conteúdos programáticos e materiais instrucionais e administrativos de concursos públicos;
+IV - coordenar a capacitação dos colaboradores envolvidos na aplicação de provas de concursos públicos e a padronização de procedimentos operacionais;
+V - planejar, acompanhar e fiscalizar contratos, convênios e parcerias firmados com outras instituições;
+VI - prestar consultoria técnica e apoio institucional a órgãos e entidades dos diversos poderes e esferas de governo para o desenvolvimento e a implantação de processos seletivos e concursos públicos.`;
+
+const el=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ico={
+  busca:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+  check:'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6 9 17l-5-5"/></svg>',
+  seta:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>',
+  x:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  mais:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>',
+  faisca:'<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z"/></svg>',
+  mapa:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>',
+};
+
+/* ---------- carga ---------- */
+async function carregar(){
+  el("cols").innerHTML='<div class="carregando">Carregando o catálogo de entregas…</div>';
+  try{
+    const r=await fetch("banco.json");
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const lite=await r.json();
+    ENTREGAS=lite.map(x=>({
+      codigo:x.c, entrega:x.e, atividade:x.a||"",
+      servico:(x.s&&x.s!==x.k)?x.s:"",       // serviço próprio só quando existe de fato
+      categoria:x.k, macro:x.m, natureza:x.n,
+    }));
+  }catch(e){
+    el("cols").innerHTML='<div class="carregando">Não consegui carregar <b>banco.json</b>.<br>Abra esta página pelo servidor local (não com clique duplo no arquivo).</div>';
+    return;
+  }
+  el("txtAtrib").value=SEED;
+  render();
+}
+
+/* ---------- leitura das atribuições (semelhança por palavras) ---------- */
+const VAZIAS=new Set("de da do das dos e a o as os em no na nos nas para por com que ao aos à às um uma sua seu suas seus sob entre sobre ou".split(" "));
+function toks(s){ return new Set(norm(s).split(/[^a-z0-9]+/).filter(t=>t.length>3&&!VAZIAS.has(t))); }
+
+/* Peso por raridade (IDF). Sem isso, "operacional" e "serviços" — que aparecem
+   em milhares de entregas — pesam tanto quanto "concursos", e a atribuição
+   certa afunda no meio de coisas genéricas. */
+let IDF=null, TOKENS_ENTREGA=null;
+function prepararIndice(){
+  TOKENS_ENTREGA=ENTREGAS.map(e=>toks(e.entrega+" "+e.atividade+" "+e.categoria+" "+e.macro));
+  const df=new Map();
+  TOKENS_ENTREGA.forEach(B=>B.forEach(t=>df.set(t,(df.get(t)||0)+1)));
+  const N=ENTREGAS.length;
+  IDF=new Map();
+  df.forEach((n,t)=>IDF.set(t,Math.log(N/(1+n))));
+}
+const pesoDe=t=>IDF&&IDF.has(t)?Math.max(IDF.get(t),0.1):3;
+
+/* Uma atribuição de regimento é quase toda verbo administrativo: "planejar,
+   coordenar, supervisionar, monitorar, elaborar". Essas palavras aparecem em
+   milhares de entregas e não distinguem nada. O que identifica a unidade são
+   os substantivos do domínio — concursos, editais, provas, convênios. Então a
+   busca só considera os termos distintivos da atribuição. */
+/* O filtro por raridade sozinho não basta: o catálogo é escrito em
+   substantivos ("Portaria emitida"), então verbos de regimento como
+   "coordenar" são raros lá dentro e passariam como se fossem distintivos.
+   Esta lista tira o vocabulário de competência que todo regimento repete. */
+const VERBOS_REGIMENTO=new Set(("planejar coordenar supervisionar monitorar executar promover elaborar "
+ +"desenvolver acompanhar fiscalizar prestar propor subsidiar orientar articular apoiar gerir administrar "
+ +"implementar implantar avaliar analisar manter assegurar garantir definir estabelecer realizar participar "
+ +"zelar exercer dirigir conduzir formular instituir consolidar autorizar deliberar representar aprovar "
+ +"atividades acoes processos procedimentos instituicoes atores ambito respectivas respectivos demais "
+ +"competencias competencia unidade unidades orgao orgaos entidades entidade outras outros diversos "
+ +"aplicacao execucao gestao area areas trabalho trabalhos forma formas meio meios").split(/\s+/));
+const CORTE_GENERICO=3.2;   // termos presentes em mais de ~4% do catálogo
+function termosDistintivos(texto){
+  const T=[...toks(texto)].filter(t=>!VERBOS_REGIMENTO.has(t));
+  const raros=T.filter(t=>pesoDe(t)>=CORTE_GENERICO);
+  return raros.length?raros:T;   // se sobrar pouco, usa o que tem
+}
+
+function sugerirPara(texto,n){
+  if(!IDF) prepararIndice();
+  const T=termosDistintivos(texto);
+  if(!T.length) return [];
+  const pesoT=T.reduce((s,t)=>s+pesoDe(t),0)||1;
+  const alvos=[];
+  for(let i=0;i<ENTREGAS.length;i++){
+    const B=TOKENS_ENTREGA[i];
+    let acum=0, comuns=0;
+    T.forEach(t=>{ if(B.has(t)){ acum+=pesoDe(t); comuns++; } });
+    if(!comuns) continue;
+    // normaliza pelo peso da atribuição e penaliza levemente entregas enormes
+    const s=(acum/pesoT)/Math.sqrt(1+B.size/16);
+    if(s>0.08) alvos.push({e:ENTREGAS[i],s});
+  }
+  alvos.sort((a,b)=>b.s-a.s);
+  return alvos.slice(0,n);
+}
+
+function lerAtribuicoes(){
+  const bruto=el("txtAtrib").value.trim();
+  if(!bruto) return;
+  const linhas=bruto.split(/\n+/).map(l=>l.replace(/^\s*[IVXLC]+\s*[-–]\s*/,"").replace(/^\s*[a-z0-9]+\)\s*/i,"").trim()).filter(l=>l.length>25);
+  estado.atribs=linhas.map(texto=>{
+    const achados=sugerirPara(texto,6);
+    return {texto, codigos:achados.map(a=>a.e.codigo), scores:achados.map(a=>a.s)};
+  });
+  estado.sugeridos=new Set(estado.atribs.flatMap(a=>a.codigos));
+  render();
+}
+
+/* ---------- helpers do mapa ---------- */
+function entregasDe(nivelId,valor,trilha){
+  return ENTREGAS.filter(e=>{
+    if(trilha.macro && e.macro!==trilha.macro) return false;
+    if(trilha.processo && e.categoria!==trilha.processo) return false;
+    if(trilha.servico!=null){
+      const sv=e.servico||SEM_SERVICO;
+      if(sv!==trilha.servico) return false;
+    }
+    if(nivelId==="macro") return e.macro===valor;
+    if(nivelId==="processo") return e.categoria===valor;
+    if(nivelId==="servico") return (e.servico||SEM_SERVICO)===valor;
+    return e.codigo===valor;
+  });
+}
+
+function baseFiltrada(nivelIdx){
+  const t=estado.trilha;
+  return ENTREGAS.filter(e=>{
+    if(nivelIdx>0 && t.macro && e.macro!==t.macro) return false;
+    if(nivelIdx>1 && t.processo && e.categoria!==t.processo) return false;
+    if(nivelIdx>2 && t.servico!=null && (e.servico||SEM_SERVICO)!==t.servico) return false;
+    return true;
+  });
+}
+
+/* ---------- render das colunas ---------- */
+function render(){
+  renderColunas();
+  renderMapa();
+  renderAtribs();
+  el("numMapa").textContent=estado.mapa.size+(estado.mapa.size===1?" entrega":" entregas");
+}
+
+function renderAtribs(){
+  const c=el("listaAtribs");
+  if(!estado.atribs.length){
+    c.innerHTML='<div class="origem-vazio">Cole as atribuições ao lado e clique em <b>Ler atribuições</b>.<br>O que for encontrado aparece marcado com <span class="pill-ia">'+ico.faisca+' sugerido</span> nas colunas abaixo.</div>';
+    return;
+  }
+  c.innerHTML=estado.atribs.map((a,i)=>{
+    const noMapa=a.codigos.filter(cd=>estado.mapa.has(cd)).length;
+    return '<div class="atrib">'
+      +'<div class="atrib-t">'+esc(a.texto.length>150?a.texto.slice(0,148)+"…":a.texto)+'</div>'
+      +'<div class="atrib-m"><b>'+a.codigos.length+'</b> sugestões · <b>'+noMapa+'</b> no mapa'
+      +' <button class="atrib-ver" data-atrib="'+i+'">ver no mapa</button></div></div>';
+  }).join("");
+  c.querySelectorAll("[data-atrib]").forEach(b=>b.onclick=()=>{
+    const a=estado.atribs[+b.dataset.atrib];
+    const primeira=ENTREGAS.find(e=>e.codigo===a.codigos[0]);
+    if(!primeira) return;
+    estado.trilha={macro:primeira.macro,processo:null,servico:null};
+    estado.busca={macro:"",processo:"",servico:"",entrega:""};
+    render();
+  });
+}
+
+function renderColunas(){
+  const cont=el("cols");
+  cont.innerHTML="";
+  NIVEIS.forEach((niv,idx)=>{
+    // uma coluna só abre se o nível anterior foi escolhido
+    const travada = (idx===1&&!estado.trilha.macro) || (idx===2&&!estado.trilha.processo) || (idx===3&&estado.trilha.servico==null);
+    cont.appendChild(coluna(niv,idx,travada));
+  });
+}
+
+function coluna(niv,idx,travada){
+  const div=document.createElement("div");
+  div.className="col"+(travada?" apagada":"");
+  const base=baseFiltrada(idx);
+  const q=norm(estado.busca[niv.id]||"");
+
+  // agrupa no nível corrente
+  let itens=[];
+  if(niv.id==="entrega"){
+    itens=base.filter(e=>!q||norm(e.entrega+" "+e.codigo+" "+e.atividade).includes(q))
+      .map(e=>({chave:e.codigo,nome:e.entrega,entregas:[e],nat:e.natureza,codigo:e.codigo}));
+    itens.sort((a,b)=>{
+      const sa=estado.sugeridos.has(a.codigo)?0:1, sb=estado.sugeridos.has(b.codigo)?0:1;
+      return sa-sb || a.nome.localeCompare(b.nome);
+    });
+    itens=itens.slice(0,400);
+  }else{
+    const m=new Map();
+    base.forEach(e=>{
+      const val = niv.id==="macro"?e.macro : niv.id==="processo"?e.categoria : (e.servico||SEM_SERVICO);
+      if(!val) return;
+      if(!m.has(val)) m.set(val,{chave:val,nome:val,entregas:[],nat:e.natureza});
+      m.get(val).entregas.push(e);
+    });
+    itens=[...m.values()].filter(i=>!q||norm(i.nome).includes(q));
+    itens.sort((a,b)=>{
+      const sa=a.entregas.some(e=>estado.sugeridos.has(e.codigo))?0:1;
+      const sb=b.entregas.some(e=>estado.sugeridos.has(e.codigo))?0:1;
+      return sa-sb || b.entregas.length-a.entregas.length;
+    });
+  }
+
+  const paiTxt = idx===1?estado.trilha.macro : idx===2?estado.trilha.processo : idx===3?estado.trilha.servico : "";
+  div.innerHTML=
+    '<div class="col-h">'
+      +'<div class="col-t">'+niv.rot+'<span class="col-n">'+(travada?"—":itens.length)+'</span></div>'
+      +(paiTxt?'<div class="col-pai" title="'+esc(paiTxt)+'">em '+esc(paiTxt)+'</div>':'')
+      +'<div class="col-busca">'+ico.busca+'<input placeholder="buscar…" value="'+esc(estado.busca[niv.id]||"")+'" data-busca="'+niv.id+'"/></div>'
+    +'</div>'
+    +'<div class="col-body" data-body="'+niv.id+'"></div>';
+
+  const body=div.querySelector("[data-body]");
+
+  if(travada){
+    body.innerHTML='<div class="col-vazio">Escolha um '+NIVEIS[idx-1].rot.toLowerCase()+' ao lado para abrir este nível.</div>';
+  }else if(!itens.length){
+    body.innerHTML='<div class="col-vazio">Nada encontrado'+(q?' para "'+esc(estado.busca[niv.id])+'"':'')+'.</div>';
+  }else{
+    itens.forEach(it=>body.appendChild(linhaItem(it,niv,idx)));
+  }
+
+  // criar novo — respeita a regra por natureza do ramo em que estamos
+  if(!travada && niv.id!=="entrega"){
+    const natRamo = estado.trilha.macro ? (ENTREGAS.find(e=>e.macro===estado.trilha.macro)||{}).natureza : null;
+    const regra = natRamo ? PODE_CRIAR[natRamo] : PODE_CRIAR.finalistico;
+    const pode = niv.id==="macro" ? true : regra[niv.id];
+    const b=document.createElement("button");
+    b.className="col-criar"+(pode?"":" travado");
+    b.innerHTML=ico.mais+" criar "+niv.rot.toLowerCase();
+    b.title = pode ? "Propor um "+niv.rot.toLowerCase()+" que não existe no catálogo"
+                   : "Em "+(NAT[natRamo]||{}).rot+", "+niv.rot.toLowerCase()+" vem da estrutura existente — só o serviço pode ser novo";
+    b.onclick=()=>{ if(pode) abrirCriar(niv); };
+    body.appendChild(b);
+  }
+
+  div.querySelector("[data-busca]").oninput=ev=>{
+    estado.busca[niv.id]=ev.target.value;
+    const foco=ev.target.selectionStart;
+    render();
+    const novo=document.querySelector('[data-busca="'+niv.id+'"]');
+    if(novo){ novo.focus(); novo.setSelectionRange(foco,foco); }
+  };
+  return div;
+}
+
+function linhaItem(it,niv,idx){
+  const d=document.createElement("div");
+  const abertoVal = idx===0?estado.trilha.macro : idx===1?estado.trilha.processo : idx===2?estado.trilha.servico : null;
+  const aberto = abertoVal===it.chave;
+  const noMapa=it.entregas.filter(e=>estado.mapa.has(e.codigo)).length;
+  const todas=noMapa===it.entregas.length && noMapa>0;
+  const parcial=noMapa>0 && !todas;
+  const sugerido=it.entregas.some(e=>estado.sugeridos.has(e.codigo));
+  const nat=NAT[it.nat]||{cor:"#8C97A6",rot:""};
+
+  d.className="item"+(aberto?" aberto":"");
+  d.innerHTML=
+    '<span class="item-cx'+(todas?" on":parcial?" parcial":"")+'" title="'
+      +(todas?"Tirar do mapa":parcial?"Completar no mapa":"Pôr no mapa")+'">'
+      +(todas?ico.check:parcial?"<i></i>":"")+'</span>'
+    +'<span class="item-tx">'
+      +'<span class="item-nome">'+esc(it.nome)+'</span>'
+      +'<span class="item-meta">'
+        +'<span class="nat-dot" style="background:'+nat.cor+'" title="'+nat.rot+'"></span>'
+        +(niv.id==="entrega"?'<span class="item-cod">'+esc(it.codigo)+'</span>':it.entregas.length+(it.entregas.length===1?" entrega":" entregas"))
+        +(noMapa&&niv.id!=="entrega"?' · <b style="color:var(--green)">'+noMapa+' no mapa</b>':'')
+        +(sugerido?' <span class="pill-ia">'+ico.faisca+' sugerido</span>':'')
+        +(it.novo?' <span class="pill-novo">novo</span>':'')
+      +'</span>'
+    +'</span>'
+    +(niv.id!=="entrega"?'<span class="item-go">'+ico.seta+'</span>':'');
+
+  // caixinha = pôr/tirar do mapa; resto da linha = descer um nível
+  d.querySelector(".item-cx").onclick=ev=>{ ev.stopPropagation(); alternarNoMapa(it); };
+  if(niv.id!=="entrega"){
+    d.onclick=()=>{
+      if(idx===0) estado.trilha={macro:it.chave,processo:null,servico:null};
+      if(idx===1) estado.trilha={...estado.trilha,processo:it.chave,servico:null};
+      if(idx===2) estado.trilha={...estado.trilha,servico:it.chave};
+      estado.busca[NIVEIS[idx+1].id]="";
+      render();
+    };
+  }else{
+    d.onclick=()=>alternarNoMapa(it);
+  }
+  return d;
+}
+
+function alternarNoMapa(it){
+  const cods=it.entregas.map(e=>e.codigo);
+  const dentro=cods.filter(c=>estado.mapa.has(c));
+  const antes=new Set(estado.mapa);
+  if(dentro.length===cods.length){ cods.forEach(c=>estado.mapa.delete(c)); avisar("Tirei do mapa: "+it.nome,antes); }
+  else{ cods.forEach(c=>estado.mapa.add(c)); avisar("No mapa: "+it.nome+" ("+cods.length+")",antes); }
+  render();
+}
+
+function avisar(msg,estadoAnterior){
+  estado.desfazer=estadoAnterior;
+  const velho=document.querySelector(".toast"); if(velho) velho.remove();
+  const t=document.createElement("div");
+  t.className="toast";
+  t.innerHTML='<span>'+esc(msg.length>60?msg.slice(0,58)+"…":msg)+'</span><button>desfazer</button>';
+  t.querySelector("button").onclick=()=>{
+    if(estado.desfazer){ estado.mapa=new Set(estado.desfazer); estado.desfazer=null; render(); }
+    t.remove();
+  };
+  document.body.appendChild(t);
+  setTimeout(()=>{ if(t.parentNode) t.remove(); },5000);
+}
+
+/* ---------- o retrato ---------- */
+function renderMapa(){
+  const cods=[...estado.mapa];
+  const itens=ENTREGAS.filter(e=>estado.mapa.has(e.codigo));
+  const macros=new Set(itens.map(e=>e.macro));
+  const procs=new Set(itens.map(e=>e.macro+"|"+e.categoria));
+  const servs=new Set(itens.filter(e=>e.servico).map(e=>e.servico));
+
+  el("mapaNums").innerHTML=
+     '<div class="mapa-num"><b>'+macros.size+'</b><span>macro</span></div>'
+    +'<div class="mapa-num"><b>'+procs.size+'</b><span>processo</span></div>'
+    +'<div class="mapa-num"><b>'+servs.size+'</b><span>serviço</span></div>'
+    +'<div class="mapa-num"><b>'+itens.length+'</b><span>entrega</span></div>';
+
+  const body=el("mapaBody");
+  if(!itens.length){
+    body.innerHTML='<div class="mapa-vazio">O mapa está vazio.<br><br>Comece lendo as atribuições lá em cima, ou navegue pelas colunas e vá marcando o que a unidade faz.</div>';
+    return;
+  }
+  // agrupa macro → processo → serviço → entrega
+  const arv=new Map();
+  itens.forEach(e=>{
+    if(!arv.has(e.macro)) arv.set(e.macro,new Map());
+    const p=arv.get(e.macro);
+    if(!p.has(e.categoria)) p.set(e.categoria,new Map());
+    const s=p.get(e.categoria);
+    const sv=e.servico||SEM_SERVICO;
+    if(!s.has(sv)) s.set(sv,[]);
+    s.get(sv).push(e);
+  });
+  body.innerHTML=[...arv.entries()].map(([mac,procs])=>{
+    const tot=[...procs.values()].reduce((a,s)=>a+[...s.values()].reduce((x,l)=>x+l.length,0),0);
+    return '<div class="m-mac"><div class="m-mac-h"><b>'+esc(mac)+'</b><span class="m-mac-n">'+tot+'</span></div>'
+      +[...procs.entries()].map(([cat,servs])=>
+        '<div class="m-proc"><div class="m-proc-t">'+esc(cat)+'</div>'
+        +[...servs.entries()].map(([sv,lista])=>
+          (sv!==SEM_SERVICO?'<div class="m-serv">'+esc(sv)+'</div>':'')
+          +lista.map(e=>'<div class="m-ent"><span>'+esc(e.entrega)+'</span>'
+             +'<button data-tirar="'+esc(e.codigo)+'" title="Tirar do mapa">'+ico.x+'</button></div>').join("")
+        ).join("")
+        +'</div>').join("")
+      +'</div>';
+  }).join("");
+  body.querySelectorAll("[data-tirar]").forEach(b=>b.onclick=()=>{
+    const antes=new Set(estado.mapa);
+    estado.mapa.delete(b.dataset.tirar);
+    avisar("Tirei uma entrega do mapa",antes);
+    render();
+  });
+}
+
+/* ---------- criar novo (com conferidor de semelhança) ---------- */
+function abrirCriar(niv){
+  const natRamo = estado.trilha.macro ? (ENTREGAS.find(e=>e.macro===estado.trilha.macro)||{}).natureza : "finalistico";
+  const bg=document.createElement("div");
+  bg.className="modal-bg";
+  bg.innerHTML=
+    '<div class="modal">'
+      +'<h3>Criar '+niv.rot.toLowerCase()+'</h3>'
+      +'<p class="d">Antes de propor, o portal confere se já existe algo parecido no catálogo — para não duplicar o que o governo já nomeou. Neste protótipo o que você criar fica só nesta tela.</p>'
+      +'<label>Nome do '+niv.rot.toLowerCase()+'</label>'
+      +'<input id="cNome" placeholder="Ex.: Gestão de concursos públicos" autofocus/>'
+      +'<div id="cVerd"></div>'
+      +'<div class="simil" id="cSimil"></div>'
+      +'<div class="modal-foot">'
+        +'<button class="btn btn-g" id="cCancel">Cancelar</button>'
+        +'<button class="btn btn-p" id="cOk">Criar e pôr no mapa</button>'
+      +'</div>'
+    +'</div>';
+  document.body.appendChild(bg);
+  bg.onclick=ev=>{ if(ev.target===bg) bg.remove(); };
+  bg.querySelector("#cCancel").onclick=()=>bg.remove();
+
+  const inp=bg.querySelector("#cNome");
+  const conferir=()=>{
+    const v=inp.value.trim();
+    const alvo = niv.id==="macro"?"macro":niv.id==="processo"?"categoria":"servico";
+    const existentes=[...new Set(ENTREGAS.map(e=>e[alvo]).filter(Boolean))];
+    if(norm(v).length<4){ bg.querySelector("#cVerd").innerHTML=""; bg.querySelector("#cSimil").innerHTML=""; return; }
+    const T=toks(v);
+    const prox=existentes.map(x=>{
+      const B=toks(x); let inter=0; T.forEach(t=>{if(B.has(t))inter++;});
+      return {x, s: inter/Math.sqrt(T.size*B.size||1)};
+    }).filter(o=>o.s>0.3).sort((a,b)=>b.s-a.s).slice(0,5);
+    const topo=prox[0];
+    const verd = !topo?"ok" : topo.s>=0.85?"bloqueio" : topo.s>=0.5?"atencao":"ok";
+    const txt = verd==="bloqueio"?"Já existe algo praticamente igual — use o que está no catálogo."
+              : verd==="atencao"?"Há nomes bem próximos. Confirme que é mesmo outra coisa."
+              : "Nada muito próximo. Parece novo mesmo.";
+    bg.querySelector("#cVerd").innerHTML='<div class="verd '+verd+'">'+txt+'</div>';
+    bg.querySelector("#cSimil").innerHTML=prox.map(p=>
+      '<div class="simil-i"><span class="simil-pct">'+Math.round(p.s*100)+'%</span><span>'+esc(p.x)+'</span></div>').join("");
+    bg.querySelector("#cOk").disabled = verd==="bloqueio";
+  };
+  inp.oninput=conferir;
+
+  bg.querySelector("#cOk").onclick=()=>{
+    const v=inp.value.trim();
+    if(!v) return;
+    // no protótipo, o item novo entra como uma entrega-semente para o mapa poder mostrá-lo
+    const cod="novo-"+Date.now().toString(36);
+    ENTREGAS.push({
+      codigo:cod, entrega:"(a detalhar) "+v, atividade:"",
+      servico: niv.id==="servico"?v:"",
+      categoria: niv.id==="processo"?v:(estado.trilha.processo||"(a definir)"),
+      macro: niv.id==="macro"?v:(estado.trilha.macro||"(a definir)"),
+      natureza: natRamo||"finalistico", novo:true,
+    });
+    estado.mapa.add(cod);
+    if(niv.id==="macro") estado.trilha={macro:v,processo:null,servico:null};
+    if(niv.id==="processo") estado.trilha={...estado.trilha,processo:v,servico:null};
+    if(niv.id==="servico") estado.trilha={...estado.trilha,servico:v};
+    bg.remove(); render();
+  };
+}
+
+/* ---------- exportar ---------- */
+function exportar(){
+  const itens=ENTREGAS.filter(e=>estado.mapa.has(e.codigo));
+  if(!itens.length) return;
+  const linhas=[["Código","Entrega","Serviço","Processo","Macroprocesso","Natureza"]]
+    .concat(itens.map(e=>[e.codigo,e.entrega,e.servico||"",e.categoria,e.macro,(NAT[e.natureza]||{}).rot||""]));
+  const csv=linhas.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(";")).join("\n");
+  const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="mapa-"+norm(el("inpUnidade").value||"unidade").replace(/[^a-z0-9]+/g,"-").slice(0,40)+".csv";
+  a.click();
+}
+
+/* ---------- ligações ---------- */
+el("btnLer").onclick=lerAtribuicoes;
+el("btnLimparAtrib").onclick=()=>{ el("txtAtrib").value=""; estado.atribs=[]; estado.sugeridos=new Set(); render(); };
+el("btnExportar").onclick=exportar;
+el("btnLimparMapa").onclick=()=>{
+  if(!estado.mapa.size) return;
+  const antes=new Set(estado.mapa);
+  estado.mapa=new Set(); avisar("Mapa limpo",antes); render();
+};
+carregar();
+</script>
+</body>
+</html>
