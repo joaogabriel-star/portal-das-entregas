@@ -11,6 +11,7 @@ import {
   GitMerge, Layers, ClipboardCheck, FilePlus2, RotateCcw, Trophy,
   TrendingDown, TrendingUp, Minus, BarChart3, Clock, CircleDot, ExternalLink, ZoomIn, ZoomOut, Maximize2,
   AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle,
+  FlaskConical,
 } from "lucide-react";
 
 /* ---------- leitura de arquivos no navegador (planilha / pdf / docx) ---------- */
@@ -288,6 +289,7 @@ export default function PortalEntregas(){
     try{ return window.location.hash==="#catalogo" ? "catalogo" : "inicio"; }
     catch{ return "inicio"; }
   });
+  const [protoAberto,setProtoAberto]=useState(false); // listinha discreta das telas em protótipo
   const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
   const [escopo,setEscopo]=useState("sel");      // níveis: "sel" (o que a IA achou) · "tudo" (catálogo inteiro)
   const [vistaEntrega,setVistaEntrega]=useState("lista"); // nível 4: "lista" · "arvore"
@@ -431,6 +433,20 @@ export default function PortalEntregas(){
             title={orgao||unidade?"Trocar órgão e unidade":"Cadastrar órgão e unidade"}>
             <Building2 size={13}/> {unidade||orgao||"Cadastrar unidade"} <Pencil size={11}/>
           </button>
+          <button className={`px-proto ${protoAberto?"on":""}`} onClick={()=>setProtoAberto(v=>!v)}
+            title="Telas ainda em protótipo, fora do caminho principal">
+            <FlaskConical size={12}/> <span>protótipo</span>
+          </button>
+          {protoAberto && <>
+            <div style={{position:"fixed",inset:0,zIndex:110}} onClick={()=>setProtoAberto(false)}/>
+            <div className="px-proto-pop">
+              <b>Em protótipo</b>
+              <a href="./prototipo-fluxo.html">Fluxo em 4 etapas
+                <span>O caminho inteiro numa tela só</span></a>
+              <a href="./mapa-da-unidade.html">Mapa da Unidade
+                <span>Retratar a área navegando os 4 níveis</span></a>
+            </div>
+          </>}
         </div>
       </header>
 
@@ -3884,7 +3900,27 @@ const css=`
 .px-edet-grid b{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${C.faint};margin-bottom:3px;}
 
 /* header direita + chip de sinalizações */
-.px-head-r{display:flex;align-items:center;gap:12px;}
+.px-head-r{display:flex;align-items:center;gap:12px;position:relative;}
+/* acesso discreto às telas ainda em protótipo — apagado até o mouse passar */
+.px-proto{display:flex;align-items:center;gap:5px;font-family:inherit;font-size:10.5px;font-weight:600;
+  letter-spacing:.03em;color:${C.faint};background:none;border:none;padding:5px 7px;border-radius:7px;
+  cursor:pointer;opacity:.5;transition:opacity .14s,color .14s,background .14s;}
+.px-proto:hover,.px-proto.on{opacity:1;color:${C.primary};background:${C.primarySoft};}
+.px-proto-pop{position:absolute;top:calc(100% + 8px);right:0;min-width:230px;background:#fff;
+  border:1px solid ${C.line};border-radius:11px;box-shadow:0 8px 26px rgba(15,30,60,.14);
+  padding:7px;z-index:120;}
+.px-proto-pop b{display:block;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:${C.faint};padding:5px 9px 7px;}
+.px-proto-pop a{display:block;padding:8px 9px;border-radius:7px;text-decoration:none;
+  font-size:12px;font-weight:700;color:${C.navy};line-height:1.25;}
+.px-proto-pop a:hover{background:${C.primarySoft};color:${C.primaryDark};}
+.px-proto-pop a span{display:block;font-size:10.5px;font-weight:500;color:${C.sub};margin-top:2px;}
+/* em tela estreita o cabeçalho não comporta o rótulo — fica só o frasquinho */
+@media (max-width:760px){
+  .px-proto>span{display:none;}
+  .px-proto{padding:5px;}
+  .px-proto-pop{min-width:0;width:min(260px,calc(100vw - 32px));}
+}
 .px-flagchip{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#B86E00;background:#FBEEDB;border:1px solid #EBD7B0;border-radius:20px;padding:5px 12px;cursor:pointer;}
 .px-flagchip:hover{filter:brightness(.97);}
 
