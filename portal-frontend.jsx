@@ -282,7 +282,12 @@ export default function PortalEntregas(){
   const [flagFor,setFlagFor]=useState(null);
   const [novaFor,setNovaFor]=useState(null);     // propor nova entrega (texto)
   const [onboard,setOnboard]=useState(false);    // boas-vindas antiga (desativada — Início assume)
-  const [secao,setSecao]=useState("inicio");     // navegação principal: inicio · catalogo
+  // navegação principal: inicio · catalogo. O #catalogo na URL permite entrar
+  // direto no catálogo (é assim que a etapa 2 do fluxo aponta para cá).
+  const [secao,setSecao]=useState(()=>{
+    try{ return window.location.hash==="#catalogo" ? "catalogo" : "inicio"; }
+    catch{ return "inicio"; }
+  });
   const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
   const [escopo,setEscopo]=useState("sel");      // níveis: "sel" (o que a IA achou) · "tudo" (catálogo inteiro)
   const [vistaEntrega,setVistaEntrega]=useState("lista"); // nível 4: "lista" · "arvore"
@@ -1404,12 +1409,12 @@ function BancoLoading(){
    cards completos no Início, tira compacta nas demais telas.
 ============================================================================ */
 const ETAPAS=[
-  {n:1, ic:Bot,        t:"Unidade e marcos referenciais",
-   d:"Cadastre a unidade e anexe os documentos institucionais — a IA identifica o que a área faz."},
+  {n:1, ic:Bot,        t:"Primeira etapa",
+   d:"Pré-cadastro: a unidade, seus documentos e o que ela faz — sai daqui o primeiro rascunho da descrição da área."},
   {n:2, ic:LayoutGrid, t:"Catálogo de entregas",
-   d:"Confira o que a IA encontrou e desça de macroprocesso até a entrega, escolhendo o que é da unidade."},
-  {n:3, ic:Users,      t:"Jornada do gestor",
-   d:"Acompanhe entregas, equipe e o retorno do período. O planejamento é opcional."},
+   d:"O confronto com o oficial: desça de macroprocesso até a entrega e escolha o que é da unidade."},
+  {n:3, ic:Users,      t:"Ciclo da unidade",
+   d:"Entregas por mês, equipe e indicadores, e o retorno do período. O planejamento é opcional."},
   {n:4, ic:Building2,  t:"Resultados do órgão",
    d:"Organograma, dimensionamento e o relatório de cada unidade."},
 ];

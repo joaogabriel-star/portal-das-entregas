@@ -10,7 +10,7 @@
   --primary:#1351B4; --primary-dark:#0C326F; --primary-soft:#E8EEF9;
   --green:#168821; --green-soft:#E3F2E5; --navy:#13315C; --yellow:#FFCD07;
   --amber:#B86E00; --amber-soft:#FBEEDB; --coral:#9E3B1F; --coral-soft:#FBEDE4;
-  --ink:#1B1B1B; --sub:#55606E; --faint:#8C97A6; --line:#E4E7EB; --bg:#F4F6F9;
+  --ink:#1B1B1B; --sub:#4A5563; --faint:#6B7684; --line:#E4E7EB; --bg:#F4F6F9;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:'Raleway',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;}
@@ -48,11 +48,19 @@ header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;dis
 .atrib-m b{color:var(--primary);}
 .atrib-ver{background:none;border:none;color:var(--primary);font-weight:800;font-size:10.5px;cursor:pointer;padding:0;text-decoration:underline;}
 .origem-vazio{font-size:12.5px;color:var(--faint);border:1px dashed var(--line);border-radius:10px;padding:22px;text-align:center;}
+/* depois de ler, a seção recolhe numa faixa fina — o trabalho é embaixo */
+.origem.fechada{padding:9px 20px;}
+.origem-resumo{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--sub);}
+.origem-resumo b{color:var(--navy);}
+.origem-resumo .re-abrir{margin-left:auto;background:none;border:1px solid var(--line);border-radius:8px;
+  padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--sub);cursor:pointer;}
+.origem-resumo .re-abrir:hover{border-color:var(--primary);color:var(--primary-dark);}
+.origem-ok{width:19px;height:19px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;flex-shrink:0;}
 
 /* ---------- corpo: colunas + mapa ---------- */
 .corpo{display:flex;gap:0;align-items:stretch;height:calc(100vh - 62px);}
 .cols{flex:1;display:flex;overflow-x:auto;min-width:0;}
-.col{flex:0 0 258px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#fff;min-width:0;}
+.col{flex:0 0 310px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#fff;min-width:0;}
 .col.apagada{background:#FCFDFE;}
 .col-h{padding:10px 12px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:inherit;z-index:2;}
 .col-t{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;}
@@ -83,10 +91,12 @@ header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;dis
 .item:hover .item-go{color:var(--primary);}
 .nat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .col-vazio{font-size:11.5px;color:var(--faint);padding:18px 12px;text-align:center;line-height:1.5;}
-.col-criar{margin:6px 4px;border:1px dashed var(--line);border-radius:8px;padding:8px;font-size:11.5px;font-weight:700;color:var(--sub);cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center;background:none;width:calc(100% - 8px);}
-.col-criar:hover{border-color:var(--primary);color:var(--primary-dark);border-style:solid;}
-.col-criar.travado{opacity:.5;cursor:not-allowed;}
-.col-criar.travado:hover{border-color:var(--line);color:var(--sub);border-style:dashed;}
+.col-criar{margin-top:7px;border:1px solid #C7D7F0;background:var(--primary-soft);border-radius:8px;padding:7px 9px;
+  font-size:11.5px;font-weight:800;color:var(--primary-dark);cursor:pointer;display:flex;align-items:center;
+  gap:6px;justify-content:center;width:100%;transition:all .14s;}
+.col-criar:hover{background:var(--primary);border-color:var(--primary);color:#fff;}
+.col-criar.travado{background:var(--bg);border-color:var(--line);color:var(--faint);cursor:not-allowed;border-style:dashed;}
+.col-criar.travado:hover{background:var(--bg);border-color:var(--line);color:var(--faint);}
 
 /* ---------- painel do mapa ---------- */
 .mapa{flex:0 0 320px;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;}
@@ -148,7 +158,6 @@ header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;dis
     <div class="h-t">Mapa da Unidade</div>
     <div class="h-s">retrate o que a sua área faz — macroprocesso › processo › serviço › entrega</div>
   </div>
-  <span class="h-proto">Protótipo</span>
   <div class="h-unid">
     <input id="inpOrgao" placeholder="Órgão" value="Enap"/>
     <input id="inpUnidade" placeholder="Unidade" value="Diretoria de Concursos Públicos"/>
@@ -157,18 +166,21 @@ header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;dis
 </header>
 
 <section class="origem" id="secOrigem">
-  <div class="origem-h"><span class="passo-n">1</span><b>De onde partimos</b></div>
-  <p class="origem-d">Cole as atribuições da unidade — do regimento, do decreto de estrutura, da cadeia de valor. O portal lê cada atribuição e procura, no catálogo oficial de 31 mil entregas, o que mais se parece com aquilo. Nada é decidido por você: o resultado vira <b>sugestão</b> dentro do mapa, e você confirma, descarta ou procura outra coisa.</p>
-  <div class="origem-grid">
-    <div>
-      <textarea id="txtAtrib" spellcheck="false"></textarea>
-      <div style="display:flex;gap:8px;margin-top:9px;">
-        <button class="btn btn-p" id="btnLer">Ler atribuições e sugerir</button>
-        <button class="btn btn-g" id="btnLimparAtrib">Limpar</button>
+  <div id="origemResumo" style="display:none"></div>
+  <div id="origemAberta">
+    <div class="origem-h"><span class="passo-n">1</span><b>De onde partimos</b></div>
+    <p class="origem-d">Cole as atribuições da unidade — do regimento, do decreto, da cadeia de valor. O portal procura no catálogo o que mais se parece com cada uma. O resultado é <b>sugestão</b>: você confirma, descarta ou procura outra coisa.</p>
+    <div class="origem-grid">
+      <div>
+        <textarea id="txtAtrib" spellcheck="false"></textarea>
+        <div style="display:flex;gap:8px;margin-top:9px;">
+          <button class="btn btn-p" id="btnLer">Ler e sugerir</button>
+          <button class="btn btn-g" id="btnLimparAtrib">Limpar</button>
+        </div>
       </div>
-    </div>
-    <div>
-      <div id="listaAtribs" class="atribs"></div>
+      <div>
+        <div id="listaAtribs" class="atribs"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -221,6 +233,7 @@ const estado={
   busca:{macro:"",processo:"",servico:"",entrega:""},
   novos:[],                // níveis criados à mão neste protótipo
   desfazer:null,
+  origemAberta:true,   // a seção 1 recolhe assim que as atribuições são lidas
 };
 
 const SEED=`I - planejar, coordenar e supervisionar a execução logística e operacional dos concursos públicos sob responsabilidade da Enap e promover a integração entre os diferentes atores envolvidos;
@@ -331,6 +344,7 @@ function lerAtribuicoes(){
     return {texto, codigos:achados.map(a=>a.e.codigo), scores:achados.map(a=>a.s)};
   });
   estado.sugeridos=new Set(estado.atribs.flatMap(a=>a.codigos));
+  estado.origemAberta=false;   // recolhe e devolve a tela ao mapa
   render();
 }
 
@@ -365,7 +379,26 @@ function render(){
   renderColunas();
   renderMapa();
   renderAtribs();
+  renderOrigem();
   el("numMapa").textContent=estado.mapa.size+(estado.mapa.size===1?" entrega":" entregas");
+}
+
+function renderOrigem(){
+  // com as atribuições já lidas, a seção vira uma faixa fina: o trabalho é embaixo
+  const fechar = estado.atribs.length>0 && !estado.origemAberta;
+  el("secOrigem").className = "origem"+(fechar?" fechada":"");
+  el("origemAberta").style.display = fechar?"none":"";
+  const r=el("origemResumo");
+  r.style.display = fechar?"":"none";
+  if(fechar){
+    const noMapa=[...estado.sugeridos].filter(c=>estado.mapa.has(c)).length;
+    r.className="origem-resumo";
+    r.innerHTML='<span class="origem-ok">'+ico.check+'</span>'
+      +'<span><b>'+estado.atribs.length+'</b> atribuições lidas · <b>'+estado.sugeridos.size+'</b> sugestões'
+      +(noMapa?' · <b>'+noMapa+'</b> já no mapa':'')+'</span>'
+      +'<button class="re-abrir">rever atribuições</button>';
+    r.querySelector(".re-abrir").onclick=()=>{ estado.origemAberta=true; render(); };
+  }
 }
 
 function renderAtribs(){
@@ -452,18 +485,19 @@ function coluna(niv,idx,travada){
     itens.forEach(it=>body.appendChild(linhaItem(it,niv,idx)));
   }
 
-  // criar novo — respeita a regra por natureza do ramo em que estamos
+  // criar novo — fica no CABEÇALHO da coluna, não no fim de uma lista que rola:
+  // era ali embaixo que ninguém achava.
   if(!travada && niv.id!=="entrega"){
     const natRamo = estado.trilha.macro ? (ENTREGAS.find(e=>e.macro===estado.trilha.macro)||{}).natureza : null;
     const regra = natRamo ? PODE_CRIAR[natRamo] : PODE_CRIAR.finalistico;
     const pode = niv.id==="macro" ? true : regra[niv.id];
     const b=document.createElement("button");
     b.className="col-criar"+(pode?"":" travado");
-    b.innerHTML=ico.mais+" criar "+niv.rot.toLowerCase();
+    b.innerHTML=ico.mais+' <span>propor '+niv.rot.toLowerCase()+' novo</span>';
     b.title = pode ? "Propor um "+niv.rot.toLowerCase()+" que não existe no catálogo"
                    : "Em "+(NAT[natRamo]||{}).rot+", "+niv.rot.toLowerCase()+" vem da estrutura existente — só o serviço pode ser novo";
-    b.onclick=()=>{ if(pode) abrirCriar(niv); };
-    body.appendChild(b);
+    b.onclick=ev=>{ ev.stopPropagation(); if(pode) abrirCriar(niv); };
+    div.querySelector(".col-h").appendChild(b);
   }
 
   div.querySelector("[data-busca]").oninput=ev=>{
@@ -595,13 +629,18 @@ function renderMapa(){
 
 /* ---------- criar novo (com conferidor de semelhança) ---------- */
 function abrirCriar(niv){
-  const natRamo = estado.trilha.macro ? (ENTREGAS.find(e=>e.macro===estado.trilha.macro)||{}).natureza : "finalistico";
+  const natTrilha = estado.trilha.macro ? (ENTREGAS.find(e=>e.macro===estado.trilha.macro)||{}).natureza : "finalistico";
+  // Macroprocesso novo só existe em finalístico: os de suporte (4) e governança
+  // (9) são a estrutura comum do governo e não se criam por unidade.
+  const natRamo = niv.id==="macro" ? "finalistico" : natTrilha;
+  const soFinalistico = niv.id==="macro";
   const bg=document.createElement("div");
   bg.className="modal-bg";
   bg.innerHTML=
     '<div class="modal">'
-      +'<h3>Criar '+niv.rot.toLowerCase()+'</h3>'
+      +'<h3>Propor '+niv.rot.toLowerCase()+' novo</h3>'
       +'<p class="d">Antes de propor, o portal confere se já existe algo parecido no catálogo — para não duplicar o que o governo já nomeou. Neste protótipo o que você criar fica só nesta tela.</p>'
+      +(soFinalistico?'<div class="verd atencao" style="margin:0 0 14px"><b>Só finalístico.</b>&nbsp;Macroprocesso novo entra como finalístico — os de suporte e governança são fechados e mudam só pela equipe do MGI.</div>':'')
       +'<label>Nome do '+niv.rot.toLowerCase()+'</label>'
       +'<input id="cNome" placeholder="Ex.: Gestão de concursos públicos" autofocus/>'
       +'<div id="cVerd"></div>'

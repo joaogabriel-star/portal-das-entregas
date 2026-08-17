@@ -11,7 +11,7 @@
   --green:#168821; --green-soft:#E3F2E5; --navy:#13315C; --yellow:#FFCD07;
   --amber:#B86E00; --amber-soft:#FBEEDB; --coral:#9E3B1F; --coral-soft:#FBEDE4;
   --purple:#5B3A9B; --purple-soft:#F0EBF8;
-  --ink:#1B1B1B; --sub:#55606E; --faint:#8C97A6; --line:#E4E7EB; --bg:#F4F6F9;
+  --ink:#1B1B1B; --sub:#4A5563; --faint:#6B7684; --line:#E4E7EB; --bg:#F4F6F9;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:'Raleway',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;}
@@ -25,7 +25,7 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .logo{display:flex;align-items:center;gap:10px;}
 .logo svg{flex-shrink:0;}
 .logo-w{font-size:15.5px;font-weight:800;color:var(--navy);line-height:1.15;}
-.logo-s{font-size:10.5px;color:var(--faint);letter-spacing:.03em;}
+.logo-s{font-size:11px;color:var(--sub);letter-spacing:.03em;}
 .unid-chip{margin-left:auto;display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;
   padding:7px 11px;font-size:12px;font-weight:700;color:var(--sub);cursor:pointer;background:none;}
 .unid-chip:hover{border-color:var(--primary);color:var(--primary-dark);background:var(--primary-soft);}
@@ -45,7 +45,7 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .pas.feito .pas-n{border-color:var(--green);background:var(--green);color:#fff;}
 .pas-tx{min-width:0;}
 .pas-t{font-size:12.5px;font-weight:800;color:var(--sub);line-height:1.25;}
-.pas-d{font-size:10.5px;color:var(--faint);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pas-d{font-size:11px;color:var(--sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pas-lig{flex:0 0 1px;background:var(--line);margin:16px 0;}
 
 /* ---------- painel de etapa ---------- */
@@ -121,12 +121,12 @@ select.cel{cursor:pointer;}
 .mini-c{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;text-decoration:none;color:inherit;display:block;transition:all .14s;}
 .mini-c:hover{border-color:var(--primary);box-shadow:0 6px 20px rgba(19,49,92,.08);transform:translateY(-2px);}
 .mini-c b{font-size:13px;color:var(--navy);display:block;margin-bottom:4px;}
-.mini-c span{font-size:11.5px;color:var(--sub);line-height:1.5;display:block;}
+.mini-c span{font-size:12px;color:var(--sub);line-height:1.5;display:block;}
 .mini-c .op{font-size:9.5px;font-weight:800;background:var(--bg);color:var(--faint);padding:2px 7px;border-radius:20px;display:inline-block;margin-top:8px;text-transform:uppercase;}
 .nums{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
 .num{background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 14px;min-width:104px;}
 .num b{display:block;font-size:19px;color:var(--navy);}
-.num span{font-size:10px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+.num span{font-size:10.5px;color:var(--sub);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
 
 /* navegação de etapa */
 .et-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap;}
@@ -189,7 +189,7 @@ const est={
   etapa:"pre",
   orgao:"Enap", unidade:"Diretoria de Concursos Públicos", responsavel:"",
   marcos:{cadeia:null,estrutura:null,rgi:null,regimento:null},
-  textoMarcos:"", textoConv:"",
+  textoFonte:"",
   rascunho:[],          // [{macro,cat,serv,nat,origem,id}]
   entregas:new Set(),   // etapa 2 (simulada aqui)
   feito:{},
@@ -226,8 +226,7 @@ async function carregar(){
     return;
   }
   // exemplo real: as competências da Diretoria de Concursos Públicos da Enap
-  est.textoMarcos=SEED_MARCOS;
-  est.textoConv=SEED_CONV;
+  est.textoFonte=SEED_MARCOS+String.fromCharCode(10)+SEED_CONV;
   render();
 }
 
@@ -280,8 +279,7 @@ function casar(texto,n){
 
 /* ---------- etapa 1: gerar rascunho ---------- */
 function gerar(origem){
-  // o que casa é o texto colado; o nome do arquivo anexado seria só ruído
-  const txt = origem==="marco" ? est.textoMarcos : est.textoConv;
+  const txt = est.textoFonte;
   if(!norm(txt).trim()){ avisar("Cole o texto antes de gerar."); return; }
   const linhas=txt.split(/\n+/).map(l=>l.replace(/^\s*[IVXLC]+\s*[-–]\s*/,"").replace(/^\s*[a-z0-9]+[\)\.]\s*/i,"").trim()).filter(l=>l.length>20);
   const alvo = linhas.length?linhas:[txt];
@@ -363,22 +361,18 @@ function telaPre(){
 
    +'<div class="g2">'
      +'<div class="card">'
-       +'<div class="card-h">'+ico.faisca+'<b>Marcos referenciais</b></div>'
-       +'<p class="card-d">Os documentos que já descrevem a unidade. Anexe o que tiver e cole os trechos de atribuições — é deles que sai o primeiro rascunho.</p>'
+       +'<div class="card-h">'+ico.clipe+'<b>Documentos da unidade</b></div>'
+       +'<p class="card-d">Os marcos referenciais que já descrevem a área. Anexe o que tiver.</p>'
        +anexos.map(([k,r])=>'<div class="anexo '+(est.marcos[k]?"tem":"")+'" data-anexo="'+k+'">'+ico.clipe
          +'<span class="anexo-n">'+r+(est.marcos[k]?' · '+esc(est.marcos[k]):'')+'</span>'
          +(est.marcos[k]?'<button class="anexo-x" data-desanexa="'+k+'">'+ico.x+'</button>':'')+'</div>').join("")
-       +'<label class="lb" style="margin-top:12px">Atribuições (cole do regimento ou do decreto)</label>'
-       +'<textarea class="in" id="tMarcos" spellcheck="false" placeholder="I - planejar, coordenar e supervisionar…">'+esc(est.textoMarcos)+'</textarea>'
-       +'<button class="btn btn-p" style="width:100%;margin-top:10px" id="bMarcos">Gerar rascunho a partir dos marcos</button>'
+       +'<div class="aviso info" style="margin-top:12px">O que o portal lê é o <b>texto ao lado</b>. Os anexos ficam registrados como fonte do que foi preenchido.</div>'
      +'</div>'
      +'<div class="card">'
-       +'<div class="card-h" style="color:var(--purple)">'+ico.baixar+'<b style="color:var(--purple)">Conversor</b></div>'
-       +'<p class="card-d">O que a unidade já tem em outro formato: plano de trabalho do PGD, planilha de atividades, planejamento estratégico. Cole aqui e o portal enquadra no catálogo.</p>'
-       +'<label class="lb">Cole a lista de atividades, uma por linha</label>'
-       +'<textarea class="in" id="tConv" spellcheck="false" placeholder="Analisar solicitações de concurso público&#10;Elaborar edital&#10;Acompanhar contratos de banca">'+esc(est.textoConv)+'</textarea>'
-       +'<button class="btn btn-g" style="width:100%;margin-top:10px;border-color:#D6CFF0;color:var(--purple)" id="bConv">Enquadrar e somar ao rascunho</button>'
-       +'<div class="aviso info" style="margin-top:12px">Os dois lados escrevem no <b>mesmo rascunho</b>. Cada linha guarda de onde veio.</div>'
+       +'<div class="card-h">'+ico.faisca+'<b>O que a unidade faz</b></div>'
+       +'<p class="card-d">Um campo só: cole aqui as atribuições do regimento ou do decreto <b>e também</b> a lista de atividades que a área já mantém — plano do PGD, planilha de rotinas, planejamento. Uma por linha. O portal procura no catálogo o que se parece com cada uma.</p>'
+       +'<textarea class="in" id="tFonte" spellcheck="false" style="min-height:210px" placeholder="I - planejar, coordenar e supervisionar…&#10;Analisar solicitações de concurso público&#10;Elaborar edital">'+esc(est.textoFonte)+'</textarea>'
+       +'<button class="btn btn-p" style="width:100%;margin-top:10px" id="bGerar">Ler e montar o rascunho</button>'
      +'</div>'
    +'</div>'
 
@@ -415,7 +409,7 @@ function rascunhoHtml(){
     +'<th class="td-org">Origem</th><th class="td-x"></th></tr></thead><tbody>';
   r.forEach((L,i)=>{
     const ab=ABERTO[L.nat]||ABERTO.finalistico;
-    const tagOrig={marco:'<span class="tag marco">marco</span>',conv:'<span class="tag conv">conversor</span>',mao:'<span class="tag mao">à mão</span>'}[L.origem]||"";
+    const tagOrig={fonte:'<span class="tag marco">do texto</span>',mao:'<span class="tag mao">à mão</span>'}[L.origem]||"";
     html+='<tr>'
       +'<td class="td-nat"><select class="cel" data-i="'+i+'" data-c="nat">'
         +Object.entries(NATS).map(([k,v])=>'<option value="'+k+'"'+(L.nat===k?' selected':'')+'>'+v+'</option>').join("")
@@ -460,7 +454,7 @@ function telaCat(){
         : 'Nada ainda — volte à etapa 1 para começar o desenho.')+'</p>'
      +'<div class="mini">'
        +'<a class="mini-c" href="./mapa-da-unidade.html"><b>Abrir o navegador de 4 níveis</b><span>Macroprocesso › processo › serviço › entrega, com busca em cada nível e o retrato da unidade montando ao lado.</span></a>'
-       +'<a class="mini-c" href="./index.html"><b>Abrir o catálogo do portal</b><span>A versão que está no ar hoje, com as 31.241 entregas.</span></a>'
+       +'<a class="mini-c" href="./index.html#catalogo"><b>Abrir o catálogo do portal</b><span>A versão que está no ar hoje, com as 31.241 entregas.</span></a>'
      +'</div></div>'
    +'<div class="et-foot">'
      +'<button class="btn btn-g" data-ir="pre">'+ico.volta+' Voltar</button>'
@@ -519,10 +513,8 @@ function ligar(){
   liga("fOrgao","oninput",e=>{est.orgao=e.target.value; el("chipUnid").innerHTML=esc(est.unidade||est.orgao)+' ·  trocar';});
   liga("fUnid","oninput",e=>{est.unidade=e.target.value; el("chipUnid").innerHTML=esc(est.unidade||est.orgao)+' ·  trocar';});
   liga("fResp","oninput",e=>est.responsavel=e.target.value);
-  liga("tMarcos","oninput",e=>est.textoMarcos=e.target.value);
-  liga("tConv","oninput",e=>est.textoConv=e.target.value);
-  liga("bMarcos","onclick",()=>gerar("marco"));
-  liga("bConv","onclick",()=>gerar("conv"));
+  liga("tFonte","oninput",e=>est.textoFonte=e.target.value);
+  liga("bGerar","onclick",()=>gerar("fonte"));
   liga("bLinha","onclick",linhaVazia);
   liga("bExp1","onclick",exportar1);
   liga("bExp2","onclick",exportar2);
@@ -603,7 +595,7 @@ function exportar1(){
     : noCatalogo("macro",L.macro) ? "macroprocesso existe"
     : "macroprocesso novo (proposta)";
   const linhas=est.rascunho.map((L,i)=>[i+1,NATS[L.nat]||L.nat,L.macro,L.cat,L.serv,
-    {marco:"Marcos referenciais",conv:"Conversor",mao:"Preenchido à mão"}[L.origem]||L.origem,
+    {fonte:"Texto da unidade",mao:"Preenchido à mão"}[L.origem]||L.origem,
     situacao(L)]);
   baixarCSV("etapa1-rascunho-"+sufixo()+".csv",[...cab,...cols,...linhas]);
   avisar("Planilha da etapa 1 baixada.");
