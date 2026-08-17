@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Portal das Entregas — fluxo em 4 etapas</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#1351B4; --primary-dark:#0C326F; --primary-soft:#E8EEF9;
+  --green:#168821; --green-soft:#E3F2E5; --navy:#13315C; --yellow:#FFCD07;
+  --amber:#B86E00; --amber-soft:#FBEEDB; --coral:#9E3B1F; --coral-soft:#FBEDE4;
+  --purple:#5B3A9B; --purple-soft:#F0EBF8;
+  --ink:#1B1B1B; --sub:#55606E; --faint:#8C97A6; --line:#E4E7EB; --bg:#F4F6F9;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Raleway',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;}
+button,input,textarea,select{font-family:inherit;}
+.faixa{display:flex;height:4px;} .faixa span{flex:1;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px;}
+
+/* ---------- cabeçalho ---------- */
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40;}
+.head-in{display:flex;align-items:center;gap:14px;padding:12px 0;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo svg{flex-shrink:0;}
+.logo-w{font-size:15.5px;font-weight:800;color:var(--navy);line-height:1.15;}
+.logo-s{font-size:10.5px;color:var(--faint);letter-spacing:.03em;}
+.unid-chip{margin-left:auto;display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;
+  padding:7px 11px;font-size:12px;font-weight:700;color:var(--sub);cursor:pointer;background:none;}
+.unid-chip:hover{border-color:var(--primary);color:var(--primary-dark);background:var(--primary-soft);}
+
+/* ---------- a trilha 1-2-3-4 ---------- */
+.trilha{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:57px;z-index:39;}
+.trilha-in{display:flex;align-items:stretch;gap:0;padding:0;overflow-x:auto;}
+.pas{flex:1;min-width:172px;display:flex;align-items:center;gap:10px;padding:13px 8px 13px 16px;background:none;border:none;
+  cursor:pointer;font-family:inherit;text-align:left;position:relative;transition:background .14s;}
+.pas:hover{background:var(--bg);}
+.pas::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent;}
+.pas.atual::after{background:var(--primary);}
+.pas.atual .pas-t{color:var(--primary-dark);}
+.pas-n{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size:12.5px;font-weight:800;
+  border:2px solid var(--line);color:var(--faint);background:#fff;flex-shrink:0;transition:all .14s;}
+.pas.atual .pas-n{border-color:var(--primary);background:var(--primary);color:#fff;}
+.pas.feito .pas-n{border-color:var(--green);background:var(--green);color:#fff;}
+.pas-tx{min-width:0;}
+.pas-t{font-size:12.5px;font-weight:800;color:var(--sub);line-height:1.25;}
+.pas-d{font-size:10.5px;color:var(--faint);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pas-lig{flex:0 0 1px;background:var(--line);margin:16px 0;}
+
+/* ---------- painel de etapa ---------- */
+.etapa{padding:26px 0 60px;animation:entra .22s ease;}
+@keyframes entra{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.et-h{margin-bottom:20px;}
+.et-tag{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);
+  font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;margin-bottom:9px;text-transform:uppercase;letter-spacing:.04em;}
+.et-h h1{font-size:23px;margin:0 0 6px;color:var(--navy);letter-spacing:-.3px;}
+.et-h p{font-size:13.5px;color:var(--sub);line-height:1.6;margin:0;max-width:730px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;}
+.card-h{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.card-h b{font-size:14px;color:var(--navy);}
+.card-h .opc{margin-left:auto;font-size:10px;font-weight:800;background:var(--bg);color:var(--faint);padding:3px 8px;border-radius:20px;text-transform:uppercase;}
+.card-d{font-size:12.5px;color:var(--sub);line-height:1.55;margin:0 0 14px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start;}
+@media(max-width:900px){.g2{grid-template-columns:1fr;} .g3{grid-template-columns:1fr 1fr;}}
+@media(max-width:620px){.g3{grid-template-columns:1fr;}}
+
+/* formulários */
+label.lb{display:block;font-size:10.5px;font-weight:800;color:var(--navy);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+.in{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;background:#fbfcfd;}
+.in:focus{outline:2px solid var(--primary-soft);border-color:var(--primary);}
+textarea.in{min-height:118px;resize:vertical;line-height:1.55;font-size:12.5px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:9px;padding:10px 16px;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .14s;}
+.btn-p{background:var(--primary);color:#fff;} .btn-p:hover{background:var(--primary-dark);}
+.btn-g{background:none;color:var(--sub);border:1px solid var(--line);} .btn-g:hover{border-color:var(--primary);color:var(--primary-dark);}
+.btn-v{background:var(--green);color:#fff;} .btn-v:hover{filter:brightness(.93);}
+.btn:disabled{opacity:.45;cursor:default;}
+.anexo{display:flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:9px;padding:9px 11px;margin-bottom:7px;font-size:12px;cursor:pointer;}
+.anexo:hover{border-color:var(--primary);}
+.anexo.tem{border-style:solid;border-color:#BEE0C4;background:var(--green-soft);}
+.anexo-n{font-size:10.5px;font-weight:800;color:var(--navy);flex:1;}
+.anexo.tem .anexo-n{color:var(--green);}
+.anexo-x{background:none;border:none;color:var(--faint);cursor:pointer;padding:0;display:grid;place-items:center;}
+.anexo-x:hover{color:var(--coral);}
+
+/* rascunho editável */
+.rasc{margin-top:20px;}
+.rasc-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.rasc-bar b{font-size:14px;color:var(--navy);}
+.rasc-bar .n{background:var(--green-soft);color:var(--green);font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;}
+.rasc-bar .dir{margin-left:auto;display:flex;gap:7px;}
+.tblwrap{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:420px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{position:sticky;top:0;background:#FAFBFD;border-bottom:1px solid var(--line);text-align:left;
+  padding:9px 10px;font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;z-index:2;}
+tbody td{border-bottom:1px solid #F2F4F7;padding:5px 7px;vertical-align:top;}
+tbody tr:hover{background:#FCFDFE;}
+.cel{width:100%;border:1px solid transparent;border-radius:6px;padding:6px 7px;font-size:12.5px;background:none;line-height:1.4;}
+.cel:hover{border-color:var(--line);background:#fff;}
+.cel:focus{outline:none;border-color:var(--primary);background:#fff;box-shadow:0 0 0 2px var(--primary-soft);}
+.cel[readonly]{color:var(--faint);cursor:not-allowed;}
+select.cel{cursor:pointer;}
+.td-nat{width:126px;} .td-org{width:96px;} .td-x{width:34px;}
+.tag{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;padding:2px 6px;border-radius:20px;white-space:nowrap;}
+.tag.cat{background:var(--primary-soft);color:var(--primary);}
+.tag.novo{background:var(--amber-soft);color:var(--amber);}
+.tag.marco{background:var(--green-soft);color:var(--green);}
+.tag.conv{background:var(--purple-soft);color:var(--purple);}
+.tag.mao{background:var(--bg);color:var(--sub);}
+.linha-x{background:none;border:none;color:var(--faint);cursor:pointer;padding:6px;display:grid;place-items:center;border-radius:6px;}
+.linha-x:hover{color:var(--coral);background:var(--coral-soft);}
+.aviso{display:flex;align-items:flex-start;gap:8px;border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.5;margin-top:12px;}
+.aviso.info{background:var(--primary-soft);color:var(--primary-dark);}
+.aviso.trava{background:var(--amber-soft);color:var(--amber);}
+.vazio{text-align:center;padding:34px 20px;color:var(--faint);font-size:13px;line-height:1.6;}
+
+/* etapa 2/3/4 */
+.mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;}
+.mini-c{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;text-decoration:none;color:inherit;display:block;transition:all .14s;}
+.mini-c:hover{border-color:var(--primary);box-shadow:0 6px 20px rgba(19,49,92,.08);transform:translateY(-2px);}
+.mini-c b{font-size:13px;color:var(--navy);display:block;margin-bottom:4px;}
+.mini-c span{font-size:11.5px;color:var(--sub);line-height:1.5;display:block;}
+.mini-c .op{font-size:9.5px;font-weight:800;background:var(--bg);color:var(--faint);padding:2px 7px;border-radius:20px;display:inline-block;margin-top:8px;text-transform:uppercase;}
+.nums{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
+.num{background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 14px;min-width:104px;}
+.num b{display:block;font-size:19px;color:var(--navy);}
+.num span{font-size:10px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+
+/* navegação de etapa */
+.et-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap;}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(19,49,92,.45);display:grid;place-items:center;z-index:90;padding:20px;}
+.modal{background:#fff;border-radius:14px;padding:22px;width:min(560px,100%);}
+.modal h3{margin:0 0 5px;font-size:16px;color:var(--navy);}
+.modal p{font-size:12.5px;color:var(--sub);line-height:1.55;margin:0 0 16px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:9px;margin-top:18px;}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 16px;
+  border-radius:10px;font-size:12.5px;font-weight:600;box-shadow:0 8px 24px rgba(19,49,92,.3);z-index:95;}
+.carregando{padding:70px 20px;text-align:center;color:var(--faint);}
+</style>
+</head>
+<body>
+<div class="faixa"><span style="background:var(--green)"></span><span style="background:var(--yellow)"></span><span style="background:var(--primary)"></span></div>
+
+<header>
+  <div class="wrap head-in">
+    <div class="logo">
+      <svg viewBox="0 0 32 24" width="30" height="23"><circle cx="7" cy="7" r="4" fill="#FFCD07"/><circle cx="16" cy="6" r="4.4" fill="#168821"/><circle cx="25" cy="7" r="4" fill="#1351B4"/><path d="M2 22c1.5-5 9-5 10.5 0z" fill="#FFCD07"/><path d="M10.5 22c1.5-6 9.5-6 11 0z" fill="#168821"/><path d="M20 22c1.5-5 9-5 10.5 0z" fill="#1351B4"/></svg>
+      <div><div class="logo-w">Portal das Entregas</div><div class="logo-s">SIGEPE · SISDIP / DFT</div></div>
+    </div>
+    <button class="unid-chip" id="chipUnid"></button>
+  </div>
+</header>
+
+<nav class="trilha"><div class="wrap trilha-in" id="trilha"></div></nav>
+
+<div class="wrap"><div id="palco"></div></div>
+
+<script>
+/* ============================================================================
+   Protótipo do fluxo em 4 etapas.
+   Cada etapa produz uma planilha. A etapa 1 é o pré-cadastro: unidade +
+   marcos referenciais + conversor na MESMA tela, alimentando um rascunho
+   editável de macroprocesso / categoria de serviço / serviço — que é o
+   desenho da área, ainda não o catálogo oficial.
+============================================================================ */
+let ENTREGAS=[], VOCAB={macro:[],cat:[],serv:[]}, MACRO_NAT={};
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const NATS={finalistico:"Finalístico",governanca:"Governança",suporte:"Suporte"};
+
+/* Só o finalístico é aberto. Suporte e governança são a estrutura comum a
+   todo o governo — 4 e 9 macroprocessos — e não se inventam por unidade:
+   mudança ali passa pela equipe do MGI. */
+const ABERTO={finalistico:{macro:true,cat:true,serv:true},
+              governanca:{macro:false,cat:false,serv:true},
+              suporte:{macro:false,cat:false,serv:true}};
+
+const ETAPAS=[
+  {n:1,id:"pre",  t:"Primeira etapa",       d:"pré-cadastro da unidade"},
+  {n:2,id:"cat",  t:"Catálogo de entregas", d:"escolher as entregas oficiais"},
+  {n:3,id:"ciclo",t:"Ciclo da unidade",     d:"equipe, indicadores e período"},
+  {n:4,id:"org",  t:"Resultados do órgão",  d:"relatório por unidade"},
+];
+
+const est={
+  etapa:"pre",
+  orgao:"Enap", unidade:"Diretoria de Concursos Públicos", responsavel:"",
+  marcos:{cadeia:null,estrutura:null,rgi:null,regimento:null},
+  textoMarcos:"", textoConv:"",
+  rascunho:[],          // [{macro,cat,serv,nat,origem,id}]
+  entregas:new Set(),   // etapa 2 (simulada aqui)
+  feito:{},
+};
+
+const el=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let seq=1;
+const ico={
+  check:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6 9 17l-5-5"/></svg>',
+  x:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  mais:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>',
+  baixar:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  seta:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
+  volta:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+  clipe:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.4 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+  faisca:'<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z"/></svg>',
+};
+
+/* ---------- carga ---------- */
+async function carregar(){
+  el("palco").innerHTML='<div class="carregando">Carregando o catálogo oficial…</div>';
+  try{
+    const r=await fetch("banco.json"); if(!r.ok) throw 0;
+    const lite=await r.json();
+    ENTREGAS=lite.map(x=>({codigo:x.c,entrega:x.e,atividade:x.a||"",
+      servico:(x.s&&x.s!==x.k)?x.s:"",categoria:x.k,macro:x.m,natureza:x.n}));
+    const M=new Set(),C=new Set(),S=new Set();
+    ENTREGAS.forEach(e=>{ if(e.macro){M.add(e.macro); MACRO_NAT[e.macro]=e.natureza;}
+      if(e.categoria)C.add(e.categoria); if(e.servico)S.add(e.servico); });
+    VOCAB={macro:[...M].sort(),cat:[...C].sort(),serv:[...S].sort()};
+  }catch(e){
+    el("palco").innerHTML='<div class="carregando">Não consegui carregar <b>banco.json</b>.<br>Abra pelo servidor local.</div>';
+    return;
+  }
+  // exemplo real: as competências da Diretoria de Concursos Públicos da Enap
+  est.textoMarcos=SEED_MARCOS;
+  est.textoConv=SEED_CONV;
+  render();
+}
+
+const SEED_MARCOS=`I - planejar, coordenar e supervisionar a execução logística e operacional dos concursos públicos sob responsabilidade da Enap;
+II - monitorar os processos de logística e segurança, e desenvolver estratégias de mitigação de riscos e de contingências para a aplicação de provas de concursos públicos;
+III - coordenar a elaboração de normas, editais, conteúdos programáticos e materiais instrucionais e administrativos de concursos públicos;
+IV - coordenar a capacitação dos colaboradores envolvidos na aplicação de provas de concursos públicos;
+V - planejar, acompanhar e fiscalizar contratos, convênios e parcerias firmados com outras instituições;
+VI - prestar consultoria técnica e apoio institucional a órgãos e entidades para o desenvolvimento e a implantação de processos seletivos e concursos públicos.`;
+
+const SEED_CONV=`Analisar solicitações de concurso público dos órgãos
+Elaborar planilha consolidada das solicitações
+Ranquear prioridades para autorização de concursos
+Acompanhar contratos com bancas examinadoras
+Publicar bancas examinadoras, data e local de prova`;
+
+/* ---------- casamento por palavras distintivas (o mesmo do Mapa da Unidade) ---------- */
+const VAZIAS=new Set("de da do das dos e a o as os em no na nos nas para por com que ao aos um uma sua seu suas seus sob entre sobre ou".split(" "));
+const VERBOS=new Set(("planejar coordenar supervisionar monitorar executar promover elaborar desenvolver acompanhar "
+ +"fiscalizar prestar propor subsidiar orientar articular apoiar gerir administrar implementar implantar avaliar "
+ +"analisar manter assegurar garantir definir estabelecer realizar participar zelar exercer dirigir conduzir "
+ +"formular instituir consolidar autorizar deliberar representar aprovar atividades acoes processos procedimentos "
+ +"instituicoes atores ambito respectivas respectivos demais competencias competencia unidade unidades orgao orgaos "
+ +"entidades entidade outras outros diversos aplicacao execucao gestao area areas trabalho trabalhos").split(/\s+/));
+const toks=s=>new Set(norm(s).split(/[^a-z0-9]+/).filter(t=>t.length>3&&!VAZIAS.has(t)));
+let IDF=null,TKS=null;
+function indice(){
+  TKS=ENTREGAS.map(e=>toks(e.entrega+" "+e.atividade+" "+e.categoria+" "+e.macro));
+  const df=new Map(); TKS.forEach(B=>B.forEach(t=>df.set(t,(df.get(t)||0)+1)));
+  IDF=new Map(); df.forEach((n,t)=>IDF.set(t,Math.log(ENTREGAS.length/(1+n))));
+}
+const peso=t=>IDF&&IDF.has(t)?Math.max(IDF.get(t),0.1):3;
+function distintivos(txt){
+  const T=[...toks(txt)].filter(t=>!VERBOS.has(t));
+  const r=T.filter(t=>peso(t)>=3.2); return r.length?r:T;
+}
+function casar(texto,n){
+  if(!IDF) indice();
+  const T=distintivos(texto); if(!T.length) return [];
+  const pT=T.reduce((s,t)=>s+peso(t),0)||1, out=[];
+  for(let i=0;i<ENTREGAS.length;i++){
+    const B=TKS[i]; let acum=0,c=0;
+    T.forEach(t=>{ if(B.has(t)){acum+=peso(t);c++;} });
+    if(!c) continue;
+    const s=(acum/pT)/Math.sqrt(1+B.size/16);
+    if(s>0.08) out.push({e:ENTREGAS[i],s});
+  }
+  out.sort((a,b)=>b.s-a.s); return out.slice(0,n);
+}
+
+/* ---------- etapa 1: gerar rascunho ---------- */
+function gerar(origem){
+  // o que casa é o texto colado; o nome do arquivo anexado seria só ruído
+  const txt = origem==="marco" ? est.textoMarcos : est.textoConv;
+  if(!norm(txt).trim()){ avisar("Cole o texto antes de gerar."); return; }
+  const linhas=txt.split(/\n+/).map(l=>l.replace(/^\s*[IVXLC]+\s*[-–]\s*/,"").replace(/^\s*[a-z0-9]+[\)\.]\s*/i,"").trim()).filter(l=>l.length>20);
+  const alvo = linhas.length?linhas:[txt];
+  const vistos=new Set(est.rascunho.map(r=>r.macro+"|"+r.cat+"|"+r.serv));
+  let novas=0, fracas=0;
+  alvo.forEach(l=>{
+    const achados=casar(l,6);
+    if(!achados.length){ fracas++; return; }
+    // corte por qualidade: só o que se aproxima do melhor resultado da linha.
+    // sem isso, linhas curtas (típicas do conversor) arrastam qualquer coisa.
+    const melhor=achados[0].s;
+    const bons=achados.filter(a=>a.s>=Math.max(0.16,melhor*0.6)).slice(0,3);
+    if(!bons.length){ fracas++; return; }
+    bons.forEach(({e})=>{
+      const k=e.macro+"|"+e.categoria+"|"+(e.servico||"");
+      if(vistos.has(k)) return;
+      vistos.add(k);
+      est.rascunho.push({id:seq++,macro:e.macro,cat:e.categoria,serv:e.servico||"",nat:e.natureza,origem});
+      novas++;
+    });
+  });
+  avisar(novas
+    ? novas+" linhas trazidas — revise e edite à vontade."+(fracas?" "+fracas+" trecho(s) sem correspondência clara: vale escrever à mão.":"")
+    : "Nada novo além do que já está no rascunho.");
+  render();
+}
+
+function linhaVazia(){
+  est.rascunho.push({id:seq++,macro:"",cat:"",serv:"",nat:"finalistico",origem:"mao"});
+  render();
+}
+
+const noCatalogo=(campo,v)=>!!v && VOCAB[campo].some(x=>norm(x)===norm(v));
+
+/* ---------- render ---------- */
+function render(){
+  el("chipUnid").innerHTML=esc(est.unidade||est.orgao||"Cadastrar unidade")+" ·  trocar";
+  el("chipUnid").onclick=abrirUnidade;
+  est.feito[1]=est.rascunho.length>0;
+  est.feito[2]=est.entregas.size>0;
+  renderTrilha(); renderEtapa();
+}
+
+function renderTrilha(){
+  el("trilha").innerHTML=ETAPAS.map((e,i)=>
+    (i?'<span class="pas-lig"></span>':'')
+    +'<button class="pas '+(est.etapa===e.id?"atual":"")+' '+(est.feito[e.n]?"feito":"")+'" data-et="'+e.id+'">'
+    +'<span class="pas-n">'+(est.feito[e.n]?ico.check:e.n)+'</span>'
+    +'<span class="pas-tx"><span class="pas-t">'+e.t+'</span><span class="pas-d">'+e.d+'</span></span>'
+    +'</button>').join("");
+  el("trilha").querySelectorAll("[data-et]").forEach(b=>b.onclick=()=>{ est.etapa=b.dataset.et; render(); window.scrollTo({top:0,behavior:"smooth"}); });
+}
+
+function renderEtapa(){
+  const p=el("palco");
+  if(est.etapa==="pre") p.innerHTML=telaPre();
+  if(est.etapa==="cat") p.innerHTML=telaCat();
+  if(est.etapa==="ciclo") p.innerHTML=telaCiclo();
+  if(est.etapa==="org") p.innerHTML=telaOrg();
+  ligar();
+}
+
+/* ---------- ETAPA 1 ---------- */
+function telaPre(){
+  const anexos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
+  return '<section class="etapa">'
+   +'<div class="et-h"><span class="et-tag">Etapa 1 de 4</span>'
+   +'<h1>Pré-cadastro da unidade</h1>'
+   +'<p>Aqui a unidade se apresenta e traz o que já tem escrito. Os <b>marcos referenciais</b> (os documentos oficiais) e o <b>conversor</b> (o que existe em outro formato) alimentam o mesmo rascunho — a primeira versão do desenho da área, em macroprocesso, categoria de serviço e serviço. Nada aqui entra no catálogo oficial: é o seu esboço, editável, para depois confrontar com o catálogo na etapa 2.</p></div>'
+
+   +'<div class="card" style="margin-bottom:16px">'
+     +'<div class="card-h"><b>A unidade</b></div>'
+     +'<div class="g3">'
+       +'<div><label class="lb">Órgão</label><input class="in" id="fOrgao" value="'+esc(est.orgao)+'"/></div>'
+       +'<div><label class="lb">Unidade</label><input class="in" id="fUnid" value="'+esc(est.unidade)+'"/></div>'
+       +'<div><label class="lb">Responsável pelo preenchimento</label><input class="in" id="fResp" value="'+esc(est.responsavel)+'" placeholder="Seu nome"/></div>'
+     +'</div>'
+   +'</div>'
+
+   +'<div class="g2">'
+     +'<div class="card">'
+       +'<div class="card-h">'+ico.faisca+'<b>Marcos referenciais</b></div>'
+       +'<p class="card-d">Os documentos que já descrevem a unidade. Anexe o que tiver e cole os trechos de atribuições — é deles que sai o primeiro rascunho.</p>'
+       +anexos.map(([k,r])=>'<div class="anexo '+(est.marcos[k]?"tem":"")+'" data-anexo="'+k+'">'+ico.clipe
+         +'<span class="anexo-n">'+r+(est.marcos[k]?' · '+esc(est.marcos[k]):'')+'</span>'
+         +(est.marcos[k]?'<button class="anexo-x" data-desanexa="'+k+'">'+ico.x+'</button>':'')+'</div>').join("")
+       +'<label class="lb" style="margin-top:12px">Atribuições (cole do regimento ou do decreto)</label>'
+       +'<textarea class="in" id="tMarcos" spellcheck="false" placeholder="I - planejar, coordenar e supervisionar…">'+esc(est.textoMarcos)+'</textarea>'
+       +'<button class="btn btn-p" style="width:100%;margin-top:10px" id="bMarcos">Gerar rascunho a partir dos marcos</button>'
+     +'</div>'
+     +'<div class="card">'
+       +'<div class="card-h" style="color:var(--purple)">'+ico.baixar+'<b style="color:var(--purple)">Conversor</b></div>'
+       +'<p class="card-d">O que a unidade já tem em outro formato: plano de trabalho do PGD, planilha de atividades, planejamento estratégico. Cole aqui e o portal enquadra no catálogo.</p>'
+       +'<label class="lb">Cole a lista de atividades, uma por linha</label>'
+       +'<textarea class="in" id="tConv" spellcheck="false" placeholder="Analisar solicitações de concurso público&#10;Elaborar edital&#10;Acompanhar contratos de banca">'+esc(est.textoConv)+'</textarea>'
+       +'<button class="btn btn-g" style="width:100%;margin-top:10px;border-color:#D6CFF0;color:var(--purple)" id="bConv">Enquadrar e somar ao rascunho</button>'
+       +'<div class="aviso info" style="margin-top:12px">Os dois lados escrevem no <b>mesmo rascunho</b>. Cada linha guarda de onde veio.</div>'
+     +'</div>'
+   +'</div>'
+
+   +rascunhoHtml()
+   +'<div class="et-foot"><span></span>'
+     +'<button class="btn btn-p" data-ir="cat">Ir para o catálogo de entregas '+ico.seta+'</button></div>'
+   +'</section>';
+}
+
+function rascunhoHtml(){
+  const r=est.rascunho;
+  const macros=new Set(r.map(x=>x.macro).filter(Boolean));
+  const cats=new Set(r.map(x=>x.cat).filter(Boolean));
+  const servs=new Set(r.map(x=>x.serv).filter(Boolean));
+  const novos=r.filter(x=>x.macro&&!noCatalogo("macro",x.macro)).length;
+  let html='<div class="rasc">'
+    +'<div class="rasc-bar"><b>Rascunho da descrição da área</b>'
+    +'<span class="n">'+r.length+' linha'+(r.length===1?'':'s')+'</span>'
+    +'<div class="dir">'
+      +'<button class="btn btn-g" id="bLinha">'+ico.mais+' linha</button>'
+      +'<button class="btn btn-v" id="bExp1" '+(r.length?'':'disabled')+'>'+ico.baixar+' Planilha da etapa 1</button>'
+    +'</div></div>';
+  if(!r.length){
+    return html+'<div class="tblwrap"><div class="vazio">O rascunho está vazio.<br>Traga as atribuições pelos marcos referenciais, cole a lista no conversor — ou comece do zero com <b>+ linha</b>.</div></div></div>';
+  }
+  html+='<div class="nums">'
+    +'<div class="num"><b>'+macros.size+'</b><span>macroprocessos</span></div>'
+    +'<div class="num"><b>'+cats.size+'</b><span>categorias</span></div>'
+    +'<div class="num"><b>'+servs.size+'</b><span>serviços</span></div>'
+    +'<div class="num"><b>'+novos+'</b><span>fora do catálogo</span></div>'
+  +'</div>';
+  html+='<div class="tblwrap"><table><thead><tr>'
+    +'<th class="td-nat">Natureza</th><th>Macroprocesso</th><th>Categoria de serviço</th><th>Serviço</th>'
+    +'<th class="td-org">Origem</th><th class="td-x"></th></tr></thead><tbody>';
+  r.forEach((L,i)=>{
+    const ab=ABERTO[L.nat]||ABERTO.finalistico;
+    const tagOrig={marco:'<span class="tag marco">marco</span>',conv:'<span class="tag conv">conversor</span>',mao:'<span class="tag mao">à mão</span>'}[L.origem]||"";
+    html+='<tr>'
+      +'<td class="td-nat"><select class="cel" data-i="'+i+'" data-c="nat">'
+        +Object.entries(NATS).map(([k,v])=>'<option value="'+k+'"'+(L.nat===k?' selected':'')+'>'+v+'</option>').join("")
+      +'</select></td>'
+      +'<td>'+campo(i,"macro",L.macro,ab.macro,"macro")+'</td>'
+      +'<td>'+campo(i,"cat",L.cat,ab.cat,"cat")+'</td>'
+      +'<td>'+campo(i,"serv",L.serv,ab.serv,"serv")+'</td>'
+      +'<td class="td-org">'+tagOrig+'</td>'
+      +'<td class="td-x"><button class="linha-x" data-del="'+i+'">'+ico.x+'</button></td>'
+    +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  const travadas=r.filter(L=>L.nat!=="finalistico").length;
+  if(travadas) html+='<div class="aviso trava">Em <b>suporte</b> e <b>governança</b>, macroprocesso e categoria vêm de lista fechada — são 4 e 9 macroprocessos comuns a todo o governo. Só o serviço pode ser novo. Criar estrutura nova ali depende da equipe do MGI.</div>';
+  html+='<div class="aviso info">Este rascunho é o <b>seu desenho</b>, não o catálogo oficial. O que estiver <span class="tag novo">novo</span> segue como proposta — na etapa 2 você confronta com o catálogo e resolve o que já existe.</div>';
+  return html+'</div>';
+}
+
+function campo(i,c,v,aberto,vocab){
+  const dentro=noCatalogo(vocab,v);
+  const tag = !v?"" : dentro?'<span class="tag cat">no catálogo</span>':'<span class="tag novo">novo</span>';
+  if(!aberto){
+    // lista fechada: só o que já existe, filtrado pela natureza da linha
+    const nat=est.rascunho[i].nat;
+    const opts=(vocab==="macro"?VOCAB.macro.filter(m=>MACRO_NAT[m]===nat):VOCAB[vocab]);
+    return '<select class="cel" data-i="'+i+'" data-c="'+c+'"><option value="">— escolher —</option>'
+      +opts.slice(0,400).map(o=>'<option value="'+esc(o)+'"'+(norm(o)===norm(v)?' selected':'')+'>'+esc(o)+'</option>').join("")
+      +'</select>';
+  }
+  return '<input class="cel" list="dl-'+vocab+'" data-i="'+i+'" data-c="'+c+'" value="'+esc(v)+'" placeholder="digite ou escolha…"/>'
+    +(tag?'<div style="padding:0 7px">'+tag+'</div>':'');
+}
+
+/* ---------- ETAPAS 2, 3, 4 ---------- */
+function telaCat(){
+  return '<section class="etapa">'
+   +'<div class="et-h"><span class="et-tag">Etapa 2 de 4</span><h1>Catálogo de entregas</h1>'
+   +'<p>Agora o confronto com o oficial. Você desce do macroprocesso até a entrega e escolhe o que a unidade faz de fato. O rascunho da etapa 1 entra aqui como ponto de partida — o que já existe é aproveitado, o que é novo segue como proposta.</p></div>'
+   +'<div class="card"><div class="card-h"><b>O que veio da etapa 1</b></div>'
+     +'<p class="card-d">'+(est.rascunho.length
+        ? est.rascunho.length+' linhas de rascunho, cobrindo '+new Set(est.rascunho.map(r=>r.macro).filter(Boolean)).size+' macroprocessos.'
+        : 'Nada ainda — volte à etapa 1 para começar o desenho.')+'</p>'
+     +'<div class="mini">'
+       +'<a class="mini-c" href="./mapa-da-unidade.html"><b>Abrir o navegador de 4 níveis</b><span>Macroprocesso › processo › serviço › entrega, com busca em cada nível e o retrato da unidade montando ao lado.</span></a>'
+       +'<a class="mini-c" href="./index.html"><b>Abrir o catálogo do portal</b><span>A versão que está no ar hoje, com as 31.241 entregas.</span></a>'
+     +'</div></div>'
+   +'<div class="et-foot">'
+     +'<button class="btn btn-g" data-ir="pre">'+ico.volta+' Voltar</button>'
+     +'<span style="display:flex;gap:8px">'
+       +'<button class="btn btn-v" id="bExp2">'+ico.baixar+' Planilha da etapa 2</button>'
+       +'<button class="btn btn-p" data-ir="ciclo">Ir para o ciclo da unidade '+ico.seta+'</button>'
+     +'</span></div>'
+   +'</section>';
+}
+
+function telaCiclo(){
+  return '<section class="etapa">'
+   +'<div class="et-h"><span class="et-tag">Etapa 3 de 4</span><h1>Ciclo da unidade</h1>'
+   +'<p>O acompanhamento do período: quais entregas em quais meses, a equipe e seus indicadores, e o que a equipe devolveu no fim. O planejamento é opcional — só quem usa o PGD precisa dele, e é lá que os campos exclusivos do PGD aparecem.</p></div>'
+   +'<div class="mini">'
+     +'<a class="mini-c" href="./jornada-gestor-unidade.html"><b>Entregas e meses</b><span>O que a unidade entrega e quando, no calendário do período.</span></a>'
+     +'<a class="mini-c" href="./jornada-gestor-equipe.html"><b>Equipe e indicadores</b><span>Quem faz o quê e os indicadores de cada pessoa.</span></a>'
+     +'<a class="mini-c" href="./jornada-gestor-retorno.html"><b>Retorno do período</b><span>O que a equipe devolveu, com os dois lados separados.</span></a>'
+     +'<a class="mini-c" href="./jornada-gestor-planejamento.html"><b>Planejamento</b><span>Objetivos e esforço por objetivo. Aqui vivem os campos do PGD.</span><span class="op">opcional</span></a>'
+   +'</div>'
+   +'<div class="et-foot">'
+     +'<button class="btn btn-g" data-ir="cat">'+ico.volta+' Voltar</button>'
+     +'<span style="display:flex;gap:8px">'
+       +'<button class="btn btn-v" id="bExp3">'+ico.baixar+' Planilha de indicadores</button>'
+       +'<button class="btn btn-p" data-ir="org">Ir para os resultados '+ico.seta+'</button>'
+     +'</span></div>'
+   +'</section>';
+}
+
+function telaOrg(){
+  return '<section class="etapa">'
+   +'<div class="et-h"><span class="et-tag">Etapa 4 de 4</span><h1>Resultados do órgão</h1>'
+   +'<p>O fechamento: o relatório de cada unidade, com o dimensionamento e as entregas que o sustentam. É a visão que o órgão usa para comparar unidades e decidir.</p></div>'
+   +'<div class="mini">'
+     +'<a class="mini-c" href="./organizacoes.html"><b>Organograma e relatório</b><span>Escolha a unidade no organograma e o relatório abre direto, com as entregas recolhidas abaixo.</span></a>'
+   +'</div>'
+   +'<div class="et-foot">'
+     +'<button class="btn btn-g" data-ir="ciclo">'+ico.volta+' Voltar</button>'
+     +'<button class="btn btn-p" data-ir="pre">Começar outra unidade '+ico.seta+'</button></div>'
+   +'</section>';
+}
+
+/* ---------- ligações ---------- */
+function ligar(){
+  // datalists do vocabulário (uma vez por render)
+  if(!el("dl-macro")){
+    const d=document.createElement("div");
+    d.innerHTML=["macro","cat","serv"].map(k=>
+      '<datalist id="dl-'+k+'">'+VOCAB[k].slice(0,1200).map(v=>'<option value="'+esc(v)+'"></option>').join("")+'</datalist>').join("");
+    document.body.appendChild(d);
+  }
+  const p=el("palco");
+  p.querySelectorAll("[data-ir]").forEach(b=>b.onclick=()=>{ est.etapa=b.dataset.ir; render(); window.scrollTo({top:0,behavior:"smooth"}); });
+
+  const liga=(id,ev,fn)=>{ const x=el(id); if(x) x[ev]=fn; };
+  liga("fOrgao","oninput",e=>{est.orgao=e.target.value; el("chipUnid").innerHTML=esc(est.unidade||est.orgao)+' ·  trocar';});
+  liga("fUnid","oninput",e=>{est.unidade=e.target.value; el("chipUnid").innerHTML=esc(est.unidade||est.orgao)+' ·  trocar';});
+  liga("fResp","oninput",e=>est.responsavel=e.target.value);
+  liga("tMarcos","oninput",e=>est.textoMarcos=e.target.value);
+  liga("tConv","oninput",e=>est.textoConv=e.target.value);
+  liga("bMarcos","onclick",()=>gerar("marco"));
+  liga("bConv","onclick",()=>gerar("conv"));
+  liga("bLinha","onclick",linhaVazia);
+  liga("bExp1","onclick",exportar1);
+  liga("bExp2","onclick",exportar2);
+  liga("bExp3","onclick",exportar3);
+
+  // anexos (protótipo: guarda só o nome do arquivo)
+  p.querySelectorAll("[data-anexo]").forEach(d=>d.onclick=ev=>{
+    if(ev.target.closest("[data-desanexa]")) return;
+    const inp=document.createElement("input"); inp.type="file"; inp.accept=".pdf,.docx,.xlsx,.csv";
+    inp.onchange=()=>{ if(inp.files[0]){ est.marcos[d.dataset.anexo]=inp.files[0].name; render(); } };
+    inp.click();
+  });
+  p.querySelectorAll("[data-desanexa]").forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation(); est.marcos[b.dataset.desanexa]=null; render();
+  });
+
+  // células do rascunho
+  p.querySelectorAll("[data-i]").forEach(c=>{
+    const i=+c.dataset.i, campo=c.dataset.c;
+    const aplica=v=>{
+      const L=est.rascunho[i]; if(!L) return;
+      L[campo]=v;
+      // trocar a natureza pode invalidar macro/categoria que não pertencem a ela
+      if(campo==="nat" && v!=="finalistico"){
+        if(MACRO_NAT[L.macro]!==v) L.macro="";
+        L.cat="";
+      }
+      render();
+    };
+    if(c.tagName==="SELECT") c.onchange=e=>aplica(e.target.value);
+    else{
+      c.onchange=e=>aplica(e.target.value);          // só ao sair do campo: não perde o foco digitando
+      c.onkeydown=e=>{ if(e.key==="Enter") e.target.blur(); };
+    }
+  });
+  p.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    est.rascunho.splice(+b.dataset.del,1); avisar("Linha removida."); render();
+  });
+}
+
+function abrirUnidade(){
+  const bg=document.createElement("div"); bg.className="modal-bg";
+  bg.innerHTML='<div class="modal"><h3>Órgão e unidade</h3>'
+   +'<p>No portal isso fica salvo neste computador — você não informa de novo na próxima visita.</p>'
+   +'<label class="lb">Órgão</label><input class="in" id="mO" value="'+esc(est.orgao)+'"/>'
+   +'<label class="lb" style="margin-top:12px">Unidade</label><input class="in" id="mU" value="'+esc(est.unidade)+'"/>'
+   +'<div class="modal-foot"><button class="btn btn-g" id="mC">Cancelar</button><button class="btn btn-p" id="mS">Salvar</button></div></div>';
+  document.body.appendChild(bg);
+  bg.onclick=e=>{ if(e.target===bg) bg.remove(); };
+  bg.querySelector("#mC").onclick=()=>bg.remove();
+  bg.querySelector("#mS").onclick=()=>{
+    est.orgao=bg.querySelector("#mO").value; est.unidade=bg.querySelector("#mU").value;
+    bg.remove(); render();
+  };
+}
+
+function avisar(msg){
+  const v=document.querySelector(".toast"); if(v) v.remove();
+  const t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3200);
+}
+
+/* ---------- planilhas ---------- */
+function baixarCSV(nome,linhas){
+  const csv=linhas.map(l=>l.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(";")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+  a.download=nome; a.click();
+}
+const sufixo=()=>norm(est.unidade||"unidade").replace(/[^a-z0-9]+/g,"-").slice(0,40);
+
+function exportar1(){
+  if(!est.rascunho.length) return;
+  const cab=[["Órgão",est.orgao],["Unidade",est.unidade],["Responsável",est.responsavel],
+             ["Gerado em",new Date().toLocaleString("pt-BR")],["Situação","RASCUNHO — não é o catálogo oficial"],[]];
+  const cols=[["#","Natureza","Macroprocesso","Categoria de serviço","Serviço","Origem","No catálogo?"]];
+  const situacao=L=>!L.macro.trim() ? "a preencher"
+    : noCatalogo("macro",L.macro) ? "macroprocesso existe"
+    : "macroprocesso novo (proposta)";
+  const linhas=est.rascunho.map((L,i)=>[i+1,NATS[L.nat]||L.nat,L.macro,L.cat,L.serv,
+    {marco:"Marcos referenciais",conv:"Conversor",mao:"Preenchido à mão"}[L.origem]||L.origem,
+    situacao(L)]);
+  baixarCSV("etapa1-rascunho-"+sufixo()+".csv",[...cab,...cols,...linhas]);
+  avisar("Planilha da etapa 1 baixada.");
+}
+function exportar2(){
+  const cab=[["Órgão",est.orgao],["Unidade",est.unidade],["Etapa","2 — entregas escolhidas no catálogo"],[]];
+  const cols=[["Código","Entrega","Serviço","Categoria de serviço","Macroprocesso","Natureza"]];
+  const sel=ENTREGAS.filter(e=>est.entregas.has(e.codigo));
+  const linhas=sel.length?sel.map(e=>[e.codigo,e.entrega,e.servico,e.categoria,e.macro,NATS[e.natureza]])
+    :[["—","(nenhuma entrega escolhida ainda — use o navegador de 4 níveis)","","","",""]];
+  baixarCSV("etapa2-entregas-"+sufixo()+".csv",[...cab,...cols,...linhas]);
+  avisar("Planilha da etapa 2 baixada.");
+}
+function exportar3(){
+  const cab=[["Órgão",est.orgao],["Unidade",est.unidade],["Etapa","3 — ciclo da unidade"],
+             ["Observação","Indicadores por entrega; preencha na tela do ciclo antes de exportar"],[]];
+  const cols=[["Entrega","Responsável","Meses","Qtd. estimada","Qtd. realizada","Esforço (%)","Objetivo vinculado"]];
+  const base=est.rascunho.length?est.rascunho:[{serv:"",cat:"(sem rascunho)"}];
+  const linhas=base.slice(0,40).map(L=>[L.serv||L.cat,"","","","","",""]);
+  baixarCSV("etapa3-indicadores-"+sufixo()+".csv",[...cab,...cols,...linhas]);
+  avisar("Planilha de indicadores baixada.");
+}
+
+carregar();
+</script>
+</body>
+</html>
