@@ -308,7 +308,7 @@ Character number: `+e.characterNumber};Tr.prototype.lineNumber=function(){return
 .px-nova-cand-niv span.hit{background:${c.primary};color:#fff;}
 /* ---- trilha dos 4 n\xEDveis do cat\xE1logo ---- */
 /* ---- Mapa da Unidade ---- */
-.mu{padding:18px 20px 30px;}
+.mu{padding:18px 20px 30px;min-width:0;max-width:100%;}
 .mu-topo{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;margin-bottom:14px;}
 @media(max-width:1000px){.mu-topo{grid-template-columns:1fr;}}
 .mu-card{background:#fff;border:1px solid ${c.line};border-radius:13px;padding:15px 16px;}
@@ -367,7 +367,7 @@ Character number: `+e.characterNumber};Tr.prototype.lineNumber=function(){return
 .mu-sug-tx b{display:block;font-size:11.5px;font-weight:700;color:${c.ink};line-height:1.35;}
 .mu-sug-tx span{display:block;font-size:10px;color:${c.faint};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* as 4 colunas */
-.mu-cols{display:flex;gap:0;background:#fff;border:1px solid ${c.line};border-radius:13px;overflow-x:auto;min-height:340px;}
+.mu-cols{display:flex;gap:0;width:100%;background:#fff;border:1px solid ${c.line};border-radius:13px;overflow-x:auto;min-height:340px;}
 .mu-col{flex:0 0 265px;border-right:1px solid ${c.line};display:flex;flex-direction:column;min-width:0;}
 .mu-col:last-child{border-right:none;}
 .mu-col.travada{background:#FCFDFE;}
@@ -615,7 +615,10 @@ Character number: `+e.characterNumber};Tr.prototype.lineNumber=function(){return
 .px-search.full{padding:13px 16px;border-radius:12px;}
 .px-search.full input{font-size:15px;}
 .px-fbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;padding-bottom:2px;}
-.px-modes-row{display:flex;margin-top:4px;}
+/* em tela estreita a barra de modos n\xE3o cabe: rola no eixo dela mesma, em vez
+   de empurrar a p\xE1gina inteira para o lado */
+.px-modes-row{display:flex;margin-top:4px;max-width:100%;overflow-x:auto;padding-bottom:2px;}
+.px-modes{flex-shrink:0;}
 .px-mode-badge{margin-left:2px;font-size:10px;font-weight:800;background:${c.primary};color:#fff;border-radius:10px;padding:1px 6px;line-height:1.4;}
 .px-filtros-ativos{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px;background:${c.primarySoft};border:1px solid ${c.line};border-radius:10px;padding:8px 12px;}
 .px-fa-tags{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
@@ -627,7 +630,7 @@ Character number: `+e.characterNumber};Tr.prototype.lineNumber=function(){return
 
 .px-body{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;}
 .px-body.solo{grid-template-columns:1fr;}
-.px-main{min-height:55vh;}
+.px-main{min-height:55vh;min-width:0;}
 .px-empty{background:#fff;border:1px dashed ${c.line};border-radius:12px;padding:36px;text-align:center;color:${c.sub};}
 .px-group{margin-bottom:22px;}
 .px-group-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
@@ -1451,6 +1454,12 @@ Character number: `+e.characterNumber};Tr.prototype.lineNumber=function(){return
 .px-tipw{position:relative;display:inline-flex;}
 .px-tip{position:absolute;z-index:60;left:50%;top:calc(100% + 9px);transform:translateX(-50%) translateY(4px);background:${c.navy};color:#fff;font-size:11.5px;font-weight:600;line-height:1.4;padding:8px 11px;border-radius:8px;width:max-content;max-width:230px;box-shadow:0 8px 22px rgba(13,49,111,.3);opacity:0;pointer-events:none;transition:opacity .14s,transform .14s;text-align:left;}
 .px-tip.wide{max-width:300px;}
+/* Dicas coladas na borda direita da tela (painel da Descri\xE7\xE3o, fim da barra de
+   modos) estouravam a janela e criavam rolagem lateral. Ali elas ancoram pela
+   direita em vez de centralizar. */
+.px-doc .px-tip, .px-modes .px-tipw:last-of-type .px-tip{left:auto;right:0;transform:translateY(4px);}
+.px-doc .px-tipw:hover .px-tip, .px-modes .px-tipw:last-of-type:hover .px-tip{transform:translateY(0);}
+.px-doc .px-tip::after, .px-modes .px-tipw:last-of-type .px-tip::after{left:auto;right:14px;transform:none;}
 .px-tip::after{content:"";position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:${c.navy};}
 .px-tipw:hover .px-tip{opacity:1;transform:translateX(-50%) translateY(0);}
 .px-tip.top{top:auto;bottom:calc(100% + 9px);transform:translateX(-50%) translateY(-4px);}
