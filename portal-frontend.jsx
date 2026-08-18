@@ -1407,6 +1407,7 @@ function CalendarioMentoria({token,isAdmin}){
   const [mes,setMes]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
   const [diaSel,setDiaSel]=useState(null);
   const [modalAberto,setModalAberto]=useState(false);
+  const [eventoEditar,setEventoEditar]=useState(null);
   const [eventoAberto,setEventoAberto]=useState(null); // detalhe (com documentos) já carregado
 
   async function carregarEventos(){
@@ -1522,11 +1523,17 @@ function CalendarioMentoria({token,isAdmin}){
           {!carregando && !proximosEventos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum evento futuro.</div>}
           <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
             {proximosEventos.map(e=>(
-              <button key={e.id} onClick={()=>abrirEvento(e)} style={{textAlign:"left",border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px",cursor:"pointer",background:"#fff"}}>
-                <div style={{fontSize:"10.5px",color:C.primary,fontWeight:700}}>{new Date(e.data_hora).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} · {new Date(e.data_hora).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
-                <div style={{fontSize:"12.5px",fontWeight:600}}>{e.titulo}</div>
-                <div style={{fontSize:"11px",color:C.sub}}>{e.orgao}{e.unidade?` · ${e.unidade}`:""}</div>
-              </button>
+              <div key={e.id} style={{display:"flex",alignItems:"stretch",gap:"4px"}}>
+                <button onClick={()=>abrirEvento(e)} style={{flex:1,textAlign:"left",border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px",cursor:"pointer",background:"#fff"}}>
+                  <div style={{fontSize:"10.5px",color:C.primary,fontWeight:700}}>{new Date(e.data_hora).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} · {new Date(e.data_hora).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+                  <div style={{fontSize:"12.5px",fontWeight:600}}>{e.titulo}</div>
+                  <div style={{fontSize:"11px",color:C.sub}}>{e.orgao}{e.unidade?` · ${e.unidade}`:""}</div>
+                </button>
+                {isAdmin && <button onClick={()=>setEventoEditar(e)} title="Editar evento"
+                  style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"0 9px",cursor:"pointer",background:"#fff",color:C.sub}}>
+                  <Pencil size={13}/>
+                </button>}
+              </div>
             ))}
           </div>
         </div>
@@ -1558,12 +1565,30 @@ function CalendarioMentoria({token,isAdmin}){
       </div>}
 
       {modalAberto && <NovoEventoModal token={token} onClose={()=>setModalAberto(false)} onCriado={()=>{setModalAberto(false);carregarEventos();}}/>}
+      {eventoEditar && <NovoEventoModal token={token} evento={eventoEditar} onClose={()=>setEventoEditar(null)} onCriado={()=>{setEventoEditar(null);carregarEventos();}}/>}
     </div>
   );
 }
 
-function NovoEventoModal({token,onClose,onCriado}){
-  const [form,setForm]=useState({titulo:"",numeroOficina:"",dataHora:"",orgao:"",unidade:"",mentoresEmails:"",pontoFocalNome:"",pontoFocalEmail:"",observacoes:""});
+function paraDatetimeLocal(isoOuData){
+  const d=new Date(isoOuData);
+  const pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function NovoEventoModal({token,onClose,onCriado,evento}){
+  const editando=!!evento;
+  const [form,setForm]=useState(()=>editando?{
+    titulo:evento.titulo||"",
+    numeroOficina:(evento.numero_oficina!==null&&evento.numero_oficina!==undefined)?String(evento.numero_oficina):"",
+    dataHora:paraDatetimeLocal(evento.data_hora),
+    orgao:evento.orgao||"",
+    unidade:evento.unidade||"",
+    mentoresEmails:(evento.mentores_emails||[]).join(", "),
+    pontoFocalNome:evento.ponto_focal_nome||"",
+    pontoFocalEmail:evento.ponto_focal_email||"",
+    observacoes:evento.observacoes||"",
+  }:{titulo:"",numeroOficina:"",dataHora:"",orgao:"",unidade:"",mentoresEmails:"",pontoFocalNome:"",pontoFocalEmail:"",observacoes:""});
   const [arquivos,setArquivos]=useState([]);
   const [enviando,setEnviando]=useState(false);
   const [erro,setErro]=useState("");
@@ -1586,18 +1611,19 @@ function NovoEventoModal({token,onClose,onCriado}){
       if(form.observacoes) fd.append("observacoes",form.observacoes);
       arquivos.forEach(a=>fd.append("documentos",a));
 
-      const resp=await fetch(`${API_BASE}/api/mentoria/eventos`,{method:"POST",headers:mentoriaAuthHeader(token),body:fd});
+      const url=editando?`${API_BASE}/api/mentoria/eventos/${evento.id}`:`${API_BASE}/api/mentoria/eventos`;
+      const resp=await fetch(url,{method:editando?"PUT":"POST",headers:mentoriaAuthHeader(token),body:fd});
       const dados=await resp.json();
-      if(!resp.ok) throw new Error(dados.erro||"Erro ao criar evento.");
+      if(!resp.ok) throw new Error(dados.erro||`Erro ao ${editando?"salvar":"criar"} evento.`);
       onCriado();
-    }catch(err){ setErro(err.message||"Erro ao criar evento."); }
+    }catch(err){ setErro(err.message||`Erro ao ${editando?"salvar":"criar"} evento.`); }
     finally{ setEnviando(false); }
   }
 
   return (<div className="px-modal-bg" onClick={onClose}>
     <div className="px-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:"460px"}}>
       <div className="px-modal-h">
-        <div><CalendarDays size={17} color={C.primary}/> <b>Adicionar evento</b></div>
+        <div><CalendarDays size={17} color={C.primary}/> <b>{editando?"Editar evento":"Adicionar evento"}</b></div>
         <button onClick={onClose}><X size={18}/></button>
       </div>
       <form onSubmit={enviar} style={{display:"flex",flexDirection:"column",gap:"9px",padding:"4px 0 6px"}}>
@@ -1631,13 +1657,15 @@ function NovoEventoModal({token,onClose,onCriado}){
         <textarea placeholder="Observações (opcional)" value={form.observacoes} onChange={c("observacoes")} rows={2}
           style={{padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px",resize:"vertical"}}/>
         <label className="px-mode" style={{cursor:"pointer",justifyContent:"flex-start"}}>
-          <UploadCloud size={14}/> <span className="px-mode-lbl">{arquivos.length?`${arquivos.length} arquivo(s) selecionado(s)`:"Anexar materiais da oficina"}</span>
+          <UploadCloud size={14}/> <span className="px-mode-lbl">{arquivos.length?`${arquivos.length} arquivo(s) selecionado(s)`:editando?"Anexar mais materiais (opcional)":"Anexar materiais da oficina"}</span>
           <input type="file" multiple style={{display:"none"}} onChange={e=>setArquivos(Array.from(e.target.files||[]))}/>
         </label>
         {erro && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>}
         <div className="px-modal-acts">
           <button type="button" className="px-btn-ghost" onClick={onClose} disabled={enviando}>Cancelar</button>
-          <button type="submit" className="px-btn-primary" disabled={enviando}><Plus size={14}/> {enviando?"Criando…":"Criar evento"}</button>
+          <button type="submit" className="px-btn-primary" disabled={enviando}>
+            {editando?<Pencil size={14}/>:<Plus size={14}/>} {enviando?(editando?"Salvando…":"Criando…"):(editando?"Salvar alterações":"Criar evento")}
+          </button>
         </div>
       </form>
     </div>
