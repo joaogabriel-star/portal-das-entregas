@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planejamento da unidade</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--surface:#fff;--ink:#1B1B1B;--sub:#55606E;--faint:#8C97A6;
+  --line:#E4E7EB;--hair:#EFF2F6;--primary:#1351B4;--primaryDark:#0C326F;--primarySoft:#E8EEF9;
+  --navy:#13315C;--green:#168821;--greenSoft:#E3F2E5;--amber:#B86E00;--amberSoft:#FBEEDB;
+  --coral:#9E3B1F;--coralSoft:#FAECE7;--grey:#9AA6B2;--greySoft:#EDF0F3;--purple:#5B4AA8;--purpleSoft:#ECE9F8;
+  --num:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Raleway,-apple-system,'Segoe UI',sans-serif;color:var(--sub);font-size:14px}
+.stripe{height:3px;display:flex}.stripe i{flex:1}
+.stripe i:nth-child(1){background:var(--green)}.stripe i:nth-child(2){background:#FFCD07}.stripe i:nth-child(3){background:var(--primary)}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.h-linha{padding:11px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-t{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.h-s{font-size:10px;color:var(--faint);font-weight:600;margin-top:1px}
+.h-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pill{font-size:10.5px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;white-space:nowrap}
+.pill.proto{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple);font-weight:800;letter-spacing:.05em;text-transform:uppercase;font-size:8.5px}
+.h-back{font-size:11px;font-weight:700;color:var(--primary);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.h-back:hover{border-color:var(--primary)}
+
+.trilha{display:flex;gap:2px;padding:0 24px;overflow-x:auto;border-top:1px solid var(--hair)}
+.tf{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--faint);
+  white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
+a.tf:hover{color:var(--primary)}
+.tf.on{color:var(--primaryDark);border-bottom-color:var(--primary)}
+.tf-n{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--sub);font-family:var(--num);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tf.on .tf-n{background:var(--primary);color:#fff}
+
+.ctx{background:#fff;border-bottom:1px solid var(--line);padding:9px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctx-u{font-weight:800;color:var(--navy);font-size:13.5px}
+.ctx-p{color:var(--faint);font-weight:600;font-size:10.5px}
+.ctx-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:20px;padding:5px 12px;white-space:nowrap;border:1px solid transparent}
+.chip.neutro{background:var(--bg);border-color:var(--line);color:var(--sub)}
+.chip.neutro b{color:var(--navy);font-family:var(--num)}
+.chip.pend{background:var(--amberSoft);border-color:#EAD9BD;color:var(--amber)}
+.chip.pend b{font-family:var(--num)}
+.chip.ok{background:var(--greenSoft);border-color:#B6DDBB;color:var(--green)}
+.chip.ok b{font-family:var(--num)}
+
+.wrap{max-width:1320px;margin:0 auto;padding:18px 24px 90px}
+
+/* ---------- faixa do ciclo ---------- */
+.faixa{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;border:1px solid #D6CFF0;background:#FBFAFE;
+  border-radius:12px;padding:13px 17px;margin-bottom:16px}
+.fp-l{display:block;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:5px}
+.fp-v{font-size:13px;font-weight:700;color:var(--navy)}
+.fp-s{font-family:inherit;font-size:12.5px;font-weight:700;color:var(--navy);border:1px solid #D6CFF0;
+  background:#fff;border-radius:8px;padding:7px 10px;cursor:pointer}
+.fp-d{font-family:var(--num);font-size:12px;color:var(--sub);font-weight:600}
+.fp-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.bt-sug{display:inline-flex;align-items:center;gap:7px;background:var(--purple);color:#fff;border:0;border-radius:9px;
+  padding:9px 15px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.bt-sug:hover{background:#4A3B90}
+.bt-sug .qt{background:rgba(255,255,255,.24);border-radius:20px;padding:1px 7px;font-family:var(--num);font-size:10px}
+
+/* ---------- barra de distribuição: o "para quê" em uma linha ---------- */
+.dist{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 18px;margin-bottom:16px}
+.dist-t{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:2px}
+.dist-s{font-size:11px;color:var(--faint);font-weight:600;margin-bottom:12px}
+.dist-b{display:flex;height:26px;border-radius:7px;overflow:hidden;background:var(--greySoft)}
+.dist-b i{display:block;height:100%;position:relative;transition:width .2s}
+.dist-b i:hover{filter:brightness(1.12)}
+.dist-lg{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px}
+.dl{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--sub)}
+.dl i{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.dl b{font-family:var(--num);color:var(--navy)}
+.dist-vazio{font-size:11.5px;color:var(--faint);font-weight:600;line-height:1.5;background:var(--bg);
+  border:1px dashed var(--line);border-radius:8px;padding:11px 14px}
+.dist-vazio a{color:var(--primary);font-weight:700}
+
+/* ---------- grade de duas colunas ---------- */
+.grade{display:grid;grid-template-columns:minmax(340px,.85fr) 1.15fr;gap:16px;align-items:start}
+@media(max-width:980px){.grade{grid-template-columns:1fr}}
+.col{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.col-h{padding:13px 17px;border-bottom:1px solid var(--hair);display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.col-t{font-size:13px;font-weight:800;color:var(--navy)}
+.col-s{font-size:10.5px;color:var(--faint);font-weight:600}
+.col-q{margin-left:auto;font-family:var(--num);font-size:11px;font-weight:700;color:var(--sub);background:var(--bg);
+  border:1px solid var(--line);border-radius:20px;padding:2px 9px}
+
+/* eixos e objetivos */
+.eixo{padding:11px 17px 4px;font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.obj{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--hair);background:#fff;
+  padding:12px 17px;cursor:pointer;font-family:inherit;transition:background .13s}
+.obj:hover{background:var(--bg)}
+.obj.on{background:var(--primarySoft)}
+.obj.on .obj-n{color:var(--primaryDark)}
+.obj-n{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.4;margin-bottom:7px}
+.obj-l{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:10.5px;font-weight:700;color:var(--faint)}
+.obj-l b{font-family:var(--num);color:var(--sub);font-size:11.5px}
+.obj-bar{height:5px;border-radius:3px;background:var(--greySoft);margin-top:9px;overflow:hidden}
+.obj-bar i{display:block;height:100%;border-radius:3px}
+.obj.vazio .obj-n{color:var(--sub)}
+.obj-desc{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--amber);background:var(--amberSoft);border:1px solid #EAD9BD;border-radius:20px;padding:2px 8px}
+
+/* entregas */
+.ent{border-top:1px solid var(--hair);padding:12px 17px;display:flex;align-items:flex-start;gap:13px;flex-wrap:wrap}
+.ent.foco{background:var(--primarySoft)}
+.ent-e{flex:1;min-width:230px}
+.ent-c{font-family:var(--num);font-size:10px;color:var(--faint);font-weight:700}
+.ent-n{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.4;margin:2px 0 3px}
+.ent-m{font-size:10.5px;color:var(--faint);font-weight:600}
+.ent-h{font-family:var(--num);font-size:11px;font-weight:700;color:var(--sub);white-space:nowrap;padding-top:14px}
+.ent-h span{color:var(--faint);font-weight:600}
+.ent-d{min-width:270px;flex:1}
+.ent-atual{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ent-ok{font-size:11.5px;font-weight:700;color:var(--green);line-height:1.4}
+.ent-sug{font-size:11.5px;font-weight:700;color:var(--purple);line-height:1.4}
+.ent-vazio{font-size:11.5px;font-weight:700;color:var(--faint)}
+.via{font-size:9.5px;font-weight:700;color:var(--faint);background:var(--bg);border:1px solid var(--line);
+  border-radius:20px;padding:2px 8px;white-space:nowrap}
+.via.forte{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple)}
+.bt-x{font-family:inherit;font-size:10.5px;font-weight:700;border-radius:7px;padding:4px 10px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--sub)}
+.bt-x:hover{border-color:var(--primary);color:var(--primary)}
+.bt-x.usar{background:var(--purple);border-color:var(--purple);color:#fff}
+.bt-x.usar:hover{background:#4A3B90;color:#fff}
+.sel-obj{font-family:inherit;font-size:11px;font-weight:600;color:var(--sub);border:1px solid var(--line);
+  background:#fff;border-radius:7px;padding:4px 8px;cursor:pointer;max-width:100%}
+
+/* rodapé */
+.rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;background:#fff;
+  border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.rod-t{font-size:12px;font-weight:700;color:var(--navy)}
+.rod-s{font-size:11px;color:var(--faint);font-weight:600;margin-top:2px}
+.rod-dir{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap}
+.bt-nav{display:inline-flex;align-items:center;gap:7px;border-radius:9px;padding:9px 15px;font-family:inherit;
+  font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;border:1px solid var(--line);background:#fff;color:var(--sub)}
+.bt-nav:hover{border-color:var(--primary);color:var(--primary)}
+.bt-nav.forte{background:var(--primary);border-color:var(--primary);color:#fff}
+.bt-nav.forte:hover{background:var(--primaryDark);color:#fff}
+</style>
+</head>
+<body>
+<div class="stripe"><i></i><i></i><i></i></div>
+<header>
+  <div class="h-linha">
+    <div>
+      <div class="h-t">Planejamento da unidade</div>
+      <div class="h-s">Coordenação-Geral de Gestão de Pessoas · 2026</div>
+    </div>
+    <div class="h-dir">
+      <a class="h-back" href="./index.html">← Portal</a>
+    </div>
+  </div>
+  <div class="trilha">
+    <a class="tf" href="./jornada-gestor-unidade.html"><span class="tf-n">1</span>Entregas e meses</a>
+    <div class="tf on"><span class="tf-n">2</span>Planejamento</div>
+    <a class="tf" href="./jornada-gestor-equipe.html"><span class="tf-n">3</span>Equipe e indicadores</a>
+  </div>
+  <div class="ctx" id="ctx"></div>
+</header>
+
+<div class="wrap" id="wrap"></div>
+
+<script>
+/* ============================================================
+   PLANEJAMENTO DA UNIDADE — para que serve o que a unidade faz.
+
+   POR QUE ESTA TELA EXISTE
+   O vínculo entrega→objetivo já existia, mas escondido: aparecia
+   uma entrega por vez, dentro da linha da tabela da tela 1, e só
+   depois de ligar o botão do PGD. Assim dava para amarrar uma
+   entrega, nunca para enxergar o conjunto — nem responder "qual
+   objetivo ficou descoberto?".
+
+   AS TRÊS PERGUNTAS QUE ELA RESPONDE
+     1. O que já está amarrado e o que falta  — a faixa do topo;
+     2. Para onde vai o esforço da unidade    — a barra de
+        distribuição, em horas/mês e pessoas equivalentes;
+     3. Qual objetivo está descoberto         — a coluna da
+        esquerda, onde objetivo sem entrega é marcado.
+
+   O DADO É O MESMO DA TELA 1
+   Vínculos e ciclo moram no estado compartilhado
+   (localStorage `jornada-gestor-mgi`, chave `planejamento`).
+   As duas telas gravam e leem daqui — não são duas cópias.
+
+   O ESFORÇO VEM DA TELA DE EQUIPE
+   Quanto cada entrega custa só existe lá, onde a equipe informa
+   o percentual do próprio tempo. A tela de equipe publica o
+   agregado por entrega (`esforcoEntrega`) — nunca por pessoa.
+   Se ninguém passou por lá, esta tela diz isso e segue
+   funcionando sem os números de esforço.
+   ============================================================ */
+
+const CHAVE_JORNADA = "jornada-gestor-mgi";
+function lerPassos(){ try{ return JSON.parse(localStorage.getItem(CHAVE_JORNADA)||"{}"); }catch(e){ return {}; } }
+function gravarPasso(k,v){
+  try{ const j=lerPassos(); j[k]=v; localStorage.setItem(CHAVE_JORNADA, JSON.stringify(j)); }catch(e){}
+}
+
+const ANO = 2026;
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+
+/* mesmo conjunto da tela 1 — o ciclo resolve as datas de todas as entregas */
+const CICLOS = [
+  {id:"2026-1", r:"1º semestre de 2026", ini:0,  fim:5},
+  {id:"2026-2", r:"2º semestre de 2026", ini:6,  fim:11},
+  {id:"2026",   r:"Ano de 2026",         ini:0,  fim:11},
+];
+
+/* OBJETIVOS DO PEI — estrutura do Petrvs (eixo → objetivo).
+   `termos` alimenta o vínculo automático. Lista provisória, feita
+   para ser trocada pelo PEI real do órgão. A cor é o que amarra o
+   objetivo à sua fatia na barra de distribuição. */
+const OBJETIVOS = [
+  {id:"o1", eixo:"Atendimento", cor:"#1351B4", t:"Reduzir o tempo de resposta aos pedidos dos servidores",
+   termos:"atendimento solicitacao central resposta demanda prazo cadastrais siape"},
+  {id:"o2", eixo:"Direitos",    cor:"#5B4AA8", t:"Assegurar a concessão tempestiva de direitos e benefícios",
+   termos:"aposentadoria pensao beneficio abono permanencia certidao contribuicao concessao provimento movimentacao ato boletim exercicios pagamento"},
+  {id:"o3", eixo:"Saúde",       cor:"#168821", t:"Ampliar a atenção à saúde do servidor",
+   termos:"saude pericia medica afastamento tratamento licenca siass"},
+  {id:"o4", eixo:"Pessoas",     cor:"#B86E00", t:"Desenvolver competências alinhadas à estratégia",
+   termos:"capacitacao desenvolvimento competencia plano anual acao desempenho estagio probatorio avaliacao"},
+  {id:"o5", eixo:"Governança",  cor:"#0C7B93", t:"Fortalecer a governança e a integridade",
+   termos:"governanca controle integridade norma normativo nota tecnica legislacao indicador monitoramento acumulacao conformidade"},
+];
+const objDe = id => OBJETIVOS.find(o=>o.id===id) || null;
+
+/* as mesmas 5 entregas da tela 1 */
+const est = {
+  unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
+  ciclo:"2026-1",
+  foco:null,          // objetivo em destaque, quando o gestor clica num
+  entregas:[
+    {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", obj:null},
+    {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", obj:null},
+    {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", obj:null},
+    {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", obj:null},
+    {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", obj:null},
+  ],
+  esforco:{},         // {cod: {h, eq}} — publicado pela tela de equipe
+};
+
+const $  = id => document.getElementById(id);
+const n1 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1});
+const n2 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+const esc  = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+/* ---------- estado compartilhado ---------- */
+function carregar(){
+  const j = lerPassos();
+  const p = j.planejamento;
+  if(p){
+    if(p.ciclo && CICLOS.some(c=>c.id===p.ciclo)) est.ciclo = p.ciclo;
+    const objs = p.objs||{};
+    est.entregas.forEach(e=>{ if(objs[e.c] && objDe(objs[e.c])) e.obj = objs[e.c]; });
+  }
+  est.esforco = j.esforcoEntrega || {};
+}
+function gravar(){
+  const objs={}; est.entregas.forEach(e=>{ if(e.obj) objs[e.c]=e.obj; });
+  gravarPasso("planejamento", {ciclo:est.ciclo, objs});
+}
+
+/* ---------- ciclo ---------- */
+const cicloAtual = () => CICLOS.find(c=>c.id===est.ciclo) || CICLOS[0];
+const ultimoDia = m => new Date(ANO, m+1, 0).getDate();
+function datasDoCiclo(){
+  const c=cicloAtual();
+  return {ini:`01/${String(c.ini+1).padStart(2,"0")}/${ANO}`,
+          fim:`${ultimoDia(c.fim)}/${String(c.fim+1).padStart(2,"0")}/${ANO}`};
+}
+
+/* ---------- sugestão automática (mesma regra da tela 1) ----------
+   1. MEMÓRIA — outra entrega do mesmo grupo de processos já vinculada;
+   2. TERMOS  — palavras-chave do objetivo no nome da entrega, com o
+      grupo de processos pesando o dobro por ser classificação oficial.
+   A confiança fica à mostra: o gestor aceita ou troca. */
+function sugerirObjetivo(e){
+  const irmao = est.entregas.find(x=>x.c!==e.c && x.m===e.m && x.obj);
+  if(irmao) return {id:irmao.obj, via:`outra entrega de ${e.m}`, forte:true};
+  const nome = norm(e.e), macro = norm(e.m);
+  let melhor=null, max=0, viaMacro=false;
+  for(const o of OBJETIVOS){
+    const ts = o.termos.split(" ").filter(Boolean);
+    const pNome  = ts.filter(t=>nome.includes(t)).length;
+    const pMacro = ts.filter(t=>macro.includes(t)).length;
+    const p = pNome + pMacro*2;
+    if(p>max){ max=p; melhor=o; viaMacro=pMacro>0; }
+  }
+  if(!melhor || !max) return null;
+  const via = viaMacro ? "grupo de processos" : `${max} ${max===1?"termo":"termos"} em comum`;
+  return {id:melhor.id, via, forte:max>=3};
+}
+const semObjetivo = () => est.entregas.filter(e=>!e.obj);
+const sugeriveis  = () => semObjetivo().filter(e=>sugerirObjetivo(e));
+
+/* ---------- esforço por objetivo: o "para quê" ---------- */
+const temEsforco = () => Object.keys(est.esforco).length>0;
+const esfDe = cod => est.esforco[cod] || null;
+
+function porObjetivo(){
+  const m = {};
+  OBJETIVOS.forEach(o=>{ m[o.id] = {entregas:[], h:0, eq:0}; });
+  for(const e of est.entregas){
+    if(!e.obj || !m[e.obj]) continue;
+    m[e.obj].entregas.push(e);
+    const x = esfDe(e.c);
+    if(x){ m[e.obj].h += x.h; m[e.obj].eq += x.eq; }
+  }
+  return m;
+}
+const horasTotais = () => est.entregas.reduce((s,e)=>{ const x=esfDe(e.c); return s+(x?x.h:0); }, 0);
+/* horas das entregas que ainda não respondem a objetivo nenhum —
+   é esforço da unidade que hoje não se explica pela estratégia */
+const horasSoltas = () => est.entregas.reduce((s,e)=>{ const x=esfDe(e.c); return s+((!e.obj&&x)?x.h:0); }, 0);
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){ renderCtx(); renderCorpo(); }
+
+function renderCtx(){
+  const lig = est.entregas.filter(e=>e.obj).length, tot = est.entregas.length;
+  const desc = OBJETIVOS.filter(o=>!est.entregas.some(e=>e.obj===o.id)).length;
+  $("ctx").innerHTML = `
+    <span class="ctx-u">${est.unidade.s}</span>
+    <span class="ctx-p">${est.unidade.pai}</span>
+    <div class="ctx-dir">
+      ${lig===tot ? `<span class="chip ok"><b>${tot}</b> entregas ligadas</span>`
+                  : `<span class="chip pend"><b>${tot-lig}</b> de ${tot} sem objetivo</span>`}
+      ${desc ? `<span class="chip pend"><b>${desc}</b> ${desc===1?"objetivo descoberto":"objetivos descobertos"}</span>`
+             : `<span class="chip ok">todos os objetivos cobertos</span>`}
+    </div>`;
+}
+
+function renderCorpo(){
+  $("wrap").innerHTML = faixaCiclo() + blocoDistribuicao() +
+    `<div class="grade">${colObjetivos()}${colEntregas()}</div>` + rodape();
+}
+
+/* ---------- faixa do ciclo ---------- */
+function faixaCiclo(){
+  const d = datasDoCiclo(), s = sugeriveis().length;
+  return `<div class="faixa">
+    <div><label class="fp-l">Ciclo do plano</label>
+      <select class="fp-s" onchange="setCiclo(this.value)">
+        ${CICLOS.map(c=>`<option value="${c.id}" ${c.id===est.ciclo?"selected":""}>${c.r}</option>`).join("")}
+      </select></div>
+    <div><label class="fp-l">Vigência</label>
+      <div class="fp-d">${d.ini} a ${d.fim}</div></div>
+    <div><label class="fp-l">Prazo de cada entrega</label>
+      <div class="fp-v">último dia da vigência</div></div>
+    <div class="fp-dir">
+      ${s ? `<button class="bt-sug" onclick="aceitarSugestoes()">Aceitar as sugestões <span class="qt">${s}</span></button>`
+          : `<span class="chip ok">sem sugestão pendente</span>`}
+    </div>
+  </div>`;
+}
+
+/* ---------- barra de distribuição — para onde vai o esforço ---------- */
+function blocoDistribuicao(){
+  const cab = `<div class="dist-t">Para onde vai o esforço da unidade</div>
+    <div class="dist-s">cada fatia é um objetivo, no tamanho das horas que as entregas dele consomem</div>`;
+
+  if(!temEsforco()){
+    return `<div class="dist">${cab}
+      <div class="dist-vazio">O esforço de cada entrega ainda não foi informado — ele nasce em
+        <a href="./jornada-gestor-equipe.html">Equipe e indicadores</a>, na visão <b>Esforço</b>,
+        onde cada pessoa distribui o próprio tempo. Sem ele, esta tela mostra quantas entregas
+        respondem a cada objetivo, mas não quanto custam.</div></div>`;
+  }
+
+  const m = porObjetivo(), total = horasTotais(), soltas = horasSoltas();
+  if(!total) return "";
+  const com = OBJETIVOS.filter(o=>m[o.id].h>0);
+
+  const fatias = com.map(o=>{
+    const pct = 100*m[o.id].h/total;
+    return `<i style="width:${pct.toFixed(2)}%;background:${o.cor}"
+      title="${esc(o.t)} — ${n1(m[o.id].h)} h/mês, ${n2(m[o.id].eq)} pessoa equivalente"></i>`;
+  }).join("");
+  const fatiaSolta = soltas>0
+    ? `<i style="width:${(100*soltas/total).toFixed(2)}%;background:repeating-linear-gradient(45deg,#D8DEE6,#D8DEE6 5px,#E9EDF2 5px,#E9EDF2 10px)"
+        title="entregas que ainda não respondem a objetivo nenhum — ${n1(soltas)} h/mês"></i>`
+    : "";
+
+  const legenda = com.map(o=>{
+    const pct = Math.round(100*m[o.id].h/total);
+    return `<span class="dl"><i style="background:${o.cor}"></i>${o.eixo} <b>${pct}%</b>
+      <span style="color:var(--faint)">${n2(m[o.id].eq)} pessoa${m[o.id].eq>=2?"s":""}</span></span>`;
+  }).join("");
+  const legSolta = soltas>0
+    ? `<span class="dl"><i style="background:#D8DEE6"></i>sem objetivo <b>${Math.round(100*soltas/total)}%</b></span>`
+    : "";
+
+  return `<div class="dist">${cab}
+    <div class="dist-b">${fatias}${fatiaSolta}</div>
+    <div class="dist-lg">${legenda}${legSolta}</div></div>`;
+}
+
+/* ---------- coluna esquerda: os objetivos ---------- */
+function colObjetivos(){
+  const m = porObjetivo(), total = horasTotais();
+  const eixos = [...new Set(OBJETIVOS.map(o=>o.eixo))];
+
+  const corpo = eixos.map(ex=>{
+    const doEixo = OBJETIVOS.filter(o=>o.eixo===ex);
+    return `<div class="eixo">${ex}</div>` + doEixo.map(o=>{
+      const d = m[o.id], n = d.entregas.length, vazio = n===0;
+      const pct = total ? 100*d.h/total : 0;
+      return `<button class="obj ${o.id===est.foco?"on":""} ${vazio?"vazio":""}"
+        onclick="focar('${o.id}')" title="${vazio?"nenhuma entrega responde por este objetivo":"ver as entregas deste objetivo"}">
+        <div class="obj-n">${esc(o.t)}</div>
+        <div class="obj-l">
+          ${vazio ? `<span class="obj-desc">descoberto</span>`
+                  : `<span><b>${n}</b> ${n===1?"entrega":"entregas"}</span>`}
+          ${(!vazio && d.h>0) ? `<span><b>${n1(d.h)}</b> h/mês</span>
+                                 <span><b>${n2(d.eq)}</b> equivalente</span>` : ``}
+        </div>
+        ${(!vazio && d.h>0) ? `<div class="obj-bar"><i style="width:${pct.toFixed(1)}%;background:${o.cor}"></i></div>` : ``}
+      </button>`;
+    }).join("");
+  }).join("");
+
+  const desc = OBJETIVOS.filter(o=>m[o.id].entregas.length===0).length;
+  return `<div class="col">
+    <div class="col-h">
+      <div><div class="col-t">Objetivos do órgão</div>
+        <div class="col-s">${desc ? `${desc} sem nenhuma entrega da unidade` : "todos com pelo menos uma entrega"}</div></div>
+      <span class="col-q">${OBJETIVOS.length}</span>
+    </div>
+    ${corpo}
+    <div class="eixo" style="padding:12px 17px 14px;text-transform:none;letter-spacing:normal;font-size:10.5px;font-weight:600;line-height:1.5">
+      Lista provisória, no formato do PEI (eixo → objetivo). Vai ser trocada pelo planejamento real do órgão.
+    </div>
+  </div>`;
+}
+
+/* ---------- coluna direita: as entregas ---------- */
+function colEntregas(){
+  const foco = est.foco;
+  const lista = foco ? est.entregas.filter(e=>e.obj===foco) : est.entregas;
+  const o = foco ? objDe(foco) : null;
+
+  const linhas = lista.length ? lista.map(e=>{
+    const x = esfDe(e.c);
+    const horas = x ? `<div class="ent-h">${n1(x.h)} h/mês<br><span>${n2(x.eq)} equiv.</span></div>` : "";
+    return `<div class="ent ${foco?"foco":""}">
+      <div class="ent-e">
+        <div class="ent-c">${e.c}</div>
+        <div class="ent-n">${esc(e.e)}</div>
+        <div class="ent-m">${esc(e.m)}</div>
+      </div>
+      ${horas}
+      <div class="ent-d">${caixaObjetivo(e)}</div>
+    </div>`;
+  }).join("")
+   : `<div class="ent"><div class="ent-e"><div class="ent-vazio">Nenhuma entrega responde por este objetivo ainda.
+      Escolha o objetivo na lista de qualquer entrega ao lado, ou volte a ver todas.</div></div></div>`;
+
+  return `<div class="col">
+    <div class="col-h">
+      <div><div class="col-t">Entregas da unidade</div>
+        <div class="col-s">${foco ? `mostrando só as de: ${esc(o.t)}` : "cada entrega responde a um objetivo"}</div></div>
+      ${foco ? `<button class="bt-x" onclick="focar(null)" style="margin-left:auto">ver todas</button>`
+             : `<span class="col-q">${est.entregas.length}</span>`}
+    </div>
+    ${linhas}
+  </div>`;
+}
+
+/* a caixa de cada entrega: ligada, sugerida, ou sem sugestão */
+function caixaObjetivo(e){
+  if(e.obj){
+    const o = objDe(e.obj);
+    return `<div class="ent-atual">
+      <span class="ent-ok">✓ ${esc(o.t)}</span>
+      <span class="via">${o.eixo}</span>
+      <button class="bt-x" onclick="setObj('${e.c}','')">trocar</button>
+    </div>`;
+  }
+  const s = sugerirObjetivo(e);
+  if(s){
+    const o = objDe(s.id);
+    return `<div class="ent-atual">
+      <span class="ent-sug">${esc(o.t)}</span>
+      <span class="via ${s.forte?"forte":""}">${esc(s.via)}</span>
+      <button class="bt-x usar" onclick="setObj('${e.c}','${s.id}')">usar</button>
+      ${seletor(e,"outro")}
+    </div>`;
+  }
+  return `<div class="ent-atual">
+    <span class="ent-vazio">sem sugestão — escolha</span>${seletor(e,"escolher")}
+  </div>`;
+}
+function seletor(e,rot){
+  return `<select class="sel-obj" onchange="setObj('${e.c}',this.value)">
+    <option value="">${rot}…</option>
+    ${OBJETIVOS.map(o=>`<option value="${o.id}" ${e.obj===o.id?"selected":""}>${o.eixo} · ${esc(o.t)}</option>`).join("")}
+  </select>`;
+}
+
+/* ---------- rodapé ---------- */
+function rodape(){
+  const falta = semObjetivo().length;
+  return `<div class="rodape">
+    <div>
+      <div class="rod-t">${falta ? `${falta} ${falta===1?"entrega ainda não responde":"entregas ainda não respondem"} a nenhum objetivo`
+                                 : "Todas as entregas estão ligadas a um objetivo"}</div>
+      <div class="rod-s">O plano vale de ${datasDoCiclo().ini} a ${datasDoCiclo().fim}.</div>
+    </div>
+    <div class="rod-dir">
+      <a class="bt-nav" href="./jornada-gestor-unidade.html">← Entregas e meses</a>
+      <a class="bt-nav forte" href="./jornada-gestor-equipe.html">Equipe e indicadores →</a>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   AÇÕES
+   ============================================================ */
+function setCiclo(v){ est.ciclo=v; gravar(); render(); }
+function setObj(cod,v){
+  const e = est.entregas.find(x=>x.c===cod); if(!e) return;
+  e.obj = v || null;
+  gravar(); render();
+}
+function focar(id){ est.foco = (est.foco===id) ? null : id; renderCorpo(); }
+
+/* em duas passadas: as fortes primeiro, para que a memória do
+   grupo de processos ajude as fracas na segunda volta */
+function aceitarSugestoes(){
+  for(const passo of [true,false])
+    for(const e of est.entregas){
+      if(e.obj) continue;
+      const s = sugerirObjetivo(e);
+      if(s && s.forte===passo) e.obj = s.id;
+    }
+  gravar(); render();
+}
+
+carregar();
+render();
+</script>
+</body>
+</html>

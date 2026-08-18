@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Equipe e indicadores da unidade</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--surface:#fff;--ink:#1B1B1B;--sub:#55606E;--faint:#8C97A6;
+  --line:#E4E7EB;--hair:#EFF2F6;--primary:#1351B4;--primaryDark:#0C326F;--primarySoft:#E8EEF9;
+  --navy:#13315C;--green:#168821;--greenSoft:#E3F2E5;--amber:#B86E00;--amberSoft:#FBEEDB;
+  --coral:#9E3B1F;--coralSoft:#FAECE7;--grey:#9AA6B2;--greySoft:#EDF0F3;--purple:#5B4AA8;--purpleSoft:#ECE9F8;
+  --num:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Raleway,-apple-system,'Segoe UI',sans-serif;color:var(--sub);font-size:14px}
+.stripe{height:3px;display:flex}.stripe i{flex:1}
+.stripe i:nth-child(1){background:var(--green)}.stripe i:nth-child(2){background:#FFCD07}.stripe i:nth-child(3){background:var(--primary)}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.h-linha{padding:11px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-t{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.h-s{font-size:10px;color:var(--faint);font-weight:600;margin-top:1px}
+.h-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pill{font-size:10.5px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;white-space:nowrap}
+.pill.proto{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple);font-weight:800;letter-spacing:.05em;text-transform:uppercase;font-size:8.5px}
+.h-back{font-size:11px;font-weight:700;color:var(--primary);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.h-back:hover{border-color:var(--primary)}
+
+.trilha{display:flex;gap:2px;padding:0 24px;overflow-x:auto;border-top:1px solid var(--hair)}
+.tf{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--faint);
+  white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
+a.tf:hover{color:var(--primary)}
+.tf.on{color:var(--primaryDark);border-bottom-color:var(--primary)}
+.tf-n{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--sub);font-family:var(--num);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tf.on .tf-n{background:var(--primary);color:#fff}
+
+.ctx{background:#fff;border-bottom:1px solid var(--line);padding:9px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctx-u{font-weight:800;color:var(--navy);font-size:13.5px}
+.ctx-p{color:var(--faint);font-weight:600;font-size:10.5px}
+.ctx-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:20px;padding:5px 12px;white-space:nowrap;border:1px solid transparent}
+.chip.neutro{background:var(--bg);border-color:var(--line);color:var(--sub)}
+.chip.neutro b{color:var(--navy);font-family:var(--num)}
+.chip.per{background:var(--primarySoft);border-color:#C4D6F0;color:var(--primaryDark)}
+.chip.pend{background:var(--amberSoft);border-color:#EAD9BD;color:var(--amber)}
+.chip.pend b{font-family:var(--num)}
+.chip.ok{background:var(--greenSoft);border-color:#B6DDBB;color:var(--green)}
+.chip.ok b{font-family:var(--num)}
+.chip.deleg{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple)}
+.chip.deleg b{font-family:var(--num)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:20px 24px 90px}
+.bloco{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:14px}
+.tit{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.sub{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:4px;max-width:80ch}
+.cab{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.cab-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+
+/* ---------- trocador de visão ---------- */
+.segs{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+.seg{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;color:var(--sub);
+  border-radius:8px;padding:6px 11px;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:6px}
+.seg:hover{background:#fff;color:var(--navy)}
+.seg.on{background:#fff;color:var(--primaryDark);box-shadow:0 1px 3px rgba(19,49,92,.13);font-weight:800}
+.seg .av{width:6px;height:6px;border-radius:50%;background:var(--amber);display:inline-block}
+.seg .av.ok{background:var(--green)}
+.seg .av.deleg{background:var(--purple)}
+.mes-picker{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+.mes-picker button{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;color:var(--sub);
+  border-radius:8px;padding:6px 13px;cursor:pointer;text-transform:capitalize}
+.mes-picker button.on{background:#fff;color:var(--primaryDark);box-shadow:0 1px 3px rgba(19,49,92,.13);font-weight:800}
+
+/* ---------- tabela de pessoas ---------- */
+.rolagem{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.gp{width:100%;border-collapse:collapse;min-width:820px}
+.gp thead th{background:var(--bg);border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;
+  font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.gp thead th.c{text-align:center}
+.gp thead th b{display:block;font-size:11px;color:var(--navy);letter-spacing:0;text-transform:capitalize;font-weight:800}
+.gp thead th small{display:block;font-size:8px;font-weight:700;color:var(--faint);letter-spacing:.04em;margin-top:2px;text-transform:none}
+.gp thead th.mes{width:112px}
+.gp tbody td{border-bottom:1px solid var(--hair);padding:9px 12px;vertical-align:middle}
+.gp tbody tr:last-child td{border-bottom:0}
+.gp tbody tr:hover{background:#FCFDFE}
+.gp tbody tr.fora{opacity:.45}
+.gp tfoot td{border-top:1px solid var(--line);background:#FCFDFE;padding:9px 12px;
+  font-size:10.5px;font-weight:800;color:var(--navy)}
+.gp tfoot td.c{text-align:center;font-family:var(--num);font-size:12px}
+.td-in{width:34px;padding-right:0 !important}
+.bt-in{width:19px;height:19px;border-radius:6px;border:1.5px solid var(--line);background:#fff;cursor:pointer;
+  font-size:11px;font-weight:800;color:#fff;line-height:1;padding:0;transition:all .14s}
+.bt-in.on{background:var(--primary);border-color:var(--primary)}
+.bt-in:hover{border-color:var(--primary)}
+.p-nome{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.35}
+.p-cargo{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:2px}
+.td-cat{width:130px}.td-ch{width:60px;text-align:center;font-family:var(--num);font-size:11.5px;color:var(--sub)}
+.td-papel{width:130px}
+.sel-cat,.sel{font-family:inherit;font-size:11px;font-weight:700;color:var(--sub);border:1px solid var(--line);
+  border-radius:8px;padding:6px 8px;background:#fff;width:100%}
+.sel.apoio{background:var(--amberSoft);border-color:#EAD9BD;color:var(--amber)}
+.sel.gestao{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple)}
+.papel-v{font-size:10.5px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);
+  border-radius:20px;padding:4px 10px;display:inline-block;cursor:pointer}
+.papel-v:hover{border-color:var(--primary);color:var(--primary)}
+
+/* célula de mês — o retrato, que abre o balão dos dias */
+.td-m{padding:6px 7px !important;text-align:center}
+.cm{width:100%;border:1px solid var(--line);border-radius:9px;padding:7px 5px;background:#fff;cursor:pointer;
+  font-family:inherit;transition:all .14s;text-align:center}
+.cm:hover{border-color:var(--primary);box-shadow:0 2px 8px -3px rgba(19,81,180,.3)}
+.cm.ok{background:var(--greenSoft);border-color:#B6DDBB}
+.cm.pa{background:var(--amberSoft);border-color:#EAD9BD}
+.cm.no{background:var(--greySoft);border-color:#DDE2E8}
+.cm-v{font-family:var(--num);font-size:12.5px;font-weight:800;color:var(--navy);line-height:1}
+.cm-b{height:3px;border-radius:3px;background:rgba(19,49,92,.13);margin:5px 0 4px;overflow:hidden}
+.cm-b i{display:block;height:100%;border-radius:3px;background:var(--primary)}
+.cm.ok .cm-b i{background:var(--green)}
+.cm.pa .cm-b i{background:var(--amber)}
+.cm-r{font-size:8.5px;font-weight:700;color:var(--faint);line-height:1.25}
+.td-eq{width:96px;text-align:center}
+.eq-v{font-family:var(--num);font-size:14px;font-weight:800;color:var(--navy);line-height:1}
+.eq-l{font-size:8px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+
+/* números editáveis */
+.num{width:100%;max-width:78px;text-align:center;font-family:var(--num);font-size:12px;font-weight:700;color:var(--navy);
+  border:1px solid var(--line);border-radius:8px;padding:7px 4px;background:#fff}
+.num:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.num.vazio,.num.zero{background:#FCFCFD;border-style:dashed;border-color:#DDE2E8;color:var(--faint)}
+.num:disabled{background:var(--bg);color:var(--sub);cursor:default;border-style:solid}
+.td-c{text-align:center}
+.hh{display:block;font-size:8.5px;font-weight:700;color:var(--faint);font-family:var(--num);margin-top:3px}
+
+/* esforço travado pela equipe */
+.trava{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:3px}
+.lock{width:8px;height:7px;border-radius:1.5px;background:var(--primary);position:relative;flex-shrink:0}
+.lock::before{content:"";position:absolute;left:1px;top:-3.5px;width:4px;height:4px;
+  border:1.5px solid var(--primary);border-bottom:0;border-radius:3px 3px 0 0}
+.trava span{font-size:8px;font-weight:700;color:var(--primary);letter-spacing:.03em}
+.bt-sup{border:0;background:none;color:var(--faint);font-size:12px;font-weight:800;cursor:pointer;
+  padding:0 3px;line-height:1;border-radius:4px}
+.bt-sup:hover{background:var(--primarySoft);color:var(--primary)}
+.tot{font-family:var(--num);font-size:12px;font-weight:800;border-radius:20px;padding:4px 10px;display:inline-block}
+.tot.ok{background:var(--greenSoft);color:var(--green)}
+.tot.nao{background:var(--bg);color:var(--sub);border:1px dashed var(--line)}
+
+.leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-size:10px;color:var(--faint);font-weight:600}
+.leg span{display:inline-flex;align-items:center;gap:7px}
+.leg i{width:11px;height:11px;border-radius:3px;border:1px solid var(--line);display:inline-block;flex-shrink:0}
+.dica{font-size:10.5px;color:var(--faint);font-weight:600;margin-top:10px;line-height:1.5}
+
+/* ---------- balão dos dias perdidos ---------- */
+.pop{position:fixed;z-index:70;background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 16px 40px -12px rgba(13,49,111,.38);padding:15px 17px;width:318px;display:none}
+.pop.on{display:block}
+.pop-t{font-size:13px;font-weight:800;color:var(--navy);line-height:1.3}
+.pop-d{font-size:10px;color:var(--faint);font-weight:600;margin-top:3px}
+.pop-l{display:flex;align-items:center;gap:10px;margin-top:9px}
+.pop-l .r{flex:1;font-size:11px;font-weight:700;color:var(--sub);line-height:1.3}
+.pop-l .r small{display:block;font-size:9px;color:var(--faint);font-weight:600;margin-top:1px}
+.pop-l .num{width:74px;max-width:74px}
+.pop-sep{height:1px;background:var(--hair);margin:12px 0 2px}
+.pop-res{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px}
+.pop-res b{font-family:var(--num);font-size:15px;font-weight:800;color:var(--navy)}
+.pop-res span{font-size:10.5px;color:var(--sub);font-weight:600}
+.pop-bar{height:4px;border-radius:3px;background:var(--hair);margin-top:8px;overflow:hidden}
+.pop-bar i{display:block;height:100%;border-radius:3px;background:var(--primary);transition:width .25s}
+.pop-pe{display:flex;align-items:center;gap:10px;margin-top:12px}
+.pop-n{font-size:9.5px;color:var(--faint);font-weight:600;line-height:1.4}
+.pop-ok{margin-left:auto;border:0;background:var(--primary);color:#fff;border-radius:8px;padding:6px 14px;
+  font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0}
+.pop-ok:hover{background:var(--primaryDark)}
+
+/* ---------- faixa de confirmação ---------- */
+.conf{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.conf-bt{width:100%;border:0;background:none;font-family:inherit;display:flex;align-items:center;gap:11px;
+  padding:14px 20px;cursor:pointer;text-align:left;transition:background .13s}
+.conf-bt:hover{background:#FAFBFD}
+.conf-ic{width:26px;height:26px;border-radius:8px;background:var(--primarySoft);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;line-height:1}
+.conf-ic.ok{background:var(--greenSoft);color:var(--green)}
+.conf-t{display:block;font-size:12.5px;font-weight:800;color:var(--navy)}
+.conf-d{display:block;font-size:10.5px;color:var(--faint);font-weight:600;margin-top:3px}
+.conf-seta{margin-left:auto;color:var(--faint);font-size:12px;font-weight:800}
+.conf-corpo{padding:2px 20px 18px;border-top:1px solid var(--hair);display:grid;gap:9px}
+.ci{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:11px;padding:11px 13px;flex-wrap:wrap}
+.ci.ok{background:var(--greenSoft);border-color:#B6DDBB}
+.ci.deleg{background:var(--purpleSoft);border-color:#D6CFF0}
+.ci-m{width:19px;height:19px;border-radius:50%;background:var(--greySoft);color:var(--faint);display:flex;
+  align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.ci.ok .ci-m{background:var(--green);color:#fff}
+.ci.deleg .ci-m{background:var(--purple);color:#fff}
+.ci-t{font-size:11.5px;font-weight:800;color:var(--navy);display:block;line-height:1.3}
+.ci-d{font-size:9.5px;color:var(--faint);font-weight:600;display:block;margin-top:2px}
+.ci.ok .ci-d{color:#2C7A38}
+.ci.deleg .ci-d{color:var(--purple)}
+.ci-dir{margin-left:auto;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+
+/* ---------- comparação e atenção ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:#fff}
+.kpi.destaque{background:var(--primarySoft);border-color:#C4D6F0}
+.kpi-l{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.kpi.destaque .kpi-l{color:var(--primaryDark)}
+.kpi-v{font-family:var(--num);font-size:23px;font-weight:800;color:var(--navy);line-height:1;margin-top:7px}
+.kpi.aviso .kpi-v{color:var(--amber)}
+.kpi.bom .kpi-v{color:var(--green)}
+.kpi-s{font-size:10px;color:var(--sub);font-weight:600;line-height:1.45;margin-top:7px}
+.leitura{border:1px solid var(--line);border-radius:12px;background:#FCFDFE;padding:13px 16px;margin-top:12px;
+  font-size:11.5px;line-height:1.65;color:var(--sub)}
+.leitura b{color:var(--navy);font-weight:800}
+
+.falta{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-bottom:14px}
+.falta-t{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:12px}
+.falta-l{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.falta-l li{display:flex;align-items:flex-start;gap:10px;font-size:11.5px;line-height:1.5;color:var(--sub)}
+.falta-l li b{color:var(--navy);font-weight:800}
+.falta-l .btn{margin-left:auto;flex-shrink:0}
+.pt{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.pt.at{background:var(--amber)}.pt.ok{background:var(--green)}
+.pt.nt{background:var(--grey)}.pt.pl{background:var(--purple)}.pt.az{background:var(--primary)}
+
+/* ---------- incluir gente ---------- */
+.add{border:1px dashed var(--line);border-radius:12px;background:#fff;margin-bottom:14px;overflow:hidden}
+.add-bt{width:100%;border:0;background:none;font-family:inherit;display:flex;align-items:center;gap:11px;
+  padding:13px 20px;cursor:pointer;text-align:left;transition:background .13s}
+.add-bt:hover{background:#FAFBFD}
+.add-ic{width:24px;height:24px;border-radius:7px;background:var(--primarySoft);color:var(--primary);
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;line-height:1}
+.add-t{display:block;font-size:12px;font-weight:800;color:var(--navy)}
+.add-d{display:block;font-size:10px;color:var(--faint);font-weight:600;margin-top:2px}
+.add-seta{margin-left:auto;color:var(--faint);font-size:12px;font-weight:800}
+.add-corpo{padding:4px 20px 16px;border-top:1px solid var(--hair)}
+.busca{margin-bottom:11px}
+.busca input{width:100%;font-family:inherit;font-size:12.5px;color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:9px 12px;background:#fff}
+.busca input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.conta{font-size:11px;color:var(--faint);font-weight:600;margin-bottom:9px}
+.res{border:1px solid var(--line);border-radius:11px;overflow:hidden;max-height:250px;overflow-y:auto}
+.res-i{display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.res-i:last-child{border-bottom:0}
+.res-n{font-size:12px;font-weight:700;color:var(--navy)}
+.res-m{font-size:10px;color:var(--faint);font-weight:600;margin-top:2px}
+.cat{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:20px;padding:3px 9px;
+  background:var(--bg);color:var(--sub);margin-left:auto}
+.cat.forca{background:var(--primarySoft);color:var(--primaryDark)}
+.cat.terceirizado{background:var(--amberSoft);color:var(--amber)}
+.cat.estagiario{background:var(--purpleSoft);color:var(--purple)}
+
+.aviso-deleg{display:flex;align-items:center;gap:12px;background:var(--purpleSoft);border:1px solid #D6CFF0;
+  border-radius:11px;padding:12px 15px;margin-bottom:13px;font-size:11.5px;color:var(--purple);line-height:1.5;flex-wrap:wrap}
+.aviso-deleg b{font-weight:800}
+.aviso-deleg .btn{margin-left:auto}
+
+.rodape{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 22px;display:flex;
+  align-items:center;gap:12px;flex-wrap:wrap}
+.info{font-size:11.5px;color:var(--sub);font-weight:600;line-height:1.5}
+.info b{color:var(--navy);font-weight:800}
+.rodape .btn:first-of-type{margin-left:auto}
+
+.btn{border:0;border-radius:9px;padding:10px 17px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+  transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block}
+.btn.pri{background:var(--primary);color:#fff}
+.btn.pri:hover{background:var(--primaryDark)}
+.btn.ger{background:var(--green);color:#fff}
+.btn.ger:hover{background:#0E6B1A}
+.btn.vazado{background:#fff;color:var(--primary);border:1px solid var(--line)}
+.btn.vazado:hover{border-color:var(--primary)}
+.btn.roxo{background:var(--purpleSoft);color:var(--purple);border:1px solid #D6CFF0}
+.btn.roxo:hover{background:#E1DBF5}
+.btn.mini{padding:6px 11px;font-size:11px}
+.btn.feito{background:var(--greenSoft);color:var(--green);border:1px solid #B6DDBB}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="stripe"><i></i><i></i><i></i></div>
+<header>
+  <div class="h-linha">
+    <div>
+      <div class="h-t">Equipe e indicadores da unidade</div>
+      <div class="h-s">Coordenação-Geral de Gestão de Pessoas · 2026</div>
+    </div>
+    <div class="h-dir">
+      <a class="h-back" href="./index.html">← Portal</a>
+    </div>
+  </div>
+  <div class="trilha">
+    <a class="tf" href="./jornada-gestor-unidade.html"><span class="tf-n">1</span>Entregas e meses</a>
+    <a class="tf" href="./jornada-gestor-planejamento.html"><span class="tf-n">2</span>Planejamento</a>
+    <div class="tf on"><span class="tf-n">3</span>Equipe e indicadores</div>
+  </div>
+  <div class="ctx" id="ctx"></div>
+</header>
+
+<div class="wrap" id="wrap"></div>
+<div class="pop" id="pop" role="dialog"></div>
+
+<script>
+/* ============================================================
+   EQUIPE E INDICADORES — a segunda e última tela do gestor.
+
+   Ela junta o que eram duas telas (pessoas da equipe e
+   indicadores de pessoal). O gestor resolve o DFT em duas telas:
+   entregas/meses e esta.
+
+   UMA TABELA, QUATRO VISÕES
+   As linhas são sempre as mesmas pessoas; o que muda são as
+   colunas:
+     · Presença   — o retrato de cada mês e o equivalente;
+     · Papel      — apoio / execução / gestão, mês a mês;
+     · Esforço    — quanto do tempo foi para cada entrega;
+     · Tempo fora — o que tirou (e o que devolveu) tempo.
+
+   O DIA PERDIDO É A ORIGEM, NÃO UM SEGUNDO REGISTRO
+   Antes, o percentual do mês vinha do SIAPE e os dias perdidos
+   eram digitados noutra tela — o mesmo afastamento aparecia
+   duas vezes e ninguém sabia qual valia. Agora o gestor lança
+   os dias UMA vez, no balão da célula do mês, e o percentual é
+   consequência:
+
+     trabalhados = dias na equipe − dias perdidos
+     retrato do mês = trabalhados ÷ dias úteis
+
+   Clicar na célula abre exatamente esses campos, afastamento
+   incluído. Aceitam meio dia (0,5) — capacitação de meio
+   período é comum e não cabia no modelo antigo.
+
+   HORAS EXTRAS
+   Aparecem como sinal e NÃO entram no equivalente. Elas de fato
+   aumentam a capacidade da equipe, mas dimensionar contando com
+   hora extra é dimensionar para o problema continuar.
+
+   ESFORÇO QUE A EQUIPE JÁ INFORMOU
+   Vem travado, com cadeado e a data de quem lançou. O "⋯" ao
+   lado é o lugar do ajuste excepcional — ainda não faz nada,
+   está ali para marcar que a saída existe.
+
+   REGRAS DO PROJETO RESPEITADAS
+   nr_esforco é PERCENTUAL: a conversão usa
+   (esforço/100) × carga × 52/12. Carga diferente não se soma em
+   percentual — o equivalente usa ch/40.
+
+   Números de origem (SIAPE, ponto, capacitação) são ILUSTRATIVOS.
+   ============================================================ */
+
+const MESES = ["abr","mai","jun"];
+const ANO = 2026;
+const SEMANAS_MES = 52/12;        // fator oficial do projeto
+const DIAS_UTEIS = [22,21,22];    // seg–sex do mês; feriado entra como dia perdido
+const NECESSIDADE = 7.4;          // ilustrativo: quantas pessoas o período pediria
+
+const CATS = {
+  servidor:     {rot:"servidor",     cls:"servidor"},
+  forca:        {rot:"força-tarefa", cls:"forca"},
+  terceirizado: {rot:"terceirizado", cls:"terceirizado"},
+  estagiario:   {rot:"estagiário",   cls:"estagiario"},
+};
+
+const TIPOS = {
+  execucao:{rot:"execução", cls:""},
+  apoio:   {rot:"apoio",    cls:"apoio"},
+  gestao:  {rot:"gestão",   cls:"gestao"},
+};
+
+/* ------------------------------------------------------------
+   MOTIVOS DE DIA PERDIDO — lista provisória, feita para trocar.
+   Todos aceitam meio dia. "extra" é o único que devolve tempo,
+   e por isso é tratado à parte (em horas, e fora do equivalente).
+   ------------------------------------------------------------ */
+const MOTIVOS = [
+  {id:"feriado", rot:"Feriado",      ajuda:"sai do calendário, não é falta"},
+  {id:"afast",   rot:"Afastamento",  ajuda:"férias, licença, atestado"},
+  {id:"capacit", rot:"Capacitação",  ajuda:"curso — pode ser meio período"},
+  {id:"greve",   rot:"Greve",        ajuda:"dias de paralisação"},
+  {id:"sistema", rot:"Sistema fora", ajuda:"indisponibilidade que parou o trabalho"},
+];
+
+const ENTREGAS = [
+  {c:"11420031", curto:"Aposentadoria",       e:"Análise de processo de aposentadoria"},
+  {c:"11420089", curto:"Perícia médica",      e:"Homologação de perícia médica oficial"},
+  {c:"11420108", curto:"Plano de capacit.",   e:"Elaboração de plano anual de capacitação"},
+  {c:"11420164", curto:"Órgão de controle",   e:"Resposta a demanda de órgão de controle"},
+  {c:"11420178", curto:"Central de serviços", e:"Atendimento a solicitação via central de serviços"},
+];
+
+/* as três decisões que o gestor confirma — cada uma pode ir para a equipe */
+const PASSOS = [
+  {id:"presenca", t:"Presença e dias perdidos", d:"quem esteve, e o que tirou tempo de quem esteve", deleg:true},
+  {id:"papel",    t:"Papel de cada pessoa",     d:"apoio, execução ou gestão, mês a mês",            deleg:true},
+  {id:"esforco",  t:"Esforço nas entregas",     d:"quanto do tempo foi para cada entrega",           deleg:true},
+];
+
+const VISOES = [
+  {id:"presenca", rot:"Presença", passo:"presenca"},
+  {id:"papel",    rot:"Papel",    passo:"papel"},
+  {id:"esforco",  rot:"Esforço",  passo:"esforco"},
+  {id:"tempo",    rot:"Tempo fora da entrega", passo:"presenca"},
+];
+
+/* estado compartilhado com a tela de entregas — é o que o portão do DFT lê */
+const CHAVE_JORNADA = "jornada-gestor-mgi";
+function gravarPasso(k,v){
+  try{ const j=JSON.parse(localStorage.getItem(CHAVE_JORNADA)||"{}"); j[k]=v;
+       localStorage.setItem(CHAVE_JORNADA, JSON.stringify(j)); }catch(e){}
+}
+
+const est = {
+  unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
+  visao:"presenca",
+  mesTempo:0,            // mês mostrado na visão "tempo fora"
+  confAberta:false,
+  addAberto:false, termo:"",
+  pop:null,              // {pid, i} do balão aberto
+  confirmadas:new Set(),
+  delegadas:new Set(),
+  perdas:new Map(),      // "pid|mes|motivo" → dias (aceita 0,5)
+  extras:new Map(),      // "pid|mes" → horas extras
+  tipo:new Map(),        // "pid|mes" → chave de TIPOS
+  esforco:new Map(),     // "pid|cod" → {v, origem:"equipe"|"gestor"|"anterior", quem, em}
+  pessoas:[
+    /* v[i] = {d: dias em que pertencia à unidade naquele mês, nota} */
+    {id:1, nome:"Ana Ribeiro",    cargo:"Analista Técnico de Políticas Sociais", cat:"servidor",     ch:40, dentro:true, v:null},
+    {id:2, nome:"Bruno Sales",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true, v:null},
+    {id:3, nome:"Carla Nunes",    cargo:"Técnica Administrativa",                cat:"servidor",     ch:40, dentro:true,
+     v:[{d:0,nota:"ainda não estava"},{d:11,nota:"entrou dia 14"},{d:22,nota:""}]},
+    {id:4, nome:"Diego Matos",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true,
+     v:[{d:22,nota:""},{d:21,nota:""},{d:7,nota:"saiu dia 10"}]},
+    {id:5, nome:"Elaine Prado",   cargo:"Coordenadora-Geral",                    cat:"servidor",     ch:40, dentro:true, v:null},
+    {id:6, nome:"Fábio Lima",     cargo:"Apoio administrativo",                  cat:"terceirizado", ch:40, dentro:true, v:null},
+    {id:7, nome:"Gabriela Souza", cargo:"Analista (cedida da CGSD)",             cat:"forca",        ch:20, dentro:true,
+     v:[{d:0,nota:"não estava"},{d:0,nota:"não estava"},{d:22,nota:"força-tarefa"}]},
+    {id:8, nome:"Heitor Campos",  cargo:"Estagiário",                            cat:"estagiario",   ch:20, dentro:true, v:null},
+    {id:9, nome:"Iara Mendes",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true,
+     v:[{d:0,nota:"cedida a outro órgão"},{d:0,nota:"cedida"},{d:0,nota:"cedida"}]},
+  ],
+};
+
+/* gente que o gestor pode chamar — busca, não digitação do zero */
+const DISPONIVEIS = [
+  {id:101, nome:"João Vieira",   cargo:"Analista Técnico Administrativo", origem:"CGSD · SGP",         cat:"forca",        ch:40},
+  {id:102, nome:"Marina Alves",  cargo:"Técnica Administrativa",          origem:"CGLC · SEGES",       cat:"forca",        ch:40},
+  {id:103, nome:"Rafael Duarte", cargo:"Apoio administrativo",            origem:"Contrato 42/2025",   cat:"terceirizado", ch:40},
+  {id:104, nome:"Sofia Braga",   cargo:"Estagiária",                      origem:"Programa de estágio",cat:"estagiario",   ch:20},
+  {id:105, nome:"Tiago Rocha",   cargo:"Analista Técnico Administrativo", origem:"CGAT · SEGES",       cat:"forca",        ch:40},
+];
+
+(function semear(){
+  /* quem não tem vínculo declarado esteve o mês inteiro */
+  for(const p of est.pessoas)
+    if(!p.v) p.v = DIAS_UTEIS.map(d=>({d, nota:""}));
+
+  /* feriado: 4 nacionais no trimestre. O Fábio ficou de plantão num deles. */
+  for(const p of est.pessoas){
+    est.perdas.set(p.id+"|0|feriado", p.id===6 ? 0 : 1);
+    est.perdas.set(p.id+"|1|feriado", 1);
+    est.perdas.set(p.id+"|2|feriado", 2);
+    est.perdas.set(p.id+"|1|sistema", 2);   // SIAPE 2 dias fora do ar em maio
+  }
+  est.perdas.set("2|1|afast", 13);          // licença saúde do Bruno
+  est.perdas.set("5|0|afast", 7);           // férias da Elaine
+  est.perdas.set("1|2|capacit", 2);
+  est.perdas.set("3|1|capacit", 1.5);       // meio período
+  est.perdas.set("3|2|capacit", 1);
+  est.perdas.set("4|0|capacit", 0.5);
+  est.perdas.set("8|2|capacit", 2.5);
+
+  est.extras.set("1|0", 4); est.extras.set("1|1", 4); est.extras.set("1|2", 4);
+  est.extras.set("5|0", 6); est.extras.set("5|1", 6); est.extras.set("5|2", 6);
+  est.extras.set("4|1", 9); est.extras.set("3|2", 4);
+
+  const tipoBase = {1:["execucao","execucao","execucao"], 2:["execucao","execucao","execucao"],
+    3:["execucao","execucao","execucao"], 4:["execucao","execucao","gestao"],
+    5:["gestao","gestao","gestao"], 6:["apoio","apoio","apoio"],
+    7:["execucao","execucao","execucao"], 8:["apoio","apoio","apoio"], 9:["execucao","execucao","execucao"]};
+  for(const [pid,arr] of Object.entries(tipoBase))
+    arr.forEach((t,i)=>est.tipo.set(pid+"|"+i, t));
+
+  /* esforço: Ana, Carla e Fábio já responderam — o dado é delas, e vem travado */
+  const JA_RESPONDEU = {1:"12/07", 3:"14/07", 6:"11/07"};
+  const esfBase = {1:[40,20,10,10,20], 2:[30,30,0,10,30], 3:[20,10,0,0,70], 4:[50,20,0,20,10],
+    5:[10,10,40,30,10], 6:[0,0,10,0,90], 7:[0,80,0,0,20], 8:[10,0,20,0,70], 9:[0,0,0,0,0]};
+  for(const [pid,arr] of Object.entries(esfBase)){
+    const em = JA_RESPONDEU[pid];
+    const pe = est.pessoas.find(x=>String(x.id)===pid);
+    arr.forEach((v,i)=>est.esforco.set(pid+"|"+ENTREGAS[i].c,
+      {v, origem: em?"equipe":"anterior", quem: em?pe.nome.split(" ")[0]:null, em: em||null}));
+  }
+})();
+
+const $ = id => document.getElementById(id);
+const k2 = (a,b) => a+"|"+b;
+const k3 = (a,b,c) => a+"|"+b+"|"+c;
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const n1 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1});
+const n2 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+/* dias com meia unidade: 1,5 aparece como "1,5"; 2 aparece como "2" */
+const nd = v => Number(v).toLocaleString("pt-BR",{maximumFractionDigits:1});
+const horasDia = ch => ch/5;
+
+/* ============================================================
+   O CÁLCULO — uma origem só para o retrato do mês
+   ============================================================ */
+const perdaDe = (pid,i,m) => +est.perdas.get(k3(pid,i,m)) || 0;
+const perdasNoMes = (pid,i) => MOTIVOS.reduce((s,m)=>s+perdaDe(pid,i,m.id), 0);
+const extraDe = (pid,i) => +est.extras.get(k2(pid,i)) || 0;
+
+/* FERIADO É CALENDÁRIO, NÃO FALTA.
+   Ele sai dos dias úteis do mês em vez de descontar da pessoa —
+   senão ninguém jamais chega a 100% e a tabela inteira fica cor de
+   alerta por um dia em que ninguém deveria estar trabalhando.
+   Continua sendo lançado por pessoa porque há exceção: quem ficou
+   de plantão tem um feriado a menos, e seus dias úteis sobem. */
+const MOTIVOS_QUE_DESCONTAM = MOTIVOS.filter(m=>m.id!=="feriado");
+const uteisDe = (pe,i) => Math.max(0, DIAS_UTEIS[i] - perdaDe(pe.id,i,"feriado"));
+const perdasQueDescontam = (pid,i) => MOTIVOS_QUE_DESCONTAM.reduce((s,m)=>s+perdaDe(pid,i,m.id), 0);
+
+function trabalhados(pe,i){
+  const u=uteisDe(pe,i);
+  return Math.max(0, Math.min(pe.v[i].d, u) - perdasQueDescontam(pe.id,i));
+}
+function prop(pe,i){
+  const u=uteisDe(pe,i);
+  return u ? Math.min(1, trabalhados(pe,i)/u) : 0;
+}
+const nivel = p => p>=1 ? "ok" : p>0 ? "pa" : "no";
+
+/* equivalente: média dos meses, corrigida pela carga.
+   Horas extras NÃO entram — decisão registrada no cabeçalho. */
+function equiv(pe){
+  const soma = pe.v.reduce((s,_,i)=>s+prop(pe,i), 0);
+  return (pe.ch/40) * (soma/MESES.length);
+}
+const dentro = () => est.pessoas.filter(p=>p.dentro);
+const forcaTotal = () => dentro().reduce((s,p)=>s+equiv(p), 0);
+
+/* o rótulo da célula conta a história do mês em três palavras */
+function rotuloMes(pe,i){
+  if(pe.v[i].d===0) return pe.v[i].nota || "não estava";
+  /* feriado não entra: ele já saiu do calendário, não é falta de ninguém */
+  const perdas = MOTIVOS_QUE_DESCONTAM.map(m=>({m, d:perdaDe(pe.id,i,m.id)})).filter(x=>x.d>0)
+    .sort((a,b)=>b.d-a.d);
+  const parcial = pe.v[i].d < uteisDe(pe,i);
+  if(!perdas.length) return parcial ? (pe.v[i].nota||"mês parcial") : "mês completo";
+  const maior = perdas[0];
+  const txt = `${nd(maior.d)}d ${maior.m.rot.toLowerCase()}`;
+  if(parcial && pe.v[i].nota) return `${pe.v[i].nota} · ${txt}`;
+  return perdas.length>1 ? `${txt} +${perdas.length-1}` : txt;
+}
+
+/* papel do trimestre, para a coluna resumida da visão Presença */
+function papelDe(pe){
+  const ts=MESES.map((_,i)=>est.tipo.get(k2(pe.id,i))||"execucao");
+  const unicos=[...new Set(ts)];
+  return unicos.length===1 ? TIPOS[unicos[0]].rot : unicos.map(t=>TIPOS[t].rot).join(" → ");
+}
+
+/* esforço */
+const esfDe = (pid,cod) => est.esforco.get(k2(pid,cod)) || {v:"", origem:"gestor"};
+const somaEsforco = pid => ENTREGAS.reduce((s,e)=>s+(+esfDe(pid,e.c).v||0), 0);
+const esforcoOk = pid => somaEsforco(pid)===100;
+/* REGRA DO PROJETO: percentual → horas/mês */
+const horasDe = (pid,cod,ch) => ((+esfDe(pid,cod).v||0)/100) * ch * SEMANAS_MES;
+const travado = (pid,cod) => esfDe(pid,cod).origem==="equipe";
+
+/* ------------------------------------------------------------
+   ESFORÇO POR ENTREGA — o que a tela de planejamento lê
+   A pergunta "para que serve o que a unidade faz" só tem resposta
+   se soubermos quanto cada entrega custa. Aqui é o único lugar
+   onde esse número existe, então é daqui que ele sai.
+
+   Sai AGREGADO por entrega, nunca por pessoa: dado individual não
+   atravessa a fronteira entre telas (regra do projeto).
+
+   Grava a cada mudança, e não só no fechamento, para o
+   planejamento não abrir vazio quando ninguém confirmou nada
+   ainda — a pergunta dele é válida antes de a equipe fechar.
+
+   POR QUE NÃO USA horasDe()
+   horasDe() dá a hora CHEIA da carga (percentual × carga × 52/12),
+   que é o certo para a célula da tabela: é o que a pessoa alocou
+   do próprio tempo. Mas somar isso entre todo mundo daria um total
+   maior que o equivalente da unidade, porque ignora quem esteve
+   afastado, de férias ou em capacitação.
+
+   Duas telas mostrando "pessoas equivalentes" com números
+   diferentes seria pior do que não mostrar nenhum. Então o
+   repasse parte de equiv(p) — que já desconta ausência e carga —
+   e distribui esse equivalente pelo percentual de esforço. Por
+   construção, a soma bate com o total desta tela.
+   ------------------------------------------------------------ */
+const H_PESSOA_MES = 40 * SEMANAS_MES;   // 173,3 h/mês = uma pessoa equivalente
+function gravarEsforcoEntregas(){
+  const por = {};
+  for(const e of ENTREGAS){
+    let eq = 0;
+    for(const p of dentro()) eq += ((+esfDe(p.id, e.c).v||0)/100) * equiv(p);
+    if(eq > 0) por[e.c] = { h:+(eq*H_PESSOA_MES).toFixed(1), eq:+eq.toFixed(2) };
+  }
+  gravarPasso("esforcoEntrega", por);
+}
+const respondeu = pid => ENTREGAS.some(e=>travado(pid,e.c));
+
+/* passos */
+function prontoPasso(id){
+  if(est.delegadas.has(id)) return false;
+  if(id==="esforco") return est.confirmadas.has(id) && dentro().every(p=>esforcoOk(p.id));
+  return est.confirmadas.has(id);
+}
+const totalProntos = () => PASSOS.filter(s=>prontoPasso(s.id)).length;
+const tudoPronto = () => totalProntos()===PASSOS.length;
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){ renderCtx(); renderCorpo(); }
+
+function renderCtx(){
+  const d=dentro().length, fora=est.pessoas.length-d;
+  const p=totalProntos(), t=PASSOS.length, dl=est.delegadas.size;
+  $("ctx").innerHTML = `
+    <span class="ctx-u">${est.unidade.s}</span>
+    <span class="ctx-p">${est.unidade.pai}</span>
+    <div class="ctx-dir">
+      <span class="chip per">período <b>${MESES[0]}–${MESES[MESES.length-1]}/${ANO}</b></span>
+      ${fora?`<span class="chip pend"><b>${fora}</b> fora da conta</span>`:``}
+      ${dl?`<span class="chip deleg"><b>${dl}</b> com a equipe</span>`:``}
+      <span class="chip neutro"><b>${d}</b> na equipe</span>
+      <span class="chip neutro"><b>${n2(forcaTotal())}</b> equivalente</span>
+      <span class="chip ${p===t?"ok":"neutro"}"><b>${p}</b> de ${t} confirmados</span>
+    </div>`;
+}
+
+function renderCorpo(){
+  $("wrap").innerHTML = blocoTabela() + blocoAdicionar() + blocoConfirmacao()
+                      + blocoComparacao() + blocoAtencao() + rodape();
+  if(est.addAberto){ const c=$("campoBusca"); if(c){ c.focus(); c.setSelectionRange(c.value.length,c.value.length); } }
+}
+
+/* ---------- a tabela e suas quatro visões ---------- */
+function blocoTabela(){
+  const v=VISOES.find(x=>x.id===est.visao);
+  const deleg=est.delegadas.has(v.passo);
+  const corpo = {presenca:tabPresenca, papel:tabPapel, esforco:tabEsforco, tempo:tabTempo}[est.visao];
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">A equipe no período</div>
+        <div class="sub">${textoVisao()}</div></div>
+      <div class="cab-dir">
+        ${est.visao==="tempo"?pickerMes():``}
+        <div class="segs">${VISOES.map(x=>{
+          const pr=prontoPasso(x.passo), dl=est.delegadas.has(x.passo);
+          return `<button class="seg ${est.visao===x.id?"on":""}" onclick="setVisao('${x.id}')">
+            ${x.rot}<span class="av ${dl?"deleg":pr?"ok":""}"></span></button>`;
+        }).join("")}</div>
+      </div>
+    </div>
+    ${deleg?avisoDelegado(v.passo):``}
+    ${corpo()}
+  </div>`;
+}
+
+function textoVisao(){
+  if(est.visao==="presenca") return `Clique num mês para lançar os dias perdidos daquela pessoa — afastamento, feriado, capacitação. O percentual do mês é o resultado dessa conta, não um número à parte.`;
+  if(est.visao==="papel") return `Execução é quem faz a entrega; apoio sustenta o trabalho dos outros; gestão coordena e responde pela área. Pode mudar de um mês para o outro.`;
+  if(est.visao==="esforco") return `Quanto do tempo de cada pessoa foi para cada entrega. Quem já respondeu aparece travado — o dado é dela.`;
+  return `O que tirou tempo de quem estava presente, e o que devolveu. Em dias; passe o mouse para ver em horas.`;
+}
+
+function pickerMes(){
+  return `<div class="mes-picker">${MESES.map((m,i)=>
+    `<button class="${est.mesTempo===i?"on":""}" onclick="setMesTempo(${i})">${m}</button>`).join("")}</div>`;
+}
+
+function avisoDelegado(id){
+  const s=PASSOS.find(x=>x.id===id);
+  return `<div class="aviso-deleg">
+    <div><b>${s.t}</b> está com a equipe — <b>3 de ${dentro().length}</b> já responderam.
+      <a href="./jornada-gestor-retorno.html" style="color:var(--purple);font-weight:800">ver o que já voltou ↗</a></div>
+    <button class="btn roxo mini" onclick="cancelarDelegacao('${id}')">preencher eu mesmo</button>
+  </div>`;
+}
+
+/* ---------- visão 1: presença ---------- */
+function tabPresenca(){
+  return `<div class="rolagem"><table class="gp">
+    <thead><tr>
+      <th class="td-in"></th><th>Pessoa</th><th class="td-cat">Categoria</th>
+      <th class="td-papel">Papel</th><th class="td-ch">Carga</th>
+      ${MESES.map((m,i)=>`<th class="mes c"><b>${m}</b><small>${DIAS_UTEIS[i]} dias úteis</small></th>`).join("")}
+      <th class="c" style="width:96px">Equivalente</th>
+    </tr></thead>
+    <tbody>${est.pessoas.map(pe=>`<tr class="${pe.dentro?"":"fora"}">
+      <td class="td-in"><button class="bt-in ${pe.dentro?"on":""}" onclick="alternarDentro(${pe.id})"
+        title="${pe.dentro?"tirar da conta":"trazer para a conta"}">${pe.dentro?"✓":""}</button></td>
+      <td><div class="p-nome">${pe.nome}</div><div class="p-cargo">${pe.cargo}</div></td>
+      <td class="td-cat"><select class="sel-cat" onchange="setCat(${pe.id},this.value)">
+        ${Object.entries(CATS).map(([k,c])=>`<option value="${k}" ${pe.cat===k?"selected":""}>${c.rot}</option>`).join("")}
+      </select></td>
+      <td class="td-papel"><span class="papel-v" onclick="setVisao('papel')" title="ver e mudar na visão Papel">${papelDe(pe)}</span></td>
+      <td class="td-ch">${pe.ch}h</td>
+      ${MESES.map((_,i)=>`<td class="td-m">${celulaMes(pe,i)}</td>`).join("")}
+      <td class="td-eq"><div class="eq-v" id="eq${pe.id}">${n2(equiv(pe))}</div><div class="eq-l">pessoa</div></td>
+    </tr>`).join("")}</tbody>
+  </table></div>
+  <div class="leg">
+    <span><i style="background:var(--greenSoft);border-color:#B6DDBB"></i>trabalhou todos os dias úteis</span>
+    <span><i style="background:var(--amberSoft);border-color:#EAD9BD"></i>parte do mês — o motivo está na célula</span>
+    <span><i style="background:var(--greySoft);border-color:#DDE2E8"></i>não atuou</span>
+  </div>
+  <div class="dica">Feriado sai do calendário do mês, não conta como falta de ninguém — por isso quem não se afastou
+    aparece em 100%. Quem ficou de plantão num feriado tem um dia útil a mais.</div>`;
+}
+
+function celulaMes(pe,i){
+  const p=prop(pe,i), t=trabalhados(pe,i);
+  return `<button class="cm ${nivel(p)}" id="cm${pe.id}_${i}" onclick="abrirPop(event,${pe.id},${i})"
+    title="trabalhou ${nd(t)} de ${nd(uteisDe(pe,i))} dias úteis — clique para lançar os dias perdidos">
+    <div class="cm-v">${Math.round(p*100)}%</div>
+    <div class="cm-b"><i style="width:${Math.round(p*100)}%"></i></div>
+    <div class="cm-r">${rotuloMes(pe,i)}</div>
+  </button>`;
+}
+
+/* ---------- visão 2: papel ---------- */
+function tabPapel(){
+  const trav=est.delegadas.has("papel");
+  return `<div class="rolagem"><table class="gp">
+    <thead><tr><th>Pessoa</th>
+      ${MESES.map(m=>`<th class="c"><b>${m}</b><small>${ANO}</small></th>`).join("")}
+      <th class="c" style="width:150px">No trimestre</th></tr></thead>
+    <tbody>${dentro().map(pe=>`<tr>
+      <td><div class="p-nome">${pe.nome}</div><div class="p-cargo">${pe.cargo}</div></td>
+      ${MESES.map((_,i)=>{
+        const v=est.tipo.get(k2(pe.id,i))||"execucao";
+        return `<td class="td-c"><select class="sel ${TIPOS[v].cls}" ${trav?"disabled":""}
+          onchange="setTipo(${pe.id},${i},this.value)">
+          ${Object.entries(TIPOS).map(([kk,t])=>`<option value="${kk}" ${v===kk?"selected":""}>${t.rot}</option>`).join("")}
+        </select></td>`;}).join("")}
+      <td class="td-c"><span class="papel-v" style="cursor:default">${papelDe(pe)}</span></td>
+    </tr>`).join("")}</tbody>
+  </table></div>
+  <div class="dica">Quem está fora da conta não aparece aqui.</div>`;
+}
+
+/* ---------- visão 3: esforço ---------- */
+function tabEsforco(){
+  return `<div class="rolagem"><table class="gp">
+    <thead><tr><th>Pessoa</th>
+      ${ENTREGAS.map(e=>`<th class="c"><b>${e.curto}</b><small>${e.c}</small></th>`).join("")}
+      <th class="c" style="width:96px">Soma</th></tr></thead>
+    <tbody>${dentro().map(pe=>`<tr>
+      <td><div class="p-nome">${pe.nome}</div>
+        <div class="p-cargo">${pe.ch}h semanais${respondeu(pe.id)?` · respondeu`:``}</div></td>
+      ${ENTREGAS.map(e=>celulaEsforco(pe,e)).join("")}
+      <td class="td-c"><span class="tot ${esforcoOk(pe.id)?"ok":"nao"}" id="t${pe.id}">${somaEsforco(pe.id)}%</span></td>
+    </tr>`).join("")}</tbody>
+  </table></div>
+  <div class="dica">A soma de cada pessoa fecha 100% — é o que garante que ninguém foi contado duas vezes.
+    Quem tem <span class="lock" style="display:inline-block;vertical-align:-1px"></span> já lançou o próprio tempo.</div>`;
+}
+
+function celulaEsforco(pe,e){
+  const x=esfDe(pe.id,e.c), cheio=x.v!==undefined&&x.v!=="";
+  const h=cheio&&+x.v>0 ? n1(horasDe(pe.id,e.c,pe.ch))+"h" : "—";
+  if(travado(pe.id,e.c)){
+    return `<td class="td-c">
+      <input type="number" class="num" value="${x.v}" disabled
+        title="informado por ${x.quem} em ${x.em} — o dado é da pessoa">
+      <div class="trava"><span class="lock"></span><span>${x.em}</span>
+        <button class="bt-sup" onclick="ajusteSuperior('${pe.nome}','${e.curto}')"
+          title="ajuste excepcional">⋯</button></div></td>`;
+  }
+  return `<td class="td-c">
+    <input type="number" class="num ${cheio?"":"vazio"}" min="0" max="100" value="${cheio?x.v:""}"
+      oninput="setEsforco(${pe.id},'${e.c}',this.value,this)">
+    <span class="hh" id="h${pe.id}_${e.c}">${h}</span></td>`;
+}
+
+/* ---------- visão 4: tempo fora da entrega ---------- */
+function tabTempo(){
+  const i=est.mesTempo, u=DIAS_UTEIS[i], gente=dentro();
+  return `<div class="rolagem"><table class="gp">
+    <thead><tr><th>Pessoa</th><th class="c"><b>Na equipe</b><small>de ${u} dias no mês</small></th>
+      ${MOTIVOS.map(m=>`<th class="c"><b>${m.rot}</b><small>${m.ajuda}</small>
+        <button class="bt-sup" style="font-size:9px;font-weight:800;color:var(--primary)"
+          onclick="aplicarATodos('${m.id}')" title="repetir o valor da primeira pessoa para toda a equipe">↓ a todos</button></th>`).join("")}
+      <th class="c"><b>Horas extras</b><small>devolve tempo</small></th>
+      <th class="c"><b>Saldo</b><small>dias líquidos</small></th></tr></thead>
+    <tbody>${gente.map(pe=>{
+      const perd=perdasQueDescontam(pe.id,i), he=extraDe(pe.id,i);
+      const saldo=perd-(he/horasDia(pe.ch));
+      return `<tr>
+      <td><div class="p-nome">${pe.nome}</div><div class="p-cargo">${pe.cargo} · ${pe.ch}h</div></td>
+      <td class="td-c"><input type="number" class="num" min="0" max="${u}" step="0.5" value="${pe.v[i].d}"
+        title="dias em que pertencia à unidade neste mês" oninput="setVinculo(${pe.id},${i},this.value)">
+        ${pe.v[i].nota?`<span class="hh">${pe.v[i].nota}</span>`:``}</td>
+      ${MOTIVOS.map(m=>{
+        const d=perdaDe(pe.id,i,m.id);
+        return `<td class="td-c"><input type="number" class="num ${d?"":"zero"}" min="0" max="${u}" step="0.5"
+          value="${d}" title="${nd(d*horasDia(pe.ch))}h" id="p${pe.id}_${m.id}"
+          oninput="setPerda(${pe.id},${i},'${m.id}',this.value,this)"></td>`;}).join("")}
+      <td class="td-c"><input type="number" class="num ${he?"":"zero"}" min="0" step="1" value="${he}"
+        title="${nd(he/horasDia(pe.ch))} dias equivalentes — não entra no equivalente da equipe"
+        oninput="setExtra(${pe.id},${i},this.value,this)"></td>
+      <td class="td-c"><b style="font-family:var(--num);font-size:12.5px;color:${saldo>0?"var(--navy)":"var(--green)"}"
+        id="s${pe.id}">${saldo>0?"−":saldo<0?"+":""}${nd(Math.abs(saldo))}</b>
+        <span class="hh">dias</span></td>
+    </tr>`;}).join("")}</tbody>
+    <tfoot><tr><td>Total da unidade em ${MESES[i]}</td><td class="c">—</td>
+      ${MOTIVOS.map(m=>`<td class="c" id="tm${m.id}">${nd(gente.reduce((s,p)=>s+perdaDe(p.id,i,m.id),0))}</td>`).join("")}
+      <td class="c" id="tmHe">${nd(gente.reduce((s,p)=>s+extraDe(p.id,i),0))}h</td>
+      <td class="c">—</td></tr></tfoot>
+  </table></div>
+  <div class="dica">Hora extra aumenta a capacidade de fato, mas <b>não entra no equivalente</b>:
+    dimensionar contando com hora extra é dimensionar para o problema continuar.
+    Ela fica aqui como sinal de que a conta fechou às custas de alguém.
+    <b>Feriado</b> também fica de fora do saldo — ele reduz os dias úteis do mês em vez de contar como falta.</div>`;
+}
+
+/* ---------- incluir gente ---------- */
+function blocoAdicionar(){
+  if(!est.addAberto){
+    return `<div class="add"><button class="add-bt" onclick="alternarAdd()">
+      <span class="add-ic">+</span>
+      <span><span class="add-t">Incluir força-tarefa, terceirizado ou estagiário</span>
+        <span class="add-d">busque quem já está cadastrado em vez de digitar do zero</span></span>
+      <span class="add-seta">▾</span></button></div>`;
+  }
+  const res=buscar(), jaTem=id=>est.pessoas.some(p=>p.id===id);
+  return `<div class="add"><button class="add-bt" onclick="alternarAdd()">
+      <span class="add-ic">+</span>
+      <span><span class="add-t">Incluir força-tarefa, terceirizado ou estagiário</span>
+        <span class="add-d">entra sem meses marcados — você diz em quais atuou</span></span>
+      <span class="add-seta">▴</span></button>
+    <div class="add-corpo">
+      <div class="busca"><input type="text" id="campoBusca" placeholder="procure por nome, cargo ou origem — ex.: Marina, estágio, SEGES"
+        value="${est.termo.replace(/"/g,"&quot;")}" oninput="digitar(this.value)"></div>
+      <div class="conta">${res.length} ${res.length===1?"pessoa disponível":"pessoas disponíveis"}</div>
+      <div class="res">${res.length ? res.map(x=>`
+        <div class="res-i">
+          <div><div class="res-n">${x.nome}</div><div class="res-m">${x.cargo} · ${x.origem}</div></div>
+          <span class="cat ${CATS[x.cat].cls}">${CATS[x.cat].rot}</span>
+          ${jaTem(x.id) ? `<button class="btn feito mini" disabled>já na equipe</button>`
+            : `<button class="btn vazado mini" onclick="incluir(${x.id})">+ incluir</button>`}
+        </div>`).join("")
+        : `<div style="padding:22px;text-align:center;color:var(--faint);font-size:11.5px;font-weight:600">Ninguém encontrado com esse termo.</div>`}</div>
+    </div></div>`;
+}
+
+function buscar(){
+  const t=norm(est.termo).trim();
+  if(t.length<2) return DISPONIVEIS;
+  return DISPONIVEIS.filter(x=>norm(x.nome+" "+x.cargo+" "+x.origem).includes(t));
+}
+
+/* ---------- faixa de confirmação ---------- */
+function blocoConfirmacao(){
+  const p=totalProntos(), t=PASSOS.length;
+  const cabeca = `<button class="conf-bt" onclick="alternarConf()">
+    <span class="conf-ic ${p===t?"ok":""}">${p===t?"✓":p}</span>
+    <span><span class="conf-t">Confirmação dos indicadores</span>
+      <span class="conf-d">${p===t ? `os ${t} estão confirmados — dá para rodar o dimensionamento`
+        : `${p} de ${t} confirmados · o trabalho acontece na tabela acima`}</span></span>
+    <span class="conf-seta">${est.confAberta?"▴":"▾"}</span></button>`;
+  if(!est.confAberta) return `<div class="conf">${cabeca}</div>`;
+  return `<div class="conf">${cabeca}
+    <div class="conf-corpo">${PASSOS.map(s=>{
+      const pr=prontoPasso(s.id), dl=est.delegadas.has(s.id);
+      return `<div class="ci ${pr?"ok":dl?"deleg":""}">
+        <span class="ci-m">${pr?"✓":dl?"⋯":"○"}</span>
+        <span><span class="ci-t">${s.t}</span><span class="ci-d">${estadoPasso(s)}</span></span>
+        <span class="ci-dir">
+          ${dl ? `<button class="btn roxo mini" onclick="cancelarDelegacao('${s.id}')">preencher eu mesmo</button>`
+            : pr ? `<button class="btn feito mini" onclick="desconfirmar('${s.id}')">✓ confirmado — reabrir</button>`
+            : `${s.deleg?`<button class="btn roxo mini" onclick="delegar('${s.id}')">pedir para a equipe</button>`:``}
+               <button class="btn pri mini" onclick="confirmar('${s.id}')">Confirmar</button>`}
+        </span>
+      </div>`;}).join("")}</div>
+  </div>`;
+}
+
+function estadoPasso(s){
+  if(est.delegadas.has(s.id)) return `com a equipe — 3 de ${dentro().length} já responderam`;
+  if(s.id==="esforco"){
+    const fora=dentro().filter(p=>!esforcoOk(p.id));
+    if(fora.length) return `${fora.length} ${fora.length===1?"pessoa ainda não fecha":"pessoas ainda não fecham"} 100%: ${fora.map(p=>p.nome.split(" ")[0]).join(", ")}`;
+  }
+  if(s.id==="presenca"){
+    const tot=dentro().reduce((a,p)=>a+MESES.reduce((b,_,i)=>b+perdasQueDescontam(p.id,i),0), 0);
+    return est.confirmadas.has(s.id) ? `confirmado · ${nd(tot)} dias perdidos no trimestre`
+                                     : `${nd(tot)} dias perdidos no trimestre, somando a equipe`;
+  }
+  return est.confirmadas.has(s.id) ? `confirmado` : s.d;
+}
+
+/* ---------- como isso se compara ---------- */
+function blocoComparacao(){
+  const f=forcaTotal(), lacuna=NECESSIDADE-f, cab=dentro().length;
+  const he=dentro().reduce((s,p)=>s+MESES.reduce((a,_,i)=>a+extraDe(p.id,i),0), 0);
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Como isso se compara</div>
+        <div class="sub">A força de trabalho muda conforme você inclui ou exclui gente, e conforme lança os dias perdidos.</div></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi destaque"><div class="kpi-l">Força de trabalho equivalente</div>
+        <div class="kpi-v">${n2(f)}</div>
+        <div class="kpi-s">${cab} ${cab===1?"pessoa":"pessoas"} na conta, já descontando afastamento e mês incompleto</div></div>
+      <div class="kpi ${lacuna>0?"":"bom"}"><div class="kpi-l">Necessidade estimada</div>
+        <div class="kpi-v">${n1(NECESSIDADE)}</div>
+        <div class="kpi-s">${lacuna>0
+          ? `<b>${n1(lacuna)}</b> acima do que a equipe entrega hoje`
+          : `a equipe cobre a necessidade do período`}</div></div>
+      <div class="kpi"><div class="kpi-l">Entregas no período</div>
+        <div class="kpi-v">5</div>
+        <div class="kpi-s">desempenho de <b>82%</b> das metas do trimestre</div></div>
+      <div class="kpi ${he?"aviso":""}"><div class="kpi-l">Horas extras</div>
+        <div class="kpi-v">${he}h</div>
+        <div class="kpi-s">${he ? `fora do equivalente — a conta fechou às custas de alguém` : `nenhuma no trimestre`}</div></div>
+    </div>
+    <div class="leitura">${lacuna>0
+      ? `<b>Leitura:</b> a equipe equivale a <b>${n2(f)} pessoas</b> no trimestre, contra <b>${n1(NECESSIDADE)}</b> que o volume entregue pediria.
+         A distância de <b>${n1(lacuna)}</b> é o que a demanda reprimida vem mostrando na tela de entregas${he?`, e as ${he}h extras são a parte dessa conta que não aparece no equivalente`:``}.`
+      : `<b>Leitura:</b> a equipe equivale a <b>${n2(f)} pessoas</b>, acima da necessidade estimada de <b>${n1(NECESSIDADE)}</b>.
+         Se a demanda reprimida ainda sobe, a causa provavelmente não é falta de gente.`}</div>
+  </div>`;
+}
+
+/* ---------- o que merece atenção ---------- */
+function blocoAtencao(){
+  const itens=[];
+  const zerados = dentro().filter(p=>MESES.every((_,i)=>prop(p,i)===0));
+  const parciais = dentro().filter(p=>MESES.some((_,i)=>{const v=prop(p,i);return v>0&&v<1;}));
+  const mudouVinculo = dentro().filter(p=>p.v.some(x=>x.nota&&x.d>0));
+  const fora = est.pessoas.filter(p=>!p.dentro);
+  const comExtra = dentro().filter(p=>MESES.some((_,i)=>extraDe(p.id,i)>0));
+
+  for(const p of zerados) itens.push({k:"at",
+    txt:`<b>${p.nome}</b> não atuou nenhum dos ${MESES.length} meses (${p.v[0].nota||"sem dias na equipe"}). Não soma nada ao equivalente, mas está sendo contada como integrante da equipe.`,
+    bt:`<button class="btn vazado mini" onclick="alternarDentro(${p.id})">tirar da conta</button>`});
+  if(parciais.length) itens.push({k:"az",
+    txt:`<b>${parciais.length}</b> ${parciais.length===1?"pessoa não atuou":"pessoas não atuaram"} o período completo — já está descontado no equivalente, não precisa fazer nada.`});
+  if(mudouVinculo.length) itens.push({k:"nt",
+    txt:`<b>${mudouVinculo.length}</b> ${mudouVinculo.length===1?"pessoa entrou ou saiu":"pessoas entraram ou saíram"} da unidade no meio do período.`});
+  if(comExtra.length) itens.push({k:"at",
+    txt:`<b>${comExtra.length}</b> ${comExtra.length===1?"pessoa fez":"pessoas fizeram"} hora extra no trimestre: ${comExtra.map(p=>p.nome.split(" ")[0]).join(", ")}. Fora do equivalente, de propósito.`});
+  if(fora.length) itens.push({k:"nt",
+    txt:`<b>${fora.length}</b> fora da conta: ${fora.map(p=>p.nome).join(", ")}.`});
+  if(!itens.length) itens.push({k:"ok", txt:`Nada pendente na composição da equipe.`});
+
+  return `<div class="falta">
+    <div class="falta-t">O que merece atenção</div>
+    <ul class="falta-l">${itens.map(x=>
+      `<li><span class="pt ${x.k}"></span><span>${x.txt}</span>${x.bt||""}</li>`).join("")}</ul>
+  </div>`;
+}
+
+function rodape(){
+  const p=totalProntos(), t=PASSOS.length;
+  return `<div class="rodape">
+    <div class="info">${tudoPronto()
+      ? `Tudo confirmado. O dimensionamento pode rodar.`
+      : `<b>${p} de ${t}</b> confirmados — a confirmação fica na faixa acima.`}</div>
+    <a class="btn vazado" href="./jornada-gestor-unidade.html">← voltar às entregas</a>
+    <button class="btn ger" ${tudoPronto()?"":"disabled"} onclick="fechar()">
+      ${tudoPronto()?"Rodar o dimensionamento →":`Falta${t-p>1?"m":""} ${t-p} para rodar`}</button>
+  </div>`;
+}
+
+/* ============================================================
+   O BALÃO DOS DIAS PERDIDOS — onde o retrato do mês é decidido
+   ============================================================ */
+function abrirPop(ev,pid,i){
+  ev.stopPropagation();
+  est.pop={pid, i};
+  pintarPop();
+  posicionarPop(ev.currentTarget);
+  $("pop").classList.add("on");
+}
+
+function pintarPop(){
+  if(!est.pop) return;
+  const {pid,i}=est.pop;
+  const pe=est.pessoas.find(x=>x.id===pid); if(!pe) return;
+  const u=uteisDe(pe,i), bruto=DIAS_UTEIS[i], he=extraDe(pid,i);
+  $("pop").innerHTML = `
+    <div class="pop-t">${pe.nome} · ${MESES[i]}/${ANO}</div>
+    <div class="pop-d">${nd(u)} dias úteis${perdaDe(pid,i,"feriado")?` (${DIAS_UTEIS[i]} menos ${nd(perdaDe(pid,i,"feriado"))} de feriado)`:``} · ${pe.ch}h semanais</div>
+    <div class="pop-l"><div class="r">Dias na equipe<small>${pe.v[i].nota||"esteve o mês todo"}</small></div>
+      <input type="number" class="num" min="0" max="${bruto}" step="0.5" value="${pe.v[i].d}"
+        oninput="setVinculo(${pid},${i},this.value,true)"></div>
+    <div class="pop-sep"></div>
+    ${MOTIVOS.map(m=>`
+      <div class="pop-l"><div class="r">${m.rot}<small>${m.ajuda}</small></div>
+        <input type="number" class="num ${perdaDe(pid,i,m.id)?"":"zero"}" min="0" max="${bruto}" step="0.5"
+          value="${perdaDe(pid,i,m.id)}" oninput="setPerda(${pid},${i},'${m.id}',this.value,this,true)"></div>`).join("")}
+    <div class="pop-sep"></div>
+    <div class="pop-l"><div class="r">Horas extras<small>devolve tempo — fora do equivalente</small></div>
+      <input type="number" class="num ${he?"":"zero"}" min="0" step="1" value="${he}"
+        oninput="setExtra(${pid},${i},this.value,this,true)"></div>
+    <div class="pop-res" id="popRes">${resumoPop(pe,i)}</div>
+    <div class="pop-pe">
+      <span class="pop-n">meio dia vale: use 0,5</span>
+      <button class="pop-ok" onclick="fecharPop()">pronto</button>
+    </div>`;
+}
+
+function resumoPop(pe,i){
+  const u=uteisDe(pe,i), t=trabalhados(pe,i), p=prop(pe,i);
+  return `<b>${nd(t)}</b> <span>de ${nd(u)} dias trabalhados — <b>${Math.round(p*100)}%</b> do mês</span>
+    <div class="pop-bar"><i style="width:${Math.round(p*100)}%"></i></div>`;
+}
+
+function posicionarPop(alvo){
+  const p=$("pop"), r=alvo.getBoundingClientRect();
+  p.style.visibility="hidden"; p.classList.add("on");
+  const alt=p.offsetHeight, larg=p.offsetWidth;
+  let x = r.left + r.width/2 - larg/2;
+  let y = r.bottom + 9;
+  x = Math.max(12, Math.min(x, window.innerWidth - larg - 12));
+  if(y + alt > window.innerHeight - 12) y = Math.max(12, r.top - alt - 9);
+  p.style.left=x+"px"; p.style.top=y+"px"; p.style.visibility="visible";
+}
+function fecharPop(){ est.pop=null; $("pop").classList.remove("on"); }
+
+/* ============================================================
+   AÇÕES
+   ============================================================ */
+function setVisao(v){ fecharPop(); est.visao=v; renderCorpo(); }
+function setMesTempo(i){ est.mesTempo=i; renderCorpo(); }
+function alternarConf(){ est.confAberta=!est.confAberta; renderCorpo(); }
+function alternarAdd(){ est.addAberto=!est.addAberto; renderCorpo(); }
+let tmr=null;
+function digitar(v){ est.termo=v; clearTimeout(tmr); tmr=setTimeout(renderCorpo,150); }
+
+function alternarDentro(id){
+  const p=est.pessoas.find(x=>x.id===id); if(!p) return;
+  p.dentro=!p.dentro; fecharPop(); render();
+}
+function setCat(id,v){ const p=est.pessoas.find(x=>x.id===id); if(p){ p.cat=v; renderCorpo(); } }
+function setTipo(pid,i,v){ est.tipo.set(k2(pid,i), v); renderCorpo(); }
+
+function incluir(id){
+  const x=DISPONIVEIS.find(y=>y.id===id); if(!x) return;
+  if(est.pessoas.some(p=>p.id===id)) return;
+  est.pessoas.push({id:x.id, nome:x.nome, cargo:x.cargo+" ("+x.origem+")", cat:x.cat, ch:x.ch, dentro:true,
+    v:DIAS_UTEIS.map(()=>({d:0, nota:"informe os dias"}))});
+  MESES.forEach((_,i)=>est.tipo.set(k2(x.id,i), "execucao"));
+  render();
+}
+
+/* Digitar não pode repintar a tabela nem o balão: o campo perderia o
+   foco a cada tecla. Só o que depende do número é trocado no lugar. */
+function setVinculo(pid,i,v,noPop){
+  const pe=est.pessoas.find(x=>x.id===pid); if(!pe) return;
+  const d=v===""?0:Math.max(0, Math.min(DIAS_UTEIS[i], +v));
+  pe.v[i].d=d;
+  atualizarMes(pid,i,noPop);
+}
+function setPerda(pid,i,motivo,v,el,noPop){
+  const d=v===""?0:Math.max(0, +v);
+  d ? est.perdas.set(k3(pid,i,motivo), d) : est.perdas.delete(k3(pid,i,motivo));
+  if(el) el.classList.toggle("zero", !d);
+  atualizarMes(pid,i,noPop);
+}
+function setExtra(pid,i,v,el,noPop){
+  const h=v===""?0:Math.max(0, +v);
+  h ? est.extras.set(k2(pid,i), h) : est.extras.delete(k2(pid,i));
+  if(el) el.classList.toggle("zero", !h);
+  atualizarMes(pid,i,noPop);
+}
+
+/* um lugar só para propagar a consequência de um dia lançado */
+function atualizarMes(pid,i,noPop){
+  const pe=est.pessoas.find(x=>x.id===pid); if(!pe) return;
+  const cm=$("cm"+pid+"_"+i);
+  if(cm){
+    const p=prop(pe,i);
+    cm.className="cm "+nivel(p);
+    cm.querySelector(".cm-v").textContent=Math.round(p*100)+"%";
+    cm.querySelector(".cm-b i").style.width=Math.round(p*100)+"%";
+    cm.querySelector(".cm-r").textContent=rotuloMes(pe,i);
+    cm.title=`trabalhou ${nd(trabalhados(pe,i))} de ${nd(uteisDe(pe,i))} dias úteis — clique para lançar os dias perdidos`;
+  }
+  const eq=$("eq"+pid); if(eq) eq.textContent=n2(equiv(pe));
+  if(noPop){ const r=$("popRes"); if(r) r.innerHTML=resumoPop(pe,i); }
+  if(est.visao==="tempo") atualizarLinhaTempo(pid,i);
+  renderCtx();
+  const c=document.querySelector(".conf"); if(c) c.outerHTML=blocoConfirmacao();
+  const k=document.querySelectorAll(".bloco"); if(k[1]) k[1].outerHTML=blocoComparacao();
+  const f=document.querySelector(".falta"); if(f) f.outerHTML=blocoAtencao();
+}
+
+function atualizarLinhaTempo(pid,i){
+  if(i!==est.mesTempo) return;
+  const pe=est.pessoas.find(x=>x.id===pid); if(!pe) return;
+  const s=$("s"+pid);
+  if(s){
+    const saldo=perdasQueDescontam(pid,i)-(extraDe(pid,i)/horasDia(pe.ch));
+    s.textContent=(saldo>0?"−":saldo<0?"+":"")+nd(Math.abs(saldo));
+    s.style.color = saldo>0 ? "var(--navy)" : "var(--green)";
+  }
+  const gente=dentro();
+  for(const m of MOTIVOS){
+    const tm=$("tm"+m.id);
+    if(tm) tm.textContent=nd(gente.reduce((a,p)=>a+perdaDe(p.id,i,m.id),0));
+  }
+  const th=$("tmHe"); if(th) th.textContent=nd(gente.reduce((a,p)=>a+extraDe(p.id,i),0))+"h";
+}
+
+/* repetir o valor da primeira pessoa para toda a equipe — o caso real é
+   "o sistema caiu 2 dias e parou todo mundo" */
+function aplicarATodos(motivo){
+  const i=est.mesTempo, gente=dentro();
+  if(!gente.length) return;
+  const v=perdaDe(gente[0].id,i,motivo);
+  for(const p of gente) v ? est.perdas.set(k3(p.id,i,motivo), v) : est.perdas.delete(k3(p.id,i,motivo));
+  renderCorpo();
+}
+
+function setEsforco(pid,cod,v,el){
+  const atual=esfDe(pid,cod);
+  if(atual.origem==="equipe") return;             // trava de verdade, não só visual
+  est.esforco.set(k2(pid,cod), {...atual, v: v==="" ? "" : +v, origem:"gestor"});
+  el.classList.toggle("vazio", v==="");
+  const pe=est.pessoas.find(x=>x.id===pid);
+  const h=$("h"+pid+"_"+cod);
+  if(h) h.textContent = (v!==""&&+v>0) ? n1(horasDe(pid,cod,pe.ch))+"h" : "—";
+  const t=$("t"+pid);
+  if(t){ t.textContent=somaEsforco(pid)+"%"; t.className="tot "+(esforcoOk(pid)?"ok":"nao"); }
+  gravarEsforcoEntregas();
+  renderCtx();
+  const c=document.querySelector(".conf"); if(c) c.outerHTML=blocoConfirmacao();
+  const r=document.querySelector(".rodape"); if(r) r.outerHTML=rodape();
+}
+
+function ajusteSuperior(nome,entrega){
+  alert(`Ajuste excepcional — ${nome} · ${entrega}\n\n`
+    + `O tempo foi informado pela própria pessoa. Sobrepor esse número exige `
+    + `justificativa e fica registrado.\n\nAinda não implementado no protótipo.`);
+}
+
+function confirmar(id){ est.confirmadas.add(id); render(); }
+function desconfirmar(id){ est.confirmadas.delete(id); render(); }
+function delegar(id){ est.delegadas.add(id); est.confirmadas.delete(id); render(); }
+function cancelarDelegacao(id){ est.delegadas.delete(id); render(); }
+
+function fechar(){
+  if(!tudoPronto()) return;
+  gravarPasso("equipe", {qtd:dentro().length, equivalente:n2(forcaTotal()),
+    confirmados:totalProntos(), total:PASSOS.length, em:new Date().toLocaleDateString("pt-BR")});
+  location.href="./jornada-gestor-unidade.html";
+}
+
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && est.pop) fecharPop(); });
+document.addEventListener("click", e=>{ if(est.pop && !$("pop").contains(e.target)) fecharPop(); });
+window.addEventListener("resize", ()=>{ if(est.pop) fecharPop(); });
+document.addEventListener("scroll", ()=>{ if(est.pop) fecharPop(); }, true);
+
+render();
+gravarEsforcoEntregas();   // publica o que a semeadura já traz preenchido
+</script>
+</body>
+</html>

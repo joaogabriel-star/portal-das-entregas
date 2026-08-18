@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>O que a equipe devolveu · visão do gestor</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;--surface:#fff;--ink:#1B1B1B;--sub:#55606E;--faint:#8C97A6;
+  --line:#E4E7EB;--hair:#EFF2F6;--primary:#1351B4;--primaryDark:#0C326F;--primarySoft:#E8EEF9;
+  --navy:#13315C;--green:#168821;--greenSoft:#E3F2E5;--amber:#B86E00;--amberSoft:#FBEEDB;
+  --coral:#9E3B1F;--coralSoft:#FAECE7;--grey:#9AA6B2;--greySoft:#EDF0F3;--purple:#5B4AA8;--purpleSoft:#ECE9F8;
+  --num:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Raleway,-apple-system,'Segoe UI',sans-serif;color:var(--sub);font-size:14px}
+.stripe{height:3px;display:flex}.stripe i{flex:1}
+.stripe i:nth-child(1){background:var(--green)}.stripe i:nth-child(2){background:#FFCD07}.stripe i:nth-child(3){background:var(--primary)}
+
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+.h-linha{padding:11px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-t{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.h-s{font-size:10px;color:var(--faint);font-weight:600;margin-top:1px}
+.h-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pill{font-size:10.5px;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 11px;white-space:nowrap}
+.pill.proto{background:var(--purpleSoft);border-color:#D6CFF0;color:var(--purple);font-weight:800;letter-spacing:.05em;text-transform:uppercase;font-size:8.5px}
+.h-back{font-size:11px;font-weight:700;color:var(--primary);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.h-back:hover{border-color:var(--primary)}
+
+.ctx{background:#fff;border-bottom:1px solid var(--line);padding:9px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctx-u{font-weight:800;color:var(--navy);font-size:13.5px}
+.ctx-p{color:var(--faint);font-weight:600;font-size:10.5px}
+.ctx-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:20px;padding:5px 12px;white-space:nowrap;border:1px solid transparent}
+.chip.neutro{background:var(--bg);border-color:var(--line);color:var(--sub)}
+.chip.neutro b{color:var(--navy);font-family:var(--num)}
+.chip.per{background:var(--primarySoft);border-color:#CBDCF6;color:var(--primaryDark)}
+.chip.per b{font-family:var(--num)}
+.chip.pend{background:var(--amberSoft);border-color:#EAD9BD;color:var(--amber)}
+.chip.pend b{font-family:var(--num)}
+.chip.ok{background:var(--greenSoft);border-color:#B6DDBB;color:var(--green)}
+.chip.ok b{font-family:var(--num)}
+
+.wrap{max-width:1080px;margin:0 auto;padding:20px 24px 90px}
+.bloco{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:14px}
+.tit{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+.sub{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:4px;max-width:78ch}
+.cab{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.cab-dir{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+
+.proc{display:flex;align-items:flex-start;gap:9px;border-radius:10px;padding:10px 14px;font-size:11px;line-height:1.55;margin-bottom:14px}
+.proc.ilus{background:var(--amberSoft);border:1px solid #EAD9BD;color:#7A5B10}
+.proc.real{background:var(--greenSoft);border:1px solid #B6DDBB;color:#0E5F18}
+.proc.roxo{background:var(--purpleSoft);border:1px solid #D6CFF0;color:#463A85}
+.proc b{font-weight:800}
+.selo{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.selo.ilus{background:var(--amberSoft);color:var(--amber)}
+.selo.real{background:var(--greenSoft);color:var(--green)}
+.selo.roxo{background:#fff;color:var(--purple)}
+
+/* ---------- kpis do retorno ---------- */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+@media(max-width:820px){.kpis{grid-template-columns:1fr}}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:15px 17px;background:#fff}
+.kpi-l{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);line-height:1.35}
+.kpi-v{font-family:var(--num);font-size:25px;font-weight:800;margin-top:8px;line-height:1;letter-spacing:-.02em;color:var(--navy)}
+.kpi-u{font-size:11px;font-weight:700;color:var(--faint);margin-left:3px;font-family:Raleway}
+.kpi-d{font-size:10.5px;color:var(--sub);font-weight:600;margin-top:6px;line-height:1.5}
+.kpi.mapa{border-color:#E3B9AC;background:linear-gradient(180deg,#FEF9F7,#fff)}
+.kpi.mapa .kpi-v{color:var(--coral)}
+.kpi.dir{border-color:#D6CFF0;background:linear-gradient(180deg,#FBFAFE,#fff)}
+.kpi.dir .kpi-v{color:var(--purple)}
+.kpi.exe .kpi-v{color:var(--amber)}
+.leitura{margin-top:13px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:13px 16px;font-size:11.5px;line-height:1.65;color:var(--sub)}
+.leitura b{color:var(--navy);font-weight:800}
+
+/* ---------- tabelas ---------- */
+.rolagem{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.gt{width:100%;border-collapse:collapse;min-width:660px}
+.gt thead th{background:var(--bg);border-bottom:1px solid var(--line);padding:9px 11px;text-align:left;
+  font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.gt thead th.c{text-align:center}
+.gt thead th.r{text-align:right}
+.gt tbody td{border-bottom:1px solid var(--hair);padding:9px 11px;vertical-align:middle}
+.gt tbody tr:last-child td{border-bottom:0}
+.gt tbody tr:hover{background:#FCFDFE}
+.gt tbody tr.mudo{opacity:.5}
+.gt tfoot td{background:var(--bg);border-top:1px solid var(--line);padding:9px 11px;font-size:10.5px;font-weight:800;color:var(--navy)}
+.n-p{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.3}
+.n-c{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:2px}
+.td-c{text-align:center}
+.td-r{text-align:right}
+.est{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.est.ok{background:var(--greenSoft);color:var(--green)}
+.est.pend{background:var(--amberSoft);color:var(--amber)}
+.v{font-family:var(--num);font-size:12.5px;font-weight:800;color:var(--navy)}
+.v.pos{color:var(--purple)}
+.v.neg{color:var(--amber)}
+.v.zero{color:var(--faint)}
+.v.mal{color:var(--coral)}
+.un{font-size:9px;color:var(--faint);font-weight:700;font-family:Raleway}
+
+/* barra de divergencia */
+.dv{display:flex;align-items:center;gap:8px;min-width:150px}
+.dv-b{flex:1;height:6px;border-radius:3px;background:var(--hair);position:relative;overflow:hidden}
+.dv-b i{position:absolute;top:0;bottom:0;border-radius:3px}
+.dv-b i.mais{background:var(--purple);left:50%}
+.dv-b i.menos{background:var(--amber);right:50%}
+.dv-m{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint);opacity:.5}
+
+/* ---------- nao mapeado ---------- */
+.nm{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:9px;background:#fff}
+.nm.promovido{background:var(--greenSoft);border-color:#B6DDBB}
+.nm-top{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.nm-d{font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.4}
+.nm-q{font-size:10px;color:var(--faint);font-weight:600;margin-top:4px}
+.nm-v{margin-left:auto;text-align:right;flex-shrink:0}
+.nm-v b{font-family:var(--num);font-size:15px;font-weight:800;color:var(--coral);display:block;line-height:1}
+.nm-v span{font-size:9px;color:var(--faint);font-weight:700}
+.nm-acao{margin-top:12px;padding-top:12px;border-top:1px solid var(--hair);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.nm-busca{margin-top:12px;padding-top:12px;border-top:1px solid var(--hair)}
+.res{border:1px solid var(--line);border-radius:11px;overflow:hidden;max-height:210px;overflow-y:auto;margin-top:10px}
+.res-i{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;padding:9px 13px;border-bottom:1px solid var(--hair)}
+.res-i:last-child{border-bottom:0}
+.cod{font-family:var(--num);font-size:10px;font-weight:700;background:var(--primarySoft);color:var(--primaryDark);padding:2px 6px;border-radius:4px;white-space:nowrap}
+.res-e{font-size:12px;font-weight:700;color:var(--navy);line-height:1.4}
+.res-m{font-size:9.5px;color:var(--faint);font-weight:600;margin-top:2px}
+input[type=text]{font-family:inherit;font-size:12.5px;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:#fff;width:100%}
+input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.decidido{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--green)}
+
+/* ---------- decisoes ---------- */
+.dec{display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-bottom:1px solid var(--hair)}
+.dec:last-child{border-bottom:0}
+.dec-i{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px}
+.dec-i.nova{background:var(--greenSoft);color:var(--green)}
+.dec-i.inclui{background:var(--primarySoft);color:var(--primaryDark)}
+.dec-t{font-size:12px;font-weight:700;color:var(--navy);line-height:1.4}
+.dec-d{font-size:10px;color:var(--faint);font-weight:600;margin-top:3px;line-height:1.45}
+.dec-x{margin-left:auto;border:0;background:none;color:var(--faint);font-size:15px;font-weight:800;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1;flex-shrink:0}
+.dec-x:hover{background:var(--coralSoft);color:var(--coral)}
+.vazio{border:1px dashed var(--line);border-radius:12px;padding:26px 22px;text-align:center;color:var(--faint);font-size:11.5px;font-weight:600;line-height:1.7}
+
+.rodape{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.rodape .info{font-size:11px;color:var(--sub);font-weight:600;margin-right:auto;line-height:1.5}
+.btn{border:0;border-radius:9px;padding:10px 17px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn.pri{background:var(--primary);color:#fff}
+.btn.pri:hover{background:var(--primaryDark)}
+.btn.verde{background:var(--green);color:#fff}
+.btn.verde:hover{background:#0E6B1A}
+.btn.vazado{background:#fff;color:var(--primary);border:1px solid var(--line)}
+.btn.vazado:hover{border-color:var(--primary)}
+.btn.mini{padding:6px 11px;font-size:11px}
+.btn.feito{background:var(--greenSoft);color:var(--green);border:1px solid #B6DDBB}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- avaliação do período ---------- */
+.av-sub{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+  margin:18px 0 9px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.av-sub:first-of-type{margin-top:0}
+.av-sub .q{font-family:var(--num);font-size:10px;font-weight:700;color:var(--sub);background:var(--bg);
+  border:1px solid var(--line);border-radius:20px;padding:2px 8px;letter-spacing:0;text-transform:none}
+.av-sub .aviso{margin-left:auto;font-size:10px;font-weight:600;color:var(--faint);letter-spacing:0;text-transform:none}
+
+/* a régua de notas: um clique, sem menu */
+.notas{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.nt{font-family:inherit;font-size:10px;font-weight:700;border:1px solid var(--line);background:#fff;
+  color:var(--faint);border-radius:7px;padding:5px 9px;cursor:pointer;white-space:nowrap;transition:all .13s}
+.nt:hover{border-color:var(--navy);color:var(--navy)}
+.nt.sug{border-style:dashed;border-color:var(--purple);color:var(--purple);background:var(--purpleSoft)}
+.nt.on{color:#fff;border-color:transparent}
+.nt.on.e1{background:#0E6B1A}
+.nt.on.e2{background:var(--green)}
+.nt.on.e3{background:var(--primary)}
+.nt.on.e4{background:var(--amber)}
+.nt.on.e5{background:var(--coral)}
+.av-est{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--purple);
+  white-space:nowrap}
+.av-est.ok{color:var(--green)}
+.av-est.vazio{color:var(--faint)}
+
+.av-resumo{margin-top:16px;border:1px solid #C5D6F0;background:var(--primarySoft);border-radius:12px;padding:15px 18px}
+.av-r-t{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:9px}
+.av-linha{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:9px}
+.av-cx{background:#fff;border:1px solid #C5D6F0;border-radius:10px;padding:9px 14px;min-width:150px}
+.av-cx-l{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.av-cx-v{font-size:14px;font-weight:800;color:var(--navy);line-height:1.25;margin-top:2px}
+.av-cx-d{font-size:10px;color:var(--faint);font-weight:600;margin-top:2px}
+.av-priv{font-size:11px;line-height:1.55;color:var(--primaryDark);margin-top:4px}
+.av-priv b{color:var(--navy)}
+.av-dist{display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--greySoft);margin-top:7px}
+.av-dist i{display:block;height:100%}
+</style>
+</head>
+<body>
+<div class="stripe"><i></i><i></i><i></i></div>
+<header>
+  <div class="h-linha">
+    <div>
+      <div class="h-t">O que a equipe devolveu</div>
+      <div class="h-s">Coordenação-Geral de Gestão de Pessoas · abril a junho de 2026</div>
+    </div>
+    <div class="h-dir">
+      <a class="h-back" href="./jornada-usuario-plano.html">visão do servidor ↗</a>
+      <a class="h-back" href="./jornada-gestor-unidade.html">← entregas e meses</a>
+    </div>
+  </div>
+  <div class="ctx" id="ctx"></div>
+</header>
+
+<div class="wrap" id="wrap"></div>
+
+<script>
+/* ============================================================
+   AVALIAÇÃO DO PERÍODO — acrescentada em 05/08/2026.
+
+   O PGD avalia duas coisas com a mesma escala, e o dimensionamento
+   não avaliava nenhuma. Aqui as duas ficam no mesmo lugar, mas
+   SEPARADAS, porque são julgamentos de natureza diferente:
+
+     · AS ENTREGAS DA ÁREA — o que a unidade se propôs a fazer.
+       O sistema SUGERE a nota, porque há dado objetivo: quanto
+       saiu contra quanto estava planejado.
+
+     · AS PESSOAS — o que cada um entregou. Aqui o sistema
+       NÃO sugere nada. Julgar desempenho de pessoa a partir de
+       número enviesa quem avalia, e a conta não sabe o contexto.
+
+   O QUE A SUGESTÃO NUNCA FAZ
+   Ela só propõe "Alto desempenho", "Adequado" ou "Não executado".
+   Nunca propõe "Excepcional" nem "Inadequado": elogio e censura
+   são atos deliberados de quem avalia, não saída de fórmula.
+   E sugestão nenhuma vale como nota — cada linha precisa ser
+   confirmada, com um clique ou pelo botão do bloco.
+
+   PRIVACIDADE
+   A nota individual existe nesta tela porque o gestor avalia a
+   própria equipe. Para o portal e para o dimensionamento sai
+   apenas o resumo da unidade — nunca a nota de uma pessoa.
+   ============================================================ */
+
+/* ============================================================
+   O QUE A EQUIPE DEVOLVEU — a tela que fecha o laço.
+
+   Até aqui a jornada só ia num sentido: o gestor distribuía, a
+   pessoa preenchia. Esta tela é o caminho de volta, e é onde a
+   ideia de os dois lançarem se paga.
+
+   O que ela entrega, que hoje ninguém tem:
+
+   · DIVERGÊNCIA POR ENTREGA — quanto o gestor achou que a equipe
+     dedicava a cada entrega, contra o que a equipe diz que dedica.
+     Em horas, não em percentual, porque percentual de gente com
+     carga diferente não se soma.
+
+   · TRABALHO QUE NINGUÉM MAPEOU — somado, convertido em pessoas
+     equivalentes. É o número mais incômodo da tela, e o mais útil:
+     mostra quanta força de trabalho a unidade gasta com coisa que
+     não está no catálogo.
+
+   · A DECISÃO — o gestor promove esse trabalho a entrega do
+     catálogo, e o próximo ciclo já nasce com ele mapeado. É isso
+     que faz o sistema aprender em vez de repetir o mesmo cego.
+
+   REGRA DO PROJETO: esforço é PERCENTUAL. A conversão para horas
+   usa (esforço/100) × carga × 52/12 — e é ela que torna os
+   números somáveis entre pessoas de carga diferente.
+
+   Números ILUSTRATIVOS.
+   ============================================================ */
+
+const PERIODO = "abr–jun/2026";
+const SEMANAS_MES = 52/12;
+const JORNADA_PADRAO = 40 * SEMANAS_MES;   // 173,3h/mês = 1 pessoa equivalente
+
+const ENTREGAS = [
+  {c:"11420031", e:"Análise de processo de aposentadoria"},
+  {c:"11420089", e:"Homologação de perícia médica oficial"},
+  {c:"11420108", e:"Elaboração de plano anual de capacitação"},
+  {c:"11420164", e:"Resposta a demanda de órgão de controle"},
+  {c:"11420178", e:"Atendimento a solicitação via central de serviços"},
+  {c:"11420193", e:"Manutenção de dados cadastrais no SIAPE"},
+];
+
+/* catálogo para promover trabalho não mapeado a entrega de verdade */
+const CATALOGO = [
+  {c:"11420047", e:"Emissão de certidão de tempo de contribuição", m:"Gestão de Pessoas"},
+  {c:"11420052", e:"Concessão de pensão civil", m:"Gestão de Pessoas"},
+  {c:"11420094", e:"Registro de afastamento para tratamento de saúde", m:"Saúde do Servidor"},
+  {c:"11420115", e:"Execução de ação de desenvolvimento", m:"Desenvolvimento de Pessoas"},
+  {c:"11420133", e:"Movimentação de servidor entre unidades", m:"Gestão de Pessoas"},
+  {c:"11420185", e:"Publicação de ato de pessoal no boletim", m:"Gestão de Pessoas"},
+  {c:"11420214", e:"Elaboração de nota técnica sobre legislação de pessoal", m:"Governança"},
+  {c:"11420228", e:"Monitoramento de indicadores de gestão de pessoas", m:"Governança"},
+  {c:"11420241", e:"Gestão de acervo documental de pessoal", m:"Gestão de Pessoas"},
+  {c:"11420256", e:"Sustentação de sistema estruturante", m:"Tecnologia"},
+];
+
+/* chefe = o que o gestor alocou · eu = o que a pessoa planejou · fez = o que saiu.
+   Índices seguem a ordem de ENTREGAS. */
+const EQUIPE = [
+  {id:1, nome:"Ana Ribeiro", cargo:"Analista", ch:40, respondeu:true, em:"26/07",
+   chefe:[40,20,10,10,20,0], eu:[30,20,5,10,25,10], fez:[25,25,0,15,20,5],
+   naoMapeado:[{d:"Atendimento a demandas urgentes da chefia", p:10}]},
+  {id:2, nome:"Bruno Sales", cargo:"Analista", ch:40, respondeu:true, em:"26/07",
+   chefe:[30,30,0,10,30,0], eu:[25,30,0,10,25,10], fez:[20,25,0,10,25,5],
+   naoMapeado:[{d:"Substituição de colega afastado", p:15}]},
+  {id:3, nome:"Carla Nunes", cargo:"Técnica", ch:40, respondeu:true, em:"27/07",
+   chefe:[20,10,0,0,70,0], eu:[20,10,0,0,70,0], fez:[15,10,0,0,63,0],
+   naoMapeado:[{d:"Organização de arquivo físico", p:12}]},
+  {id:4, nome:"Diego Matos", cargo:"Analista", ch:40, respondeu:false, em:null,
+   chefe:[50,20,0,20,10,0], eu:null, fez:null, naoMapeado:[]},
+  {id:5, nome:"Elaine Prado", cargo:"Coordenadora", ch:40, respondeu:true, em:"25/07",
+   chefe:[10,10,40,30,10,0], eu:[10,5,35,35,15,0], fez:[5,5,25,30,15,0],
+   naoMapeado:[{d:"Reuniões de coordenação não previstas", p:20}]},
+  {id:6, nome:"Fábio Lima", cargo:"Apoio", ch:40, respondeu:true, em:"27/07",
+   chefe:[0,0,10,0,90,0], eu:[0,0,5,0,85,10], fez:[0,0,2,0,80,10],
+   naoMapeado:[{d:"Suporte quando o sistema cai", p:8}]},
+  {id:7, nome:"Gabriela Souza", cargo:"Analista (força-tarefa)", ch:20, respondeu:false, em:null,
+   chefe:[0,80,0,0,20,0], eu:null, fez:null, naoMapeado:[]},
+  {id:8, nome:"Heitor Campos", cargo:"Estagiário", ch:20, respondeu:true, em:"26/07",
+   chefe:[10,0,20,0,70,0], eu:[10,0,15,0,70,5], fez:[10,0,10,0,70,5],
+   naoMapeado:[{d:"Digitalização de processos antigos", p:5}]},
+];
+
+/* Escala do PGD, com os nomes que aparecem na tela do Petrvs.
+   `curto` é o que cabe no botão; `r` é o nome cheio, que vai no title. */
+const ESCALA = [
+  {v:1, cls:"e1", curto:"Excepcional",   r:"Excepcional"},
+  {v:2, cls:"e2", curto:"Alto",          r:"Alto desempenho"},
+  {v:3, cls:"e3", curto:"Adequado",      r:"Adequado"},
+  {v:4, cls:"e4", curto:"Inadequado",    r:"Inadequado"},
+  {v:5, cls:"e5", curto:"Não executado", r:"Não executado"},
+];
+const nomeNota = v => (ESCALA.find(x=>x.v===v)||{}).r || "—";
+
+const est = {
+  promovendo:null,        // id do item não mapeado que está sendo promovido
+  termo:"",
+  decisoes:[],            // {tipo, titulo, detalhe}
+  avEntrega:{},           // cod  → nota confirmada pelo gestor
+  avPessoa:{},            // id   → nota confirmada pelo gestor
+  avConjunto:null,        // nota do conjunto, quando o gestor discorda da calculada
+};
+
+const $ = id => document.getElementById(id);
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const n1 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1});
+const n0 = v => Math.round(v).toLocaleString("pt-BR");
+
+/* percentual da pessoa → horas por mês. É o que torna somável entre cargas
+   diferentes: 10% de quem faz 20h não é 10% de quem faz 40h. */
+const horas = (pct, ch) => (pct/100) * ch * SEMANAS_MES;
+
+const responderam = () => EQUIPE.filter(p=>p.respondeu);
+const pendentes  = () => EQUIPE.filter(p=>!p.respondeu);
+
+/* ---------- números de uma pessoa ---------- */
+function daPessoa(p){
+  if(!p.respondeu) return null;
+  const divergem = ENTREGAS.filter((_,i)=>(p.chefe[i]||0)!==(p.eu[i]||0)).length;
+  const naoSaiu  = ENTREGAS.reduce((s,_,i)=>s+Math.max(0,(p.eu[i]||0)-(p.fez[i]||0)), 0);
+  const fora     = p.naoMapeado.reduce((s,x)=>s+x.p, 0);
+  return {divergem, naoSaiu, fora, horasFora:horas(fora,p.ch)};
+}
+
+/* ---------- divergência por entrega, em horas ---------- */
+function porEntrega(){
+  return ENTREGAS.map((e,i)=>{
+    let hChefe=0, hEquipe=0, hFez=0;
+    for(const p of responderam()){
+      hChefe  += horas(p.chefe[i]||0, p.ch);
+      hEquipe += horas(p.eu[i]||0,    p.ch);
+      hFez    += horas(p.fez[i]||0,   p.ch);
+    }
+    return {e, hChefe, hEquipe, hFez, dif:hEquipe-hChefe};
+  }).sort((a,b)=>Math.abs(b.dif)-Math.abs(a.dif));
+}
+
+/* ---------- trabalho não mapeado, agregado ---------- */
+function naoMapeado(){
+  const out=[];
+  for(const p of responderam())
+    for(const x of p.naoMapeado)
+      out.push({id:p.id+"|"+norm(x.d).slice(0,16), pessoa:p.nome, ch:p.ch, d:x.d, p:x.p, h:horas(x.p,p.ch)});
+  return out.sort((a,b)=>b.h-a.h);
+}
+const jaPromovido = id => est.decisoes.some(d=>d.origem===id);
+
+/* ---------- agregados do topo ---------- */
+function agregados(){
+  const R=responderam();
+  const foraH = naoMapeado().reduce((s,x)=>s+x.h, 0);
+  const naoSaiuH = R.reduce((s,p)=>s+ENTREGAS.reduce((t,_,i)=>t+horas(Math.max(0,(p.eu[i]||0)-(p.fez[i]||0)), p.ch), 0), 0);
+  const entregasDivergentes = porEntrega().filter(x=>Math.abs(x.dif)>=1).length;
+  const semAlocacao = porEntrega().filter(x=>x.hChefe===0 && x.hEquipe>0);
+  return {foraH, foraPessoas:foraH/JORNADA_PADRAO, naoSaiuH,
+          naoSaiuPessoas:naoSaiuH/JORNADA_PADRAO, entregasDivergentes, semAlocacao};
+}
+
+/* ============================================================
+   AVALIAÇÃO — sugestão, agregação e regra de privacidade
+   ============================================================ */
+
+/* A sugestão olha só o que é objetivo: quanto saiu contra quanto
+   estava planejado para aquela entrega. Ela nunca propõe o melhor
+   nem o pior da escala — elogio e censura são do gestor. */
+function sugerirEntrega(x){
+  if(x.hEquipe <= 0) return null;              // ninguém planejou: nada a sugerir
+  if(x.hFez   <= 0) return 5;                  // não saiu nada
+  if(x.hFez >= x.hEquipe) return 2;            // saiu o planejado, ou mais
+  return 3;                                     // saiu parte
+}
+const notaDaEntrega = x => est.avEntrega[x.e.c] || null;
+const confirmada    = x => !!est.avEntrega[x.e.c];
+
+const entregasAvaliaveis = () => porEntrega().filter(x => x.hEquipe > 0 || x.hChefe > 0);
+const sugestoesPendentes = () => entregasAvaliaveis().filter(x => !confirmada(x) && sugerirEntrega(x));
+
+/* A nota do conjunto é o número que o PGD pede para o plano inteiro.
+   Sai da média das entregas ponderada pelas horas planejadas — uma
+   entrega grande que não saiu tem de pesar mais que uma pequena.
+   O gestor pode discordar e fixar outra. */
+function conjuntoCalculado(){
+  let soma=0, peso=0;
+  for(const x of entregasAvaliaveis()){
+    const n = notaDaEntrega(x); if(!n) continue;
+    const w = Math.max(x.hEquipe, x.hChefe, 1);
+    soma += n*w; peso += w;
+  }
+  return peso ? Math.round(soma/peso) : null;
+}
+const notaConjunto = () => est.avConjunto || conjuntoCalculado();
+
+/* O que sai desta tela para o portal: distribuição da unidade,
+   nunca a nota de uma pessoa. */
+function resumoPessoas(){
+  const notas = Object.values(est.avPessoa);
+  const dist = ESCALA.map(e => ({...e, n: notas.filter(v=>v===e.v).length}));
+  return {avaliadas:notas.length, total:EQUIPE.length, dist};
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){ renderCtx(); renderCorpo(); }
+
+function renderCtx(){
+  const r=responderam().length, t=EQUIPE.length;
+  $("ctx").innerHTML = `
+    <span class="ctx-u">CGGP</span>
+    <span class="ctx-p">SGP · MGI</span>
+    <div class="ctx-dir">
+      <span class="chip per">período <b>${PERIODO}</b></span>
+      ${pendentes().length?`<span class="chip pend"><b>${pendentes().length}</b> ainda não responderam</span>`:``}
+      <span class="chip ${r===t?"ok":"neutro"}"><b>${r}</b> de ${t} devolveram</span>
+      ${est.decisoes.length?`<span class="chip ok"><b>${est.decisoes.length}</b> ${est.decisoes.length===1?"decisão":"decisões"}</span>`:``}
+    </div>`;
+}
+
+function renderCorpo(){
+  $("wrap").innerHTML = blocoResumo() + blocoPessoas() + blocoDivergencia()
+                      + blocoNaoMapeado() + blocoAvaliacao() + blocoDecisoes();
+  if(est.promovendo){ const c=$("campoBusca"); if(c){ c.focus(); c.setSelectionRange(c.value.length,c.value.length); } }
+}
+
+/* ---------- 1. o que voltou ---------- */
+function blocoResumo(){
+  const a=agregados();
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">O que voltou da equipe</div>
+        <div class="sub">Três números que só existem porque a equipe também lançou. Todos em horas por mês,
+          porque percentual de gente com carga diferente não se soma.</div></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi mapa"><div class="kpi-l">Trabalho que ninguém mapeou</div>
+        <div class="kpi-v">${n0(a.foraH)}<span class="kpi-u">h/mês</span></div>
+        <div class="kpi-d">equivale a <b>${n1(a.foraPessoas)} ${a.foraPessoas>=2?"pessoas":"pessoa"}</b> da unidade,
+          em coisa que não está no catálogo</div></div>
+      <div class="kpi exe"><div class="kpi-l">Planejado e não realizado</div>
+        <div class="kpi-v">${n0(a.naoSaiuH)}<span class="kpi-u">h/mês</span></div>
+        <div class="kpi-d">demanda reprimida no nível individual — ${n1(a.naoSaiuPessoas)} pessoa equivalente</div></div>
+      <div class="kpi dir"><div class="kpi-l">Entregas em que vocês divergem</div>
+        <div class="kpi-v">${a.entregasDivergentes}</div>
+        <div class="kpi-d">${a.semAlocacao.length
+          ? `em <b>${a.semAlocacao.length}</b> delas você não alocou ninguém —
+             e a equipe ${a.semAlocacao.length===1?"trabalha nela":"trabalha nelas"}`
+          : `a equipe confirma a sua distribuição nas demais`}</div></div>
+    </div>
+    ${leitura(a)}
+  </div>`;
+}
+
+function leitura(a){
+  const partes=[];
+  if(a.foraH>0) partes.push(`<b>${n1(a.foraPessoas)} pessoa${a.foraPessoas>=2?"s":""}</b> da sua equipe trabalha, na prática, em coisa que não está no plano`);
+  if(a.naoSaiuH>0) partes.push(`outras <b>${n0(a.naoSaiuH)}h por mês</b> estavam planejadas e não saíram`);
+  const fecho = a.semAlocacao.length
+    ? ` Há <b>${a.semAlocacao.length} ${a.semAlocacao.length===1?"entrega":"entregas"}</b> que a equipe faz sem ninguém alocado.`
+    : ``;
+  if(!partes.length) return `<div class="leitura">O que a equipe devolveu bate com o que você planejou.</div>`;
+  return `<div class="leitura">${partes.join(", e ")}.${fecho}</div>`;
+}
+
+/* ---------- 2. pessoa por pessoa ---------- */
+function blocoPessoas(){
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Pessoa por pessoa</div>
+        <div class="sub">Quem devolveu, e o que cada um relatou. Quem não devolveu não entra em nenhuma conta desta tela.</div></div>
+      ${pendentes().length?`<div class="cab-dir"><button class="btn vazado mini" onclick="cobrar()">cobrar os ${pendentes().length} pendentes</button></div>`:``}
+    </div>
+    <div class="rolagem"><table class="gt">
+      <thead><tr><th>Pessoa</th><th class="c">Situação</th>
+        <th class="c">Divergências</th><th class="r">Não saiu</th><th class="r">Fora do plano</th></tr></thead>
+      <tbody>${EQUIPE.map(p=>{
+        const d=daPessoa(p);
+        if(!d) return `<tr class="mudo">
+          <td><div class="n-p">${p.nome}</div><div class="n-c">${p.cargo} · ${p.ch}h</div></td>
+          <td class="td-c"><span class="est pend">não devolveu</span></td>
+          <td class="td-c">—</td><td class="td-r">—</td><td class="td-r">—</td></tr>`;
+        return `<tr>
+          <td><div class="n-p">${p.nome}</div><div class="n-c">${p.cargo} · ${p.ch}h</div></td>
+          <td class="td-c"><span class="est ok">devolveu ${p.em}</span></td>
+          <td class="td-c"><span class="v ${d.divergem?"pos":"zero"}">${d.divergem}</span></td>
+          <td class="td-r"><span class="v ${d.naoSaiu?"neg":"zero"}">${d.naoSaiu}%</span></td>
+          <td class="td-r"><span class="v ${d.fora?"mal":"zero"}">${d.fora}%</span>
+            <span class="un"> · ${n1(d.horasFora)}h</span></td></tr>`;}).join("")}</tbody>
+      <tfoot><tr><td>Total de quem devolveu</td><td class="td-c">${responderam().length} ${responderam().length===1?"pessoa":"pessoas"}</td>
+        <td class="td-c">—</td><td class="td-r">${n0(agregados().naoSaiuH)}h/mês</td>
+        <td class="td-r">${n0(agregados().foraH)}h/mês</td></tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+/* ---------- 3. divergência por entrega ---------- */
+function blocoDivergencia(){
+  const linhas=porEntrega();
+  const maior=Math.max(...linhas.map(x=>Math.abs(x.dif)), 1);
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Onde você e a equipe divergem</div>
+        <div class="sub">Quanto você achou que ia para cada entrega, contra o que a equipe diz que vai.
+          Roxo para a direita: a equipe dedica <b>mais</b> do que você imaginava. Âmbar para a esquerda: <b>menos</b>.</div></div>
+    </div>
+    <div class="rolagem"><table class="gt">
+      <thead><tr><th>Entrega</th><th class="r">Você alocou</th><th class="r">A equipe diz</th>
+        <th style="width:190px">Diferença</th><th class="r">Saiu</th></tr></thead>
+      <tbody>${linhas.map(x=>{
+        const larg=Math.round(50*Math.abs(x.dif)/maior);
+        const semAloc = x.hChefe===0 && x.hEquipe>0;
+        return `<tr>
+          <td><div class="n-p">${x.e.e}</div>
+            <div class="n-c">${x.e.c}${semAloc?` · <b style="color:var(--purple)">você não alocou ninguém</b>`:``}</div></td>
+          <td class="td-r"><span class="v">${n0(x.hChefe)}</span><span class="un">h</span></td>
+          <td class="td-r"><span class="v ${x.dif>0?"pos":x.dif<0?"neg":""}">${n0(x.hEquipe)}</span><span class="un">h</span></td>
+          <td><div class="dv"><div class="dv-b"><span class="dv-m"></span>
+              ${Math.abs(x.dif)<1?"":`<i class="${x.dif>0?"mais":"menos"}" style="width:${larg}%"></i>`}</div>
+            <span class="v ${x.dif>0?"pos":x.dif<0?"neg":"zero"}" style="font-size:11px;min-width:46px;text-align:right">${
+              Math.abs(x.dif)<1?"igual":(x.dif>0?"+":"−")+n0(Math.abs(x.dif))+"h"}</span></div></td>
+          <td class="td-r"><span class="v">${n0(x.hFez)}</span><span class="un">h</span></td></tr>`;}).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ---------- 4. trabalho não mapeado, com a decisão ---------- */
+function blocoNaoMapeado(){
+  const itens=naoMapeado();
+  if(!itens.length) return "";
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Trabalho que ninguém tinha mapeado</div>
+        <div class="sub">O que a equipe relatou fora de qualquer plano. Cada item aqui é uma decisão sua:
+          vira entrega do catálogo no próximo ciclo, ou continua invisível.</div></div>
+    </div>
+    ${itens.map(x=>{
+      const prom=jaPromovido(x.id);
+      return `<div class="nm ${prom?"promovido":""}">
+        <div class="nm-top">
+          <div><div class="nm-d">${x.d}</div>
+            <div class="nm-q">relatado por ${x.pessoa} · ${x.p}% do tempo dela</div></div>
+          <div class="nm-v"><b>${n1(x.h)}h</b><span>por mês</span></div>
+        </div>
+        ${prom
+          ? `<div class="nm-acao"><span class="decidido">✓ virou entrega no próximo ciclo</span>
+              <button class="btn vazado mini" style="margin-left:auto" onclick="desfazer('${x.id}')">desfazer</button></div>`
+          : est.promovendo===x.id
+            ? painelPromocao(x)
+            : `<div class="nm-acao">
+                <button class="btn verde mini" onclick="promover('${x.id}')">promover a entrega do catálogo</button>
+                <span style="font-size:10.5px;color:var(--faint);font-weight:600">ou deixe como está, se for mesmo pontual</span></div>`}
+      </div>`;}).join("")}
+  </div>`;
+}
+
+function painelPromocao(x){
+  const res=buscar();
+  return `<div class="nm-busca">
+    <input type="text" id="campoBusca" placeholder="procure a entrega do catálogo que descreve isto"
+      value="${est.termo.replace(/"/g,"&quot;")}" oninput="digitar(this.value)">
+    <div class="res">${res.length ? res.map(y=>`
+      <div class="res-i">
+        <span class="cod">${y.c}</span>
+        <div><div class="res-e">${y.e}</div><div class="res-m">${y.m}</div></div>
+        <button class="btn vazado mini" onclick="escolher('${x.id}','${y.c}')">é esta</button>
+      </div>`).join("")
+      : `<div style="padding:18px;text-align:center;color:var(--faint);font-size:11px;font-weight:600">Nada encontrado.</div>`}</div>
+    <div class="nm-acao">
+      <button class="btn vazado mini" onclick="propor('${x.id}')">não está no catálogo — propor entrega nova</button>
+      <button class="btn vazado mini" style="margin-left:auto" onclick="cancelar()">cancelar</button>
+    </div>
+  </div>`;
+}
+function buscar(){
+  const t=norm(est.termo).trim();
+  if(t.length<2) return CATALOGO;
+  return CATALOGO.filter(x=>norm(x.e+" "+x.m).includes(t)||String(x.c).includes(t));
+}
+
+/* ---------- 5. avaliação do período ---------- */
+function reguaNotas(tipo, chave, atual, sugerida){
+  return `<div class="notas">${ESCALA.map(e=>{
+    const on  = atual===e.v;
+    const sug = !atual && sugerida===e.v;
+    return `<button class="nt ${e.cls} ${on?"on":""} ${sug?"sug":""}"
+      title="${e.r}${sug?" · sugerido a partir do que saiu — confirme ou troque":""}"
+      onclick="setNota('${tipo}','${chave}',${e.v})">${e.curto}</button>`;
+  }).join("")}</div>`;
+}
+
+function blocoAvaliacao(){
+  const linhas = entregasAvaliaveis();
+  const pend   = sugestoesPendentes().length;
+  const feitas = linhas.filter(confirmada).length;
+  const rp     = resumoPessoas();
+  const conj   = notaConjunto();
+  const calc   = conjuntoCalculado();
+
+  const tabEntregas = `<div class="rolagem"><table class="gt">
+    <thead><tr><th>Entrega da área</th><th class="r">Saiu / planejado</th><th style="text-align:right">Avaliação</th></tr></thead>
+    <tbody>${linhas.map(x=>{
+      const n=notaDaEntrega(x), s=sugerirEntrega(x);
+      const razao = x.hEquipe>0 ? Math.round(100*x.hFez/x.hEquipe) : null;
+      return `<tr>
+        <td><div class="n-p">${x.e.e}</div><div class="n-c">${x.e.c}</div></td>
+        <td class="td-r"><span class="v ${razao===null?"zero":razao>=100?"":"neg"}">${razao===null?"—":razao+"%"}</span>
+          <div class="n-c">${n0(x.hFez)}h de ${n0(x.hEquipe)}h</div></td>
+        <td>${reguaNotas("entrega", x.e.c, n, s)}
+          <div style="text-align:right;margin-top:4px">
+            <span class="av-est ${n?"ok":s?"":"vazio"}">${n?"✓ "+nomeNota(n):s?"sugerido — confirme":"sem sugestão"}</span></div></td>
+      </tr>`;}).join("")}</tbody>
+  </table></div>`;
+
+  const tabPessoas = `<div class="rolagem"><table class="gt">
+    <thead><tr><th>Pessoa</th><th class="c">Situação</th><th style="text-align:right">Avaliação</th></tr></thead>
+    <tbody>${EQUIPE.map(p=>{
+      const n=est.avPessoa[p.id];
+      return `<tr class="${p.respondeu?"":"mudo"}">
+        <td><div class="n-p">${p.nome}</div><div class="n-c">${p.cargo} · ${p.ch}h</div></td>
+        <td class="td-c"><span class="est ${p.respondeu?"ok":"pend"}">${p.respondeu?"devolveu":"não devolveu"}</span></td>
+        <td>${reguaNotas("pessoa", p.id, n, null)}
+          <div style="text-align:right;margin-top:4px">
+            <span class="av-est ${n?"ok":"vazio"}">${n?"✓ "+nomeNota(n):"a avaliar"}</span></div></td>
+      </tr>`;}).join("")}</tbody>
+  </table></div>`;
+
+  const barra = rp.avaliadas
+    ? `<div class="av-dist">${rp.dist.map(d=>d.n
+        ? `<i style="width:${(100*d.n/rp.avaliadas).toFixed(1)}%;background:${
+            {1:"#0E6B1A",2:"var(--green)",3:"var(--primary)",4:"var(--amber)",5:"var(--coral)"}[d.v]}"
+            title="${d.r}: ${d.n}"></i>` : ``).join("")}</div>`
+    : ``;
+
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">Avaliação do período</div>
+        <div class="sub">São dois julgamentos diferentes, e por isso ficam separados: o que a
+          <b>área</b> entregou, e o que <b>cada pessoa</b> entregou. A escala é a mesma do PGD.
+          Nas entregas o sistema sugere a nota a partir do que saiu; nas pessoas não sugere nada.</div></div>
+      ${pend?`<div class="cab-dir"><button class="btn verde mini" onclick="confirmarSugestoes()">confirmar as ${pend} sugestões</button></div>`:``}
+    </div>
+
+    <div class="av-sub">As entregas da área
+      <span class="q">${feitas} de ${linhas.length}</span>
+      <span class="aviso">a sugestão nunca propõe “Excepcional” nem “Inadequado” — esses são seus</span></div>
+    ${tabEntregas}
+
+    <div class="av-sub">As pessoas da equipe
+      <span class="q">${rp.avaliadas} de ${rp.total}</span>
+      <span class="aviso">sem sugestão: número não conhece o contexto de ninguém</span></div>
+    ${tabPessoas}
+
+    <div class="av-resumo">
+      <div class="av-r-t">O que sai desta tela</div>
+      <div class="av-linha">
+        <div class="av-cx"><div class="av-cx-l">Nota do plano de entregas</div>
+          <div class="av-cx-v">${conj?nomeNota(conj):"—"}</div>
+          <div class="av-cx-d">${conj
+            ? (est.avConjunto ? "fixada por você" : "calculada a partir das entregas")
+            : "avalie ao menos uma entrega"}</div></div>
+        <div class="av-cx"><div class="av-cx-l">Avaliações de pessoas</div>
+          <div class="av-cx-v">${rp.avaliadas} de ${rp.total}</div>
+          <div class="av-cx-d">saem somadas, nunca individualizadas</div>
+          ${barra}</div>
+        ${conj?`<div style="margin-left:auto">
+          <div class="av-cx-l" style="margin-bottom:5px">Discorda da nota calculada?</div>
+          ${reguaNotas("conjunto","-", est.avConjunto, calc)}
+          ${est.avConjunto?`<div style="text-align:right;margin-top:4px">
+            <button class="btn vazado mini" onclick="setNota('conjunto','-',0)">voltar à calculada</button></div>`:``}
+        </div>`:``}
+      </div>
+      <div class="av-priv"><b>Regra de privacidade:</b> a nota de cada pessoa fica nesta tela, com você.
+        Para o portal e para o dimensionamento sai apenas o resumo da unidade — a distribuição acima,
+        sem nome. ${rp.avaliadas<rp.total?`Faltam <b>${rp.total-rp.avaliadas}</b> para o período fechar.`:`<b>Todas as pessoas avaliadas.</b>`}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- 6. o que muda no próximo ciclo ---------- */
+function blocoDecisoes(){
+  const a=agregados();
+  const horasDecididas = est.decisoes.reduce((s,d)=>s+d.h, 0);
+  return `<div class="bloco">
+    <div class="cab">
+      <div><div class="tit">O que muda no próximo ciclo</div>
+        <div class="sub">As decisões tomadas aqui viram meta na tela de entregas — o trabalho para de ser invisível.</div></div>
+    </div>
+    ${est.decisoes.length ? est.decisoes.map(d=>`
+      <div class="dec">
+        <span class="dec-i ${d.tipo}">${d.tipo==="nova"?"+":"↑"}</span>
+        <div><div class="dec-t">${d.titulo}</div><div class="dec-d">${d.detalhe}</div></div>
+        <button class="dec-x" onclick="desfazer('${d.origem}')" title="desfazer">×</button>
+      </div>`).join("")
+      : `<div class="vazio">Nenhuma decisão ainda.<br>Promova algum item de <b>trabalho não mapeado</b> acima.</div>`}
+    <div class="rodape" style="margin-top:16px;padding-top:15px;border-top:1px solid var(--hair)">
+      <div class="info">${est.decisoes.length
+        ? `<b>${n1(horasDecididas)}h por mês</b> de trabalho invisível passam a contar no dimensionamento —
+           ${n1(horasDecididas/JORNADA_PADRAO)} pessoa equivalente.`
+        : `Hoje <b>${n0(a.foraH)}h por mês</b> de trabalho real não entram em conta nenhuma.`}</div>
+      <a class="btn vazado" href="./jornada-gestor-unidade.html">← entregas e meses</a>
+      <button class="btn pri" ${est.decisoes.length?"":"disabled"} onclick="aplicar()">
+        ${est.decisoes.length?`Levar ${est.decisoes.length} para o próximo ciclo →`:`Nada para levar ainda`}</button>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   AÇÕES
+   ============================================================ */
+function promover(id){ est.promovendo=id; est.termo=""; renderCorpo(); }
+function cancelar(){ est.promovendo=null; est.termo=""; renderCorpo(); }
+let tmr=null;
+function digitar(v){ est.termo=v; clearTimeout(tmr); tmr=setTimeout(renderCorpo,150); }
+
+function escolher(id,cod){
+  const x=naoMapeado().find(y=>y.id===id), y=CATALOGO.find(z=>z.c===cod);
+  if(!x||!y) return;
+  est.decisoes.push({origem:id, tipo:"inclui", h:x.h,
+    titulo:y.e, detalhe:`${y.c} · entrega do catálogo, para cobrir "${x.d}" — ${n1(x.h)}h por mês`});
+  est.promovendo=null; est.termo="";
+  render();
+}
+function propor(id){
+  const x=naoMapeado().find(y=>y.id===id); if(!x) return;
+  est.decisoes.push({origem:id, tipo:"nova", h:x.h,
+    titulo:x.d, detalhe:`entrega nova, a propor ao catálogo — ${n1(x.h)}h por mês relatadas por ${x.pessoa}`});
+  est.promovendo=null; est.termo="";
+  render();
+}
+function desfazer(id){ est.decisoes=est.decisoes.filter(d=>d.origem!==id); render(); }
+
+/* clicar de novo na mesma nota desmarca — errar não deve custar caro */
+function setNota(tipo, chave, v){
+  if(tipo==="conjunto"){ est.avConjunto = v || null; }
+  else {
+    const alvo = tipo==="entrega" ? est.avEntrega : est.avPessoa;
+    const k = tipo==="pessoa" ? Number(chave) : chave;
+    if(alvo[k]===v) delete alvo[k]; else alvo[k]=v;
+  }
+  renderCorpo();
+}
+
+/* confirma de uma vez o que o sistema propôs para as entregas.
+   Não toca em pessoa nenhuma: lá não há sugestão para confirmar. */
+function confirmarSugestoes(){
+  for(const x of entregasAvaliaveis()){
+    if(confirmada(x)) continue;
+    const s = sugerirEntrega(x);
+    if(s) est.avEntrega[x.e.c] = s;
+  }
+  renderCorpo();
+}
+function cobrar(){
+  alert("Lembrete enviado para "+pendentes().map(p=>p.nome).join(" e ")+".\n\n"+
+        "Enquanto não devolverem, os números desta tela cobrem só "+responderam().length+" das "+EQUIPE.length+" pessoas.");
+}
+function aplicar(){
+  alert(est.decisoes.length+" "+(est.decisoes.length===1?"decisão vai":"decisões vão")+" para o próximo ciclo.\n\n"+
+        "Na versão real, elas apareceriam já cadastradas na tela de entregas da unidade, "+
+        "com a meta a definir — e o trabalho que hoje some passaria a contar no dimensionamento.");
+}
+
+render();
+</script>
+</body>
+</html>
