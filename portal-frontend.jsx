@@ -11,6 +11,7 @@ import {
   GitMerge, Layers, ClipboardCheck, FilePlus2, RotateCcw, Trophy,
   TrendingDown, TrendingUp, Minus, BarChart3, Clock, CircleDot, ExternalLink, ZoomIn, ZoomOut, Maximize2,
   AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle,
+  CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, UploadCloud,
 } from "lucide-react";
 
 /* ---------- leitura de arquivos no navegador (planilha / pdf / docx) ---------- */
@@ -1045,6 +1046,7 @@ const STATUS_OFICINA=[["pendente","Pendente"],["agendada","Agendada"],["realizad
 function PainelMentoria(){
   const [token,setToken]=useState(()=>localStorage.getItem(MENTORIA_TOKEN_KEY));
   const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
+  const [subaba,setSubaba]=useState("vinculos"); // "vinculos" · "calendario" · "documentos"
 
   const [tela,setTela]=useState("login"); // "login" · "cadastro"
   const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
@@ -1292,6 +1294,30 @@ function PainelMentoria(){
       </div>
       {aviso && <div className="px-anexo-erro" style={{marginBottom:"14px"}}><AlertTriangle size={12}/> {aviso}</div>}
 
+      <div style={{display:"flex",gap:"8px",marginBottom:"20px",borderBottom:`1px solid ${C.line}`,paddingBottom:"10px"}}>
+        <button className={`px-mode ${subaba==="vinculos"?"on":""}`} onClick={()=>setSubaba("vinculos")}>
+          <ClipboardList size={13}/> <span className="px-mode-lbl">{mentor?.isAdmin?"Vínculos":"Minhas unidades"}</span>
+        </button>
+        <button className={`px-mode ${subaba==="calendario"?"on":""}`} onClick={()=>setSubaba("calendario")}>
+          <CalendarClock size={13}/> <span className="px-mode-lbl">Calendário</span>
+        </button>
+        <button className={`px-mode ${subaba==="documentos"?"on":""}`} onClick={()=>setSubaba("documentos")}>
+          <FileText size={13}/> <span className="px-mode-lbl">Documentos</span>
+        </button>
+        <button className={`px-mode ${subaba==="documentos-oficina"?"on":""}`} onClick={()=>setSubaba("documentos-oficina")}>
+          <Layers size={13}/> <span className="px-mode-lbl">Documentos Oficina</span>
+        </button>
+        {mentor?.isAdmin && <button className={`px-mode ${subaba==="dashboard"?"on":""}`} onClick={()=>setSubaba("dashboard")}>
+          <BarChart2 size={13}/> <span className="px-mode-lbl">Dashboard</span>
+        </button>}
+      </div>
+
+      {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
+      {subaba==="documentos" && <BibliotecaDocumentos token={token} isAdmin={!!mentor?.isAdmin} eventosDoMentor={!mentor?.isAdmin}/>}
+      {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
+      {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token}/>}
+
+      {subaba==="vinculos" && <>
       {mentor?.isAdmin && <div style={{display:"flex",flexWrap:"wrap",gap:"16px",marginBottom:"22px"}}>
         <form onSubmit={criarVinculo} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",flex:"1 1 260px"}}>
           <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Atribuir mentor a uma unidade</div>
@@ -1357,6 +1383,546 @@ function PainelMentoria(){
             ))}
           </div>
         </div>}
+      </div>
+      </>}
+    </div>
+  );
+}
+
+/* ============================================================================
+   CALENDÁRIO DE MENTORIA — grade mensal com os eventos (oficinas). Admin vê
+   e cria eventos de qualquer órgão/unidade; mentor só vê os que participa
+   (filtrado no backend pelo e-mail do token). "Adicionar evento" só existe
+   pro admin, com upload de materiais direto pro backend (R2).
+============================================================================ */
+const DIAS_SEMANA=["dom","seg","ter","qua","qui","sex","sáb"];
+const MESES_NOME=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+
+function mesmodia(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+
+function CalendarioMentoria({token,isAdmin}){
+  const [eventos,setEventos]=useState([]);
+  const [carregando,setCarregando]=useState(false);
+  const [erro,setErro]=useState("");
+  const [mes,setMes]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
+  const [diaSel,setDiaSel]=useState(null);
+  const [modalAberto,setModalAberto]=useState(false);
+  const [eventoAberto,setEventoAberto]=useState(null); // detalhe (com documentos) já carregado
+
+  async function carregarEventos(){
+    setCarregando(true); setErro("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/eventos`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao carregar eventos.");
+      setEventos(dados);
+    }catch(err){ setErro(err.message||"Erro ao carregar eventos."); }
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregarEventos(); },[]); // eslint-disable-line
+
+  const eventosPorDia=useMemo(()=>{
+    const m=new Map();
+    eventos.forEach(e=>{
+      const d=new Date(e.data_hora);
+      const chave=d.toDateString();
+      if(!m.has(chave)) m.set(chave,[]);
+      m.get(chave).push(e);
+    });
+    return m;
+  },[eventos]);
+
+  const proximosEventos=useMemo(()=>{
+    const agora=new Date();
+    return eventos.filter(e=>new Date(e.data_hora)>=agora).sort((a,b)=>new Date(a.data_hora)-new Date(b.data_hora)).slice(0,6);
+  },[eventos]);
+
+  const celulas=useMemo(()=>{
+    const ano=mes.getFullYear(), m=mes.getMonth();
+    const primeiroDiaSemana=new Date(ano,m,1).getDay();
+    const diasNoMes=new Date(ano,m+1,0).getDate();
+    const arr=[];
+    for(let i=0;i<primeiroDiaSemana;i++) arr.push(null);
+    for(let dia=1;dia<=diasNoMes;dia++) arr.push(new Date(ano,m,dia));
+    while(arr.length%7!==0) arr.push(null);
+    return arr;
+  },[mes]);
+
+  async function abrirEvento(ev){
+    setEventoAberto({...ev,documentos:null});
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/eventos/${ev.id}`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setEventoAberto(dados);
+    }catch{}
+  }
+
+  async function baixarDocumento(doc){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/documentos/${doc.id}/download`,{headers:mentoriaAuthHeader(token)});
+      if(!resp.ok) throw new Error();
+      const blob=await resp.blob();
+      const url=URL.createObjectURL(blob);
+      const lk=document.createElement("a"); lk.href=url; lk.download=doc.nome_arquivo;
+      document.body.appendChild(lk); lk.click(); lk.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),30000);
+    }catch{ setErro("Não consegui baixar o documento."); }
+  }
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px",flexWrap:"wrap",gap:"10px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <button className="px-mode" style={{padding:"5px 8px"}} onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()-1,1))}><ChevronsLeft size={14}/></button>
+          <h3 style={{margin:0,fontSize:"15px",color:C.navy,minWidth:"160px",textAlign:"center"}}>{MESES_NOME[mes.getMonth()]} de {mes.getFullYear()}</h3>
+          <button className="px-mode" style={{padding:"5px 8px"}} onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()+1,1))}><ChevronsRight size={14}/></button>
+        </div>
+        {isAdmin && <button className="px-mode cta-bot" onClick={()=>setModalAberto(true)}><Plus size={14}/> <span className="px-mode-lbl">Adicionar evento</span></button>}
+      </div>
+
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <div style={{display:"flex",gap:"18px",flexWrap:"wrap",alignItems:"flex-start"}}>
+        <div style={{flex:"3 1 480px",minWidth:"320px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px",marginBottom:"4px"}}>
+            {DIAS_SEMANA.map(d=><div key={d} style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textAlign:"center",textTransform:"uppercase"}}>{d}</div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px"}}>
+            {celulas.map((d,i)=>{
+              const evsDoDia=d?(eventosPorDia.get(d.toDateString())||[]):[];
+              const hoje=d&&mesmodia(d,new Date());
+              const selecionado=d&&diaSel&&mesmodia(d,diaSel);
+              return (
+                <button key={i} disabled={!d} onClick={()=>d&&setDiaSel(d)}
+                  style={{minHeight:"58px",border:`1px solid ${selecionado?C.primary:C.line}`,borderRadius:"8px",background:d?(selecionado?C.primarySoft:"#fff"):"transparent",
+                    padding:"5px",textAlign:"left",cursor:d?"pointer":"default",display:"flex",flexDirection:"column",gap:"3px"}}>
+                  {d && <span style={{fontSize:"11px",fontWeight:hoje?800:600,color:hoje?C.primary:C.navy}}>{d.getDate()}</span>}
+                  {evsDoDia.slice(0,2).map(e=><span key={e.id} style={{fontSize:"9.5px",background:C.primarySoft,color:C.primaryDark,borderRadius:"4px",padding:"1px 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.titulo}</span>)}
+                  {evsDoDia.length>2 && <span style={{fontSize:"9px",color:C.faint}}>+{evsDoDia.length-2}</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {diaSel && <div style={{marginTop:"14px"}}>
+            <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"6px"}}>Eventos em {diaSel.toLocaleDateString("pt-BR")}</div>
+            {(eventosPorDia.get(diaSel.toDateString())||[]).length===0 && <div style={{fontSize:"12px",color:C.faint}}>Nenhum evento nesse dia.</div>}
+            {(eventosPorDia.get(diaSel.toDateString())||[]).map(e=>(
+              <button key={e.id} onClick={()=>abrirEvento(e)} style={{display:"block",width:"100%",textAlign:"left",border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px",marginBottom:"6px",cursor:"pointer",background:"#fff"}}>
+                <b style={{fontSize:"12.5px"}}>{e.titulo}</b><br/>
+                <span style={{fontSize:"11.5px",color:C.sub}}>{new Date(e.data_hora).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})} · {e.orgao}{e.unidade?` · ${e.unidade}`:""}</span>
+              </button>
+            ))}
+          </div>}
+        </div>
+
+        <div style={{flex:"1 1 240px",minWidth:"220px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Próximos eventos</div>
+          {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+          {!carregando && !proximosEventos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum evento futuro.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+            {proximosEventos.map(e=>(
+              <button key={e.id} onClick={()=>abrirEvento(e)} style={{textAlign:"left",border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px",cursor:"pointer",background:"#fff"}}>
+                <div style={{fontSize:"10.5px",color:C.primary,fontWeight:700}}>{new Date(e.data_hora).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})} · {new Date(e.data_hora).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+                <div style={{fontSize:"12.5px",fontWeight:600}}>{e.titulo}</div>
+                <div style={{fontSize:"11px",color:C.sub}}>{e.orgao}{e.unidade?` · ${e.unidade}`:""}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {eventoAberto && <div className="px-modal-bg" onClick={()=>setEventoAberto(null)}>
+        <div className="px-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:"480px"}}>
+          <div className="px-modal-h">
+            <div><CalendarDays size={17} color={C.primary}/> <b>{eventoAberto.titulo}</b></div>
+            <button onClick={()=>setEventoAberto(null)}><X size={18}/></button>
+          </div>
+          <div style={{padding:"4px 0 14px",fontSize:"12.5px",color:C.sub,display:"flex",flexDirection:"column",gap:"4px"}}>
+            <span><b>Quando:</b> {new Date(eventoAberto.data_hora).toLocaleString("pt-BR")}</span>
+            {(eventoAberto.numero_oficina!==null&&eventoAberto.numero_oficina!==undefined) && <span><b>Oficina:</b> {eventoAberto.numero_oficina}</span>}
+            <span><b>Órgão:</b> {eventoAberto.orgao}{eventoAberto.unidade?` · ${eventoAberto.unidade}`:""}</span>
+            {eventoAberto.ponto_focal_nome && <span><b>Ponto focal:</b> {eventoAberto.ponto_focal_nome}{eventoAberto.ponto_focal_email?` (${eventoAberto.ponto_focal_email})`:""}</span>}
+            {(eventoAberto.mentores_emails||[]).length>0 && <span><b>Mentores:</b> {eventoAberto.mentores_emails.join(", ")}</span>}
+            {eventoAberto.observacoes && <span><b>Observações:</b> {eventoAberto.observacoes}</span>}
+          </div>
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"6px"}}>Documentos</div>
+          {eventoAberto.documentos===null && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+          {eventoAberto.documentos!==null && !eventoAberto.documentos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum documento anexado.</div>}
+          {(eventoAberto.documentos||[]).map(doc=>(
+            <button key={doc.id} onClick={()=>baixarDocumento(doc)} className="px-anexo-chip" style={{display:"inline-flex",marginRight:"6px",marginBottom:"6px",cursor:"pointer"}}>
+              <FileText size={12}/> {doc.nome_arquivo}
+            </button>
+          ))}
+        </div>
+      </div>}
+
+      {modalAberto && <NovoEventoModal token={token} onClose={()=>setModalAberto(false)} onCriado={()=>{setModalAberto(false);carregarEventos();}}/>}
+    </div>
+  );
+}
+
+function NovoEventoModal({token,onClose,onCriado}){
+  const [form,setForm]=useState({titulo:"",numeroOficina:"",dataHora:"",orgao:"",unidade:"",mentoresEmails:"",pontoFocalNome:"",pontoFocalEmail:"",observacoes:""});
+  const [arquivos,setArquivos]=useState([]);
+  const [enviando,setEnviando]=useState(false);
+  const [erro,setErro]=useState("");
+  const c=(chave)=>e=>setForm(s=>({...s,[chave]:e.target.value}));
+
+  async function enviar(ev){
+    ev.preventDefault();
+    if(enviando) return;
+    setEnviando(true); setErro("");
+    try{
+      const fd=new FormData();
+      fd.append("titulo",form.titulo);
+      if(form.numeroOficina!=="") fd.append("numeroOficina",form.numeroOficina);
+      fd.append("dataHora",new Date(form.dataHora).toISOString());
+      fd.append("orgao",form.orgao);
+      if(form.unidade) fd.append("unidade",form.unidade);
+      fd.append("mentoresEmails",form.mentoresEmails);
+      if(form.pontoFocalNome) fd.append("pontoFocalNome",form.pontoFocalNome);
+      if(form.pontoFocalEmail) fd.append("pontoFocalEmail",form.pontoFocalEmail);
+      if(form.observacoes) fd.append("observacoes",form.observacoes);
+      arquivos.forEach(a=>fd.append("documentos",a));
+
+      const resp=await fetch(`${API_BASE}/api/mentoria/eventos`,{method:"POST",headers:mentoriaAuthHeader(token),body:fd});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao criar evento.");
+      onCriado();
+    }catch(err){ setErro(err.message||"Erro ao criar evento."); }
+    finally{ setEnviando(false); }
+  }
+
+  return (<div className="px-modal-bg" onClick={onClose}>
+    <div className="px-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:"460px"}}>
+      <div className="px-modal-h">
+        <div><CalendarDays size={17} color={C.primary}/> <b>Adicionar evento</b></div>
+        <button onClick={onClose}><X size={18}/></button>
+      </div>
+      <form onSubmit={enviar} style={{display:"flex",flexDirection:"column",gap:"9px",padding:"4px 0 6px"}}>
+        <div style={{display:"flex",gap:"8px"}}>
+          <input required placeholder="Título (ex.: Oficina 3 - IBGE)" value={form.titulo} onChange={c("titulo")}
+            style={{flex:2,padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}/>
+          <select value={form.numeroOficina} onChange={c("numeroOficina")}
+            style={{flex:1,padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}>
+            <option value="">Oficina nº…</option>
+            {Array.from({length:15},(_,i)=>i).map(n=><option key={n} value={n}>Oficina {n}</option>)}
+          </select>
+        </div>
+        <label style={{fontSize:"11.5px"}}>Data e hora
+          <input required type="datetime-local" value={form.dataHora} onChange={c("dataHora")}
+            style={{display:"block",width:"100%",padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px",boxSizing:"border-box",marginTop:"3px"}}/>
+        </label>
+        <div style={{display:"flex",gap:"8px"}}>
+          <input required placeholder="Órgão" value={form.orgao} onChange={c("orgao")}
+            style={{flex:1,padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}/>
+          <input placeholder="Unidade (opcional)" value={form.unidade} onChange={c("unidade")}
+            style={{flex:1,padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}/>
+        </div>
+        <input placeholder="E-mails dos mentores (separados por vírgula)" value={form.mentoresEmails} onChange={c("mentoresEmails")}
+          style={{padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}/>
+        <div style={{display:"flex",gap:"8px"}}>
+          <input placeholder="Ponto focal (nome)" value={form.pontoFocalNome} onChange={c("pontoFocalNome")}
+            style={{flex:1,padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}/>
+          <input placeholder="Ponto focal (e-mail)" value={form.pontoFocalEmail} onChange={c("pontoFocalEmail")}
+            style={{flex:1,padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}/>
+        </div>
+        <textarea placeholder="Observações (opcional)" value={form.observacoes} onChange={c("observacoes")} rows={2}
+          style={{padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px",resize:"vertical"}}/>
+        <label className="px-mode" style={{cursor:"pointer",justifyContent:"flex-start"}}>
+          <UploadCloud size={14}/> <span className="px-mode-lbl">{arquivos.length?`${arquivos.length} arquivo(s) selecionado(s)`:"Anexar materiais da oficina"}</span>
+          <input type="file" multiple style={{display:"none"}} onChange={e=>setArquivos(Array.from(e.target.files||[]))}/>
+        </label>
+        {erro && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>}
+        <div className="px-modal-acts">
+          <button type="button" className="px-btn-ghost" onClick={onClose} disabled={enviando}>Cancelar</button>
+          <button type="submit" className="px-btn-primary" disabled={enviando}><Plus size={14}/> {enviando?"Criando…":"Criar evento"}</button>
+        </div>
+      </form>
+    </div>
+  </div>);
+}
+
+const CATEGORIA_LABEL={
+  material_expositivo:"Materiais Expositivos",
+  instrumento_gestao:"Instrumentos de Gestão",
+  mentoria_comportamental:"Mentoria Comportamental",
+  modelo:"Modelos",
+};
+
+async function baixarDocBiblioteca(token,rota,doc){
+  const resp=await fetch(`${API_BASE}${rota}`,{headers:mentoriaAuthHeader(token)});
+  if(!resp.ok) return;
+  const blob=await resp.blob();
+  const url=URL.createObjectURL(blob);
+  const lk=document.createElement("a"); lk.href=url; lk.download=doc.nome_arquivo;
+  document.body.appendChild(lk); lk.click(); lk.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+
+/* ---------- Documentos — biblioteca geral (Materiais Expositivos,
+   Instrumentos de Gestão, Mentoria Comportamental, Modelos) + materiais
+   anexados aos eventos do calendário em que o mentor participa. ---------- */
+function BibliotecaDocumentos({token,isAdmin,eventosDoMentor}){
+  const [biblioteca,setBiblioteca]=useState([]);
+  const [eventosComDocs,setEventosComDocs]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+  const [categoriaUpload,setCategoriaUpload]=useState("material_expositivo");
+  const [arquivosUpload,setArquivosUpload]=useState([]);
+  const [enviando,setEnviando]=useState(false);
+
+  async function carregar(){
+    setCarregando(true); setErro("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/biblioteca`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao carregar biblioteca.");
+      setBiblioteca(dados.filter(d=>d.categoria!=="materia_oficina"));
+
+      if(eventosDoMentor){
+        const respEv=await fetch(`${API_BASE}/api/mentoria/eventos`,{headers:mentoriaAuthHeader(token)});
+        const eventos=await respEv.json();
+        if(respEv.ok){
+          const detalhes=await Promise.all(eventos.map(async e=>{
+            const r=await fetch(`${API_BASE}/api/mentoria/eventos/${e.id}`,{headers:mentoriaAuthHeader(token)});
+            return r.ok?r.json():null;
+          }));
+          setEventosComDocs(detalhes.filter(Boolean).filter(e=>(e.documentos||[]).length>0));
+        }
+      }
+    }catch(err){ setErro(err.message||"Erro ao carregar documentos."); }
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregar(); },[token]); // eslint-disable-line
+
+  async function enviarUpload(ev){
+    ev.preventDefault();
+    if(enviando||!arquivosUpload.length) return;
+    setEnviando(true); setErro("");
+    try{
+      const fd=new FormData();
+      fd.append("categoria",categoriaUpload);
+      arquivosUpload.forEach(a=>fd.append("arquivos",a));
+      const resp=await fetch(`${API_BASE}/api/mentoria/biblioteca`,{method:"POST",headers:mentoriaAuthHeader(token),body:fd});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao enviar.");
+      setArquivosUpload([]);
+      carregar();
+    }catch(err){ setErro(err.message||"Erro ao enviar."); }
+    finally{ setEnviando(false); }
+  }
+
+  const porCategoria=useMemo(()=>{
+    const m=new Map();
+    biblioteca.forEach(d=>{ if(!m.has(d.categoria)) m.set(d.categoria,[]); m.get(d.categoria).push(d); });
+    return m;
+  },[biblioteca]);
+
+  return (
+    <div>
+      {isAdmin && <form onSubmit={enviarUpload} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",marginBottom:"18px",maxWidth:"420px"}}>
+        <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Enviar documento(s) pra biblioteca</div>
+        <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+          <select value={categoriaUpload} onChange={e=>setCategoriaUpload(e.target.value)}
+            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}>
+            {Object.entries(CATEGORIA_LABEL).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </select>
+          <label className="px-mode" style={{cursor:"pointer",justifyContent:"flex-start"}}>
+            <UploadCloud size={14}/> <span className="px-mode-lbl">{arquivosUpload.length?`${arquivosUpload.length} arquivo(s)`:"Escolher arquivo(s)"}</span>
+            <input type="file" multiple style={{display:"none"}} onChange={e=>setArquivosUpload(Array.from(e.target.files||[]))}/>
+          </label>
+          <button className="px-mode" type="submit" disabled={enviando||!arquivosUpload.length} style={{alignSelf:"flex-start"}}>
+            <Plus size={12}/> <span className="px-mode-lbl">{enviando?"Enviando…":"Enviar"}</span>
+          </button>
+        </div>
+      </form>}
+
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+
+      {[...porCategoria.entries()].map(([categoria,docs])=>(
+        <div key={categoria} style={{marginBottom:"18px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>{CATEGORIA_LABEL[categoria]||categoria}</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:"6px"}}>
+            {docs.map(doc=>(
+              <button key={doc.id} onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/biblioteca/${doc.id}/download`,doc)} className="px-anexo-chip" style={{cursor:"pointer"}}>
+                <FileText size={12}/> {doc.nome_arquivo}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {eventosDoMentor && eventosComDocs.length>0 && <div>
+        <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Materiais anexados às suas oficinas</div>
+        {eventosComDocs.map(e=>(
+          <div key={e.id} style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"10px 12px",marginBottom:"8px"}}>
+            <div style={{fontSize:"12.5px",fontWeight:700,marginBottom:"6px"}}>{e.titulo} <span style={{fontWeight:400,color:C.faint}}>· {new Date(e.data_hora).toLocaleDateString("pt-BR")}</span></div>
+            {e.documentos.map(doc=>(
+              <button key={doc.id} onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/documentos/${doc.id}/download`,doc)} className="px-anexo-chip" style={{display:"inline-flex",marginRight:"6px",cursor:"pointer"}}>
+                <FileText size={12}/> {doc.nome_arquivo}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>}
+
+      {!carregando && !biblioteca.length && !eventosComDocs.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum documento disponível ainda.</div>}
+    </div>
+  );
+}
+
+/* ---------- Documentos Oficina — materiais organizados por número de
+   oficina (0-14), espelhando a pasta "Materias das Oficinas" do
+   SharePoint. ---------- */
+function DocumentosOficina({token,isAdmin}){
+  const [oficinaSel,setOficinaSel]=useState(null);
+  const [documentos,setDocumentos]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+  const [numeroUpload,setNumeroUpload]=useState(0);
+  const [arquivosUpload,setArquivosUpload]=useState([]);
+  const [enviando,setEnviando]=useState(false);
+
+  async function carregar(){
+    setCarregando(true); setErro("");
+    try{
+      const qs=oficinaSel!==null?`?categoria=materia_oficina&numeroOficina=${oficinaSel}`:"?categoria=materia_oficina";
+      const resp=await fetch(`${API_BASE}/api/mentoria/biblioteca${qs}`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao carregar.");
+      setDocumentos(dados);
+    }catch(err){ setErro(err.message||"Erro ao carregar."); }
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregar(); },[token,oficinaSel]); // eslint-disable-line
+
+  async function enviarUpload(ev){
+    ev.preventDefault();
+    if(enviando||!arquivosUpload.length) return;
+    setEnviando(true); setErro("");
+    try{
+      const fd=new FormData();
+      fd.append("categoria","materia_oficina");
+      fd.append("numeroOficina",numeroUpload);
+      arquivosUpload.forEach(a=>fd.append("arquivos",a));
+      const resp=await fetch(`${API_BASE}/api/mentoria/biblioteca`,{method:"POST",headers:mentoriaAuthHeader(token),body:fd});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao enviar.");
+      setArquivosUpload([]);
+      carregar();
+    }catch(err){ setErro(err.message||"Erro ao enviar."); }
+    finally{ setEnviando(false); }
+  }
+
+  const porOficina=useMemo(()=>{
+    const m=new Map();
+    documentos.forEach(d=>{ const n=d.numero_oficina; if(!m.has(n)) m.set(n,[]); m.get(n).push(d); });
+    return [...m.entries()].sort((a,b)=>a[0]-b[0]);
+  },[documentos]);
+
+  return (
+    <div>
+      {isAdmin && <form onSubmit={enviarUpload} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",marginBottom:"18px",maxWidth:"420px"}}>
+        <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Enviar material pra uma oficina</div>
+        <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+          <select value={numeroUpload} onChange={e=>setNumeroUpload(Number(e.target.value))}
+            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}>
+            {Array.from({length:15},(_,i)=>i).map(n=><option key={n} value={n}>Oficina {n}</option>)}
+          </select>
+          <label className="px-mode" style={{cursor:"pointer",justifyContent:"flex-start"}}>
+            <UploadCloud size={14}/> <span className="px-mode-lbl">{arquivosUpload.length?`${arquivosUpload.length} arquivo(s)`:"Escolher arquivo(s)"}</span>
+            <input type="file" multiple style={{display:"none"}} onChange={e=>setArquivosUpload(Array.from(e.target.files||[]))}/>
+          </label>
+          <button className="px-mode" type="submit" disabled={enviando||!arquivosUpload.length} style={{alignSelf:"flex-start"}}>
+            <Plus size={12}/> <span className="px-mode-lbl">{enviando?"Enviando…":"Enviar"}</span>
+          </button>
+        </div>
+      </form>}
+
+      <div style={{display:"flex",flexWrap:"wrap",gap:"6px",marginBottom:"16px"}}>
+        <button className={`px-mode ${oficinaSel===null?"on":""}`} onClick={()=>setOficinaSel(null)} style={{padding:"5px 10px"}}>Todas</button>
+        {Array.from({length:15},(_,i)=>i).map(n=>(
+          <button key={n} className={`px-mode ${oficinaSel===n?"on":""}`} onClick={()=>setOficinaSel(n)} style={{padding:"5px 10px"}}>{n}</button>
+        ))}
+      </div>
+
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+      {!carregando && !documentos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum material encontrado.</div>}
+
+      {porOficina.map(([numero,docs])=>(
+        <div key={numero} style={{marginBottom:"16px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Oficina {numero}</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:"6px"}}>
+            {docs.map(doc=>(
+              <button key={doc.id} onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/biblioteca/${doc.id}/download`,doc)} className="px-anexo-chip" style={{cursor:"pointer"}}>
+                <FileText size={12}/> {doc.nome_arquivo}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- Dashboard (admin) — progresso de cada órgão nas 15 oficinas,
+   num "caminho" visual estilo a planilha de acompanhamento. ---------- */
+function DashboardOrgaos({token}){
+  const [dados,setDados]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+
+  useEffect(()=>{
+    (async()=>{
+      setCarregando(true); setErro("");
+      try{
+        const resp=await fetch(`${API_BASE}/api/mentoria/dashboard/orgaos`,{headers:mentoriaAuthHeader(token)});
+        const d=await resp.json();
+        if(!resp.ok) throw new Error(d.erro||"Erro ao carregar dashboard.");
+        setDados(d);
+      }catch(err){ setErro(err.message||"Erro ao carregar dashboard."); }
+      finally{ setCarregando(false); }
+    })();
+  },[token]);
+
+  const CORES={pendente:C.line,agendada:C.amber||"#e0a400",concluida:C.green||"#1a9c5c"};
+
+  return (
+    <div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>Caminho de cada órgão até a conclusão das 15 oficinas (0 a 14). Verde = concluída, amarelo = agendada, cinza = pendente.</p>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+      {!carregando && !dados.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum evento com número de oficina cadastrado ainda.</div>}
+
+      <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+        {dados.map(orgao=>(
+          <div key={orgao.orgao} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px 14px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}>
+              <div><b style={{fontSize:"13px"}}>{orgao.orgao}</b>{orgao.unidade?<span style={{fontSize:"12px",color:C.sub}}> · {orgao.unidade}</span>:null}</div>
+              <span style={{fontSize:"11px",color:C.faint}}>{orgao.concluidas}/15 concluídas</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center"}}>
+              {orgao.caminho.map((etapa,i)=>(
+                <React.Fragment key={etapa.numero}>
+                  <div title={`Oficina ${etapa.numero}${etapa.dataHora?" · "+new Date(etapa.dataHora).toLocaleDateString("pt-BR"):""}`}
+                    style={{
+                      width:"22px",height:"22px",borderRadius:"50%",flexShrink:0,
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:"9px",fontWeight:700,
+                      background:etapa.status==="pendente"?"#fff":CORES[etapa.status],
+                      color:etapa.status==="pendente"?C.faint:"#fff",
+                      border:`2px solid ${CORES[etapa.status]}`,
+                    }}>{etapa.numero}</div>
+                  {i<orgao.caminho.length-1 && <div style={{flex:1,height:"2px",background:etapa.status==="concluida"?CORES.concluida:C.line,minWidth:"6px"}}/>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -5332,7 +5898,7 @@ const STATUS = {
   estr:       { cor: T.sub,    soft: "#fff",       txt: "" },
 };
 
-const API_BASE = "http://localhost:3001"; // TEMP-TESTE-LOCAL — reverter antes de commitar
+const API_BASE = "https://portal-backend-bftz.onrender.com";
 
 /* ============================================================
    NORMALIZAÇÃO DE TEXTO (para busca/filtro sem acento)
