@@ -1046,6 +1046,7 @@ function PainelMentoria(){
   const [token,setToken]=useState(()=>localStorage.getItem(MENTORIA_TOKEN_KEY));
   const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
 
+  const [tela,setTela]=useState("login"); // "login" · "cadastro"
   const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
   const [erroLogin,setErroLogin]=useState(""); const [entrando,setEntrando]=useState(false);
 
@@ -1056,25 +1057,68 @@ function PainelMentoria(){
   const [aviso,setAviso]=useState("");
 
   const [mentores,setMentores]=useState([]);
-  const [novoMentor,setNovoMentor]=useState({nome:"",email:"",senha:""});
   const [novoVinculo,setNovoVinculo]=useState({mentorId:"",orgao:"",unidade:""});
+
+  // Autocadastro de mentor — mesmos campos do formulário "Banco de Mentores"
+  // (Microsoft Forms) que ele substitui, mais a senha (a pessoa escolhe a
+  // própria e já fica ativa, sem depender de aprovação de admin).
+  const MOTIVOS_AFASTAMENTO=["Não","Licença médica","Licença maternidade/paternidade","Viagem","Curso ou capacitação","Outra"];
+  const [cad,setCad]=useState({
+    nome:"",email:"",senha:"",
+    interesseMentor:"",disponivelPeriodo:"",
+    estaraDeFerias:"",feriasInicio:"",feriasFim:"",
+    motivoAfastamento:"Não",afastamentoInicio:"",afastamentoFim:"",
+  });
+  const [cadastrando,setCadastrando]=useState(false);
+  const [erroCadastro,setErroCadastro]=useState("");
+
+  async function fazerLogin(email,senha){
+    const resp=await fetch(`${API_BASE}/api/mentoria/login`,{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email,senha}),
+    });
+    const dados=await resp.json();
+    if(!resp.ok) throw new Error(dados.erro||"Falha no login.");
+    localStorage.setItem(MENTORIA_TOKEN_KEY,dados.token);
+    setToken(dados.token);
+  }
 
   async function login(ev){
     ev.preventDefault();
     if(entrando) return;
     setEntrando(true); setErroLogin("");
-    try{
-      const resp=await fetch(`${API_BASE}/api/mentoria/login`,{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email,senha}),
-      });
-      const dados=await resp.json();
-      if(!resp.ok) throw new Error(dados.erro||"Falha no login.");
-      localStorage.setItem(MENTORIA_TOKEN_KEY,dados.token);
-      setToken(dados.token);
-    }catch(err){ setErroLogin(err.message||"Não consegui entrar."); }
+    try{ await fazerLogin(email,senha); }
+    catch(err){ setErroLogin(err.message||"Não consegui entrar."); }
     finally{ setEntrando(false); }
   }
+
+  async function cadastrar(ev){
+    ev.preventDefault();
+    if(cadastrando) return;
+    setCadastrando(true); setErroCadastro("");
+    try{
+      if(cad.interesseMentor===""||cad.disponivelPeriodo===""||cad.estaraDeFerias===""){
+        throw new Error("Responda todas as perguntas obrigatórias.");
+      }
+      const resp=await fetch(`${API_BASE}/api/mentoria/mentores`,{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          nome:cad.nome, email:cad.email, senha:cad.senha,
+          interesseMentor:cad.interesseMentor==="sim", disponivelPeriodo:cad.disponivelPeriodo==="sim",
+          feriasInicio:cad.estaraDeFerias==="sim"?(cad.feriasInicio||null):null,
+          feriasFim:cad.estaraDeFerias==="sim"?(cad.feriasFim||null):null,
+          motivoAfastamento:cad.motivoAfastamento!=="Não"?cad.motivoAfastamento:null,
+          afastamentoInicio:cad.motivoAfastamento!=="Não"?(cad.afastamentoInicio||null):null,
+          afastamentoFim:cad.motivoAfastamento!=="Não"?(cad.afastamentoFim||null):null,
+        }),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao cadastrar.");
+      await fazerLogin(cad.email,cad.senha);
+    }catch(err){ setErroCadastro(err.message||"Não consegui cadastrar."); }
+    finally{ setCadastrando(false); }
+  }
+
   function sair(){ localStorage.removeItem(MENTORIA_TOKEN_KEY); setToken(null); setVinculoSel(null); }
 
   async function carregarVinculos(todos){
@@ -1126,20 +1170,6 @@ function PainelMentoria(){
   }
   useEffect(()=>{ if(token&&mentor?.isAdmin) carregarMentores(); },[token,mentor?.isAdmin]);
 
-  async function criarMentor(ev){
-    ev.preventDefault(); setAviso("");
-    try{
-      const resp=await fetch(`${API_BASE}/api/mentoria/mentores`,{
-        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
-        body:JSON.stringify(novoMentor),
-      });
-      const dados=await resp.json();
-      if(!resp.ok) throw new Error(dados.erro||"Erro ao criar mentor.");
-      setNovoMentor({nome:"",email:"",senha:""});
-      carregarMentores();
-    }catch(err){ setAviso(err.message||"Erro ao criar mentor."); }
-  }
-
   async function criarVinculo(ev){
     ev.preventDefault(); setAviso("");
     try{
@@ -1154,7 +1184,7 @@ function PainelMentoria(){
     }catch(err){ setAviso(err.message||"Erro ao criar vínculo."); }
   }
 
-  if(!token){
+  if(!token && tela==="login"){
     return (
       <div style={{padding:"32px 24px",maxWidth:"360px"}}>
         <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
@@ -1171,6 +1201,85 @@ function PainelMentoria(){
             <Users size={15}/> <span className="px-mode-lbl">{entrando?"Entrando…":"Entrar"}</span>
           </button>
         </form>
+        <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("cadastro")}>
+          <Plus size={14}/> <span className="px-mode-lbl">Ainda não é mentor? Cadastre-se</span>
+        </button>
+      </div>
+    );
+  }
+
+  if(!token && tela==="cadastro"){
+    const r=(chave,valor)=>e=>setCad(s=>({...s,[chave]:valor!==undefined?valor:e.target.value}));
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Banco de Mentores</b></div>
+        <div style={{fontSize:"12.5px",lineHeight:1.5,marginBottom:"16px",color:C.sub}}>
+          Cadastre-se para fazer parte do banco de mentores do DFT. Sua disponibilidade ajuda a organizar melhor as oficinas de mentoria.
+        </div>
+        <form onSubmit={cadastrar} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          <input required placeholder="Nome completo" value={cad.nome} onChange={r("nome")}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          <input required type="email" placeholder="E-mail institucional" value={cad.email} onChange={r("email")}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          <input required type="password" placeholder="Crie uma senha" value={cad.senha} onChange={r("senha")}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+
+          <div>
+            <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Tem interesse em ser mentor? *</div>
+            <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="interesseMentor" checked={cad.interesseMentor==="sim"} onChange={r("interesseMentor","sim")} required/> Sim</label>
+            <label style={{fontSize:"12.5px"}}><input type="radio" name="interesseMentor" checked={cad.interesseMentor==="nao"} onChange={r("interesseMentor","nao")}/> Não</label>
+          </div>
+
+          <div>
+            <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Tem disponibilidade de atuar no período? *</div>
+            <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="disponivelPeriodo" checked={cad.disponivelPeriodo==="sim"} onChange={r("disponivelPeriodo","sim")} required/> Sim</label>
+            <label style={{fontSize:"12.5px"}}><input type="radio" name="disponivelPeriodo" checked={cad.disponivelPeriodo==="nao"} onChange={r("disponivelPeriodo","nao")}/> Não</label>
+          </div>
+
+          <div style={{borderTop:`1px solid ${C.line}`,paddingTop:"10px",marginTop:"4px"}}>
+            <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Período de férias</div>
+            <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Você estará de férias durante esse período? *</div>
+            <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="estaraDeFerias" checked={cad.estaraDeFerias==="sim"} onChange={r("estaraDeFerias","sim")} required/> Sim</label>
+            <label style={{fontSize:"12.5px"}}><input type="radio" name="estaraDeFerias" checked={cad.estaraDeFerias==="nao"} onChange={r("estaraDeFerias","nao")}/> Não</label>
+          </div>
+
+          {cad.estaraDeFerias==="sim" && <div style={{display:"flex",gap:"8px"}}>
+            <label style={{flex:1,fontSize:"11.5px"}}>Início das férias
+              <input type="date" value={cad.feriasInicio} onChange={r("feriasInicio")}
+                style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",boxSizing:"border-box",marginTop:"3px"}}/>
+            </label>
+            <label style={{flex:1,fontSize:"11.5px"}}>Fim das férias
+              <input type="date" value={cad.feriasFim} onChange={r("feriasFim")}
+                style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",boxSizing:"border-box",marginTop:"3px"}}/>
+            </label>
+          </div>}
+
+          <label style={{fontSize:"12px"}}>Outro motivo de afastamento durante esse período?
+            <select value={cad.motivoAfastamento} onChange={r("motivoAfastamento")}
+              style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",marginTop:"4px"}}>
+              {MOTIVOS_AFASTAMENTO.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+
+          {cad.motivoAfastamento!=="Não" && <div style={{display:"flex",gap:"8px"}}>
+            <label style={{flex:1,fontSize:"11.5px"}}>Início do afastamento
+              <input type="date" value={cad.afastamentoInicio} onChange={r("afastamentoInicio")}
+                style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",boxSizing:"border-box",marginTop:"3px"}}/>
+            </label>
+            <label style={{flex:1,fontSize:"11.5px"}}>Fim do afastamento
+              <input type="date" value={cad.afastamentoFim} onChange={r("afastamentoFim")}
+                style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",boxSizing:"border-box",marginTop:"3px"}}/>
+            </label>
+          </div>}
+
+          {erroCadastro && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erroCadastro}</div>}
+          <button className="px-mode cta-bot" disabled={cadastrando} type="submit">
+            <Users size={15}/> <span className="px-mode-lbl">{cadastrando?"Cadastrando…":"Cadastrar"}</span>
+          </button>
+        </form>
+        <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("login")}>
+          <span className="px-mode-lbl">Já é mentor? Entrar</span>
+        </button>
       </div>
     );
   }
@@ -1184,18 +1293,6 @@ function PainelMentoria(){
       {aviso && <div className="px-anexo-erro" style={{marginBottom:"14px"}}><AlertTriangle size={12}/> {aviso}</div>}
 
       {mentor?.isAdmin && <div style={{display:"flex",flexWrap:"wrap",gap:"16px",marginBottom:"22px"}}>
-        <form onSubmit={criarMentor} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",flex:"1 1 260px"}}>
-          <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Cadastrar mentor</div>
-          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-            <input required placeholder="Nome" value={novoMentor.nome} onChange={e=>setNovoMentor(s=>({...s,nome:e.target.value}))}
-              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
-            <input required type="email" placeholder="E-mail" value={novoMentor.email} onChange={e=>setNovoMentor(s=>({...s,email:e.target.value}))}
-              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
-            <input required type="password" placeholder="Senha provisória" value={novoMentor.senha} onChange={e=>setNovoMentor(s=>({...s,senha:e.target.value}))}
-              style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
-            <button className="px-mode" type="submit" style={{alignSelf:"flex-start"}}><Plus size={12}/> <span className="px-mode-lbl">Cadastrar</span></button>
-          </div>
-        </form>
         <form onSubmit={criarVinculo} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",flex:"1 1 260px"}}>
           <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Atribuir mentor a uma unidade</div>
           <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
@@ -5235,7 +5332,7 @@ const STATUS = {
   estr:       { cor: T.sub,    soft: "#fff",       txt: "" },
 };
 
-const API_BASE = "https://portal-backend-bftz.onrender.com";
+const API_BASE = "http://localhost:3001"; // TEMP-TESTE-LOCAL — reverter antes de commitar
 
 /* ============================================================
    NORMALIZAÇÃO DE TEXTO (para busca/filtro sem acento)
