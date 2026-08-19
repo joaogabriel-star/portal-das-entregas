@@ -6491,7 +6491,7 @@ const STATUS = {
   estr:       { cor: T.sub,    soft: "#fff",       txt: "" },
 };
 
-const API_BASE = "https://portal-backend-bftz.onrender.com";
+const API_BASE = "https://portal-backend-production-945b.up.railway.app";
 
 /* ============================================================
    NORMALIZAÇÃO DE TEXTO (para busca/filtro sem acento)
