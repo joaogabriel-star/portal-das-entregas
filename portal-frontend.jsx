@@ -2645,6 +2645,7 @@ function DashboardOrgaos({token}){
   const [dados,setDados]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
+  const [filtro,setFiltro]=useState("");
 
   useEffect(()=>{
     (async()=>{
@@ -2661,15 +2662,33 @@ function DashboardOrgaos({token}){
 
   const CORES={pendente:C.line,agendada:C.amber||"#e0a400",concluida:C.green||"#1a9c5c"};
 
+  const dadosFiltrados=useMemo(()=>{
+    if(!filtro) return dados;
+    return dados.filter(o=>o.orgao===filtro);
+  },[dados,filtro]);
+
   return (
     <div>
-      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>Caminho de cada órgão até a conclusão das 15 oficinas (0 a 14). Verde = concluída, amarelo = agendada, cinza = pendente.</p>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"14px"}}>
+        <p style={{fontSize:"12.5px",color:C.faint,margin:0}}>Caminho de cada órgão até a conclusão das 15 oficinas (0 a 14). Verde = concluída, amarelo = agendada, cinza = pendente.</p>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <span style={{fontSize:"11px",fontWeight:700,color:C.navy,background:C.primarySoft,padding:"4px 10px",borderRadius:"999px",whiteSpace:"nowrap"}}>
+            {dados.length} órgão{dados.length===1?"":"s"}
+          </span>
+          {!!dados.length && <select value={filtro} onChange={e=>setFiltro(e.target.value)}
+            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}>
+            <option value="">Todos os órgãos</option>
+            {dados.map(o=><option key={o.orgao} value={o.orgao}>{o.orgao}</option>)}
+          </select>}
+        </div>
+      </div>
       {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
       {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
       {!carregando && !dados.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum evento com número de oficina cadastrado ainda.</div>}
+      {!carregando && !!dados.length && !dadosFiltrados.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum órgão encontrado com esse filtro.</div>}
 
       <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
-        {dados.map(orgao=>(
+        {dadosFiltrados.map(orgao=>(
           <div key={orgao.orgao} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px 14px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"10px"}}>
               <div><b style={{fontSize:"13px"}}>{orgao.orgao}</b>{orgao.unidade?<span style={{fontSize:"12px",color:C.sub}}> · {orgao.unidade}</span>:null}</div>
