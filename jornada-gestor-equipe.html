@@ -232,6 +232,24 @@ a.tf:hover{color:var(--primary)}
 .add-t{display:block;font-size:12px;font-weight:800;color:var(--navy)}
 .add-d{display:block;font-size:10px;color:var(--faint);font-weight:600;margin-top:2px}
 .add-seta{margin-left:auto;color:var(--faint);font-size:12px;font-weight:800}
+/* ---- cadastro de pessoa nova ---- */
+.novo-abrir{display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;background:#fff;
+  border:1px dashed var(--line);border-radius:10px;padding:11px 14px;font-family:inherit;font-size:12px;
+  font-weight:700;color:var(--sub);cursor:pointer;transition:all .14s}
+.novo-abrir:hover{border-color:var(--primary);color:var(--primary);border-style:solid}
+.novo-abrir span{display:grid;place-items:center;width:19px;height:19px;border-radius:50%;
+  background:var(--primarySoft);color:var(--primary);font-weight:800;flex:none}
+.novo{margin-top:10px;border:1px solid var(--primary);border-radius:11px;padding:14px 15px;background:#FBFCFE}
+.novo-h{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:3px}
+.novo-d{font-size:11px;color:var(--sub);line-height:1.5;margin-bottom:12px}
+.novo-linha{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:620px){.novo-linha{grid-template-columns:1fr}}
+.novo label{display:block;font-size:10px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
+.novo input,.novo select{width:100%;margin-top:4px;font-family:inherit;font-size:12.5px;color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.novo input:focus,.novo select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(19,81,180,.1)}
+.novo-aviso{min-height:15px;font-size:11px;font-weight:700;color:var(--coral,#9E3B1F);margin-bottom:8px}
+.novo-acoes{display:flex;justify-content:flex-end;gap:8px}
 .add-corpo{padding:4px 20px 16px;border-top:1px solid var(--hair)}
 .busca{margin-bottom:11px}
 .busca input{width:100%;font-family:inherit;font-size:12.5px;color:var(--ink);border:1px solid var(--line);
@@ -413,6 +431,10 @@ const est = {
   mesTempo:0,            // mês mostrado na visão "tempo fora"
   confAberta:false,
   addAberto:false, termo:"",
+  /* cadastro de pessoa nova: quem ainda não está em lista nenhuma. O CPF fica
+     só aqui, nesta tela, no navegador do gestor — não vai para API nem para a
+     IA, e na tabela aparece mascarado. */
+  novo:{aberto:false, nome:"", cpf:"", cat:"servidor", ch:40, erro:""},
   pop:null,              // {pid, i} do balão aberto
   confirmadas:new Set(),
   delegadas:new Set(),
@@ -847,6 +869,34 @@ function blocoAdicionar(){
             : `<button class="btn vazado mini" onclick="incluir(${x.id})">+ incluir</button>`}
         </div>`).join("")
         : `<div style="padding:22px;text-align:center;color:var(--faint);font-size:11.5px;font-weight:600">Ninguém encontrado com esse termo.</div>`}</div>
+
+      ${est.novo.aberto ? `
+      <div class="novo">
+        <div class="novo-h">Cadastrar pessoa nova</div>
+        <div class="novo-d">Para quem ainda não aparece na busca. O CPF fica só neste navegador — serve para não cadastrar a mesma pessoa duas vezes.</div>
+        <div class="novo-linha">
+          <label>Nome completo
+            <input type="text" id="novoNome" value="${est.novo.nome.replace(/"/g,"&quot;")}"
+              placeholder="Ex.: Mariana Costa" oninput="setNovo('nome',this.value)"></label>
+          <label>CPF
+            <input type="text" id="novoCpf" inputmode="numeric" maxlength="14"
+              placeholder="000.000.000-00" oninput="mascararCPF(this)"></label>
+        </div>
+        <div class="novo-linha">
+          <label>Vínculo
+            <select id="novoCat" onchange="setNovo('cat',this.value)">${Object.keys(CATS).map(k=>`<option value="${k}" ${est.novo.cat===k?"selected":""}>${CATS[k].rot}</option>`).join("")}</select></label>
+          <label>Carga horária
+            <select id="novoCh" onchange="setNovo('ch',this.value)">${[20,30,40].map(h=>`<option value="${h}" ${(+est.novo.ch)===h?"selected":""}>${h}h semanais</option>`).join("")}</select></label>
+        </div>
+        <div class="novo-aviso" id="novoAviso">${est.novo.erro||""}</div>
+        <div class="novo-acoes">
+          <button class="btn vazado mini" onclick="alternarNovo()">Cancelar</button>
+          <button class="btn mini" onclick="cadastrarNovo()">Cadastrar e incluir</button>
+        </div>
+      </div>` : `
+      <button class="novo-abrir" onclick="alternarNovo()">
+        <span>+</span> Não encontrou? Cadastrar pessoa nova
+      </button>`}
     </div></div>`;
 }
 
@@ -1033,6 +1083,71 @@ function setVisao(v){ fecharPop(); est.visao=v; renderCorpo(); }
 function setMesTempo(i){ est.mesTempo=i; renderCorpo(); }
 function alternarConf(){ est.confAberta=!est.confAberta; renderCorpo(); }
 function alternarAdd(){ est.addAberto=!est.addAberto; renderCorpo(); }
+
+/* ---------- cadastrar pessoa nova (nome, CPF e vínculo) ----------
+   O CPF existe aqui para distinguir homônimos e evitar cadastro em duplicata —
+   é a chave que a administração usa. Fica só neste navegador: não é enviado ao
+   backend nem à IA, e na tela aparece mascarado. */
+function alternarNovo(){ est.novo.aberto=!est.novo.aberto; est.novo.erro=""; renderCorpo(); }
+
+/* guarda sem repintar: repintar a cada tecla faria o campo perder o foco */
+function setNovo(campo,valor){ est.novo[campo]=valor; }
+
+function soDigitos(v){ return String(v||"").replace(/\D/g,"").slice(0,11); }
+
+/* máscara aplicada no próprio campo, sem passar pelo render */
+function mascararCPF(el){
+  const d=soDigitos(el.value);
+  let out=d;
+  if(d.length>9)      out=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9);
+  else if(d.length>6) out=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6);
+  else if(d.length>3) out=d.slice(0,3)+"."+d.slice(3);
+  el.value=out;
+  est.novo.cpf=d;
+  const av=$("novoAviso"); if(av) av.textContent="";
+}
+
+/* Validação real pelos dígitos verificadores: pega erro de digitação, que é o
+   defeito mais comum num cadastro feito à mão. */
+function cpfValido(cpf){
+  const d=soDigitos(cpf);
+  if(d.length!==11) return false;
+  if(/^(\d)\1{10}$/.test(d)) return false;      // 111.111.111-11 e afins
+  for(let t=9;t<11;t++){
+    let soma=0;
+    for(let i=0;i<t;i++) soma+=parseInt(d[i],10)*((t+1)-i);
+    let dig=(soma*10)%11; if(dig===10) dig=0;
+    if(dig!==parseInt(d[t],10)) return false;
+  }
+  return true;
+}
+
+/* mostra só o miolo: ***.456.789-** */
+function cpfMascarado(cpf){
+  const d=soDigitos(cpf);
+  if(d.length!==11) return "";
+  return "***."+d.slice(3,6)+"."+d.slice(6,9)+"-**";
+}
+
+function cadastrarNovo(){
+  const nome=String(est.novo.nome||"").trim();
+  const cpf=soDigitos(est.novo.cpf);
+  const av=$("novoAviso");
+  const erro=msg=>{ est.novo.erro=msg; if(av) av.textContent=msg; else renderCorpo(); };
+  if(nome.length<3) return erro("Informe o nome completo.");
+  if(!cpfValido(cpf)) return erro(cpf.length!==11 ? "O CPF precisa ter 11 dígitos." : "Esse CPF não é válido — confira os números.");
+  if(est.pessoas.some(p=>p.cpf&&p.cpf===cpf)) return erro("Já existe alguém na equipe com esse CPF.");
+  const id=Math.max(0,...est.pessoas.map(p=>p.id),...DISPONIVEIS.map(p=>p.id))+1;
+  const ch=[20,30,40].includes(+est.novo.ch)?+est.novo.ch:40;
+  est.pessoas.push({
+    id, nome, cpf, cargo:"(cargo a informar)", cat:est.novo.cat, ch,
+    dentro:true, novo:true,
+    v:DIAS_UTEIS.map(()=>({d:0, nota:"informe os dias"})),
+  });
+  MESES.forEach((_,i)=>est.tipo.set(k2(id,i), "execucao"));
+  est.novo={aberto:false, nome:"", cpf:"", cat:est.novo.cat, ch, erro:""};
+  render();
+}
 let tmr=null;
 function digitar(v){ est.termo=v; clearTimeout(tmr); tmr=setTimeout(renderCorpo,150); }
 
