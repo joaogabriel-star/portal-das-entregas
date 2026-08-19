@@ -133,7 +133,7 @@ function ingestBanco(lite){
   CAT_TXT=sample.map(e=>`${e.codigo} | ${e.entrega} | ${e.macro} > ${e.categoria}`).join("\n");
 }
 
-const CODIGO_RX = /\b\d{4}\.\d{4}\b/g;
+const CODIGO_RX = /\b\d{4}\.?\d{4}\b/g;   // aceita 0605.0016 e 06050016
 
 // ── Enquadramento em 2 fases: (1) retrieval local no banco completo, custo zero;
 //    (2) só as candidatas mais relevantes vão para a IA decidir. Barato + preciso. ──
@@ -185,6 +185,35 @@ function buscarCandidatas(texto, k=60){
   scored.sort((a,b)=>b[0]-a[0]);
   return scored.slice(0,k).map(x=>x[1]);
 }
+/* O modelo as vezes devolve o codigo com ponto (0605.0016) e o banco usa 8
+   digitos crus (06050016). Normaliza antes de procurar: sem isso a resposta
+   certa era descartada em silencio e a linha ficava sem sugestao. */
+/* ---------- expansão da consulta ----------
+   O casamento com o catálogo é léxico: a palavra que o gestor escreve precisa
+   ser a palavra que o catálogo usa. Medido neste banco: com paráfrase
+   ("celebração de ajustes" para "Contratos firmados"), a entrega certa era
+   recuperada em 1 de 6 casos; passando antes por esta tradução, 6 de 6.
+   Falhou a IA? Devolve o texto original e o fluxo segue como antes. */
+async function expandirConsulta(linhas){
+  const lista=(linhas||[]).slice(0,40).map(l=>String(l||"").trim()).filter(Boolean);
+  if(!lista.length) return linhas;
+  const sys="Você traduz o que uma área do governo escreve para o vocabulário do catálogo oficial de entregas do SISDIP. "
+    +"As entregas do catálogo são escritas como RESULTADO, no particípio: \"Portaria emitida\", \"Concursos públicos formalizados\", "
+    +"\"Materiais didáticos e instrucionais desenvolvidos\". Para CADA linha recebida, escreva de 5 a 12 termos que provavelmente "
+    +"aparecem na entrega correspondente — substantivos do domínio público e o resultado no particípio. Sem explicação, sem verbo no "
+    +"infinitivo, sem numeração. Responda APENAS um array JSON de strings, na mesma ordem e com o mesmo tamanho da entrada.";
+  const user=lista.map((l,i)=>i+": "+l).join("\n");
+  try{
+    const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1200,system:sys,
+      messages:[{role:"user",content:user}]});
+    const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+    const arr=JSON.parse(tx.replace(/```json|```/g,"").trim());
+    if(!Array.isArray(arr)) return lista;
+    // soma a tradução ao original: se a expansão vier ruim, não se perde o que o usuário escreveu
+    return lista.map((l,i)=> typeof arr[i]==="string" && arr[i].trim() ? l+" "+arr[i] : l);
+  }catch{ return lista; }
+}
+function normCod(c){ return String(c==null?"":c).replace(/\D/g,""); }
 function candidatasTxt(list){ return list.map(e=>`${e.codigo} | ${e.entrega}${e.servico?" | serviço: "+e.servico:""} | ${e.macro} > ${e.categoria}`).join("\n"); }
 
 // endpoints: em produção, a Netlify Function protege a chave; no preview do Claude,
@@ -836,7 +865,30 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
     if(!lista.length||carregando) return;
     setCarregando(true); setResposta(null); setQtd(0); setErro("");
     const textos=lista.filter(a=>a.tipo!=="pdf").map(a=>`Documento "${a.rotulo?`${a.rotulo} — ${a.nome}`:a.nome}":\n${a.texto}`).join("\n\n");
-    const cands=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),80);
+    /* Quando os anexos são só PDF (o caso normal: regimento e RGI), não há
+       texto extraído no navegador — e a busca de candidatas caía sobre o NOME
+       DOS ARQUIVOS. O modelo recebia o PDF certo e uma lista de candidatas
+       tirada de "regimento.pdf", proibido de sair dela. Agora, nesse caso, a
+       IA lê o PDF primeiro e devolve o que a unidade faz; é esse texto que
+       alimenta a busca. Se essa leitura falhar, seguimos com o catálogo amplo
+       em vez de trancar o modelo numa lista ruim. */
+    let baseBusca=textos, leituraPdf="";
+    if(!baseBusca && lista.some(a=>a.tipo==="pdf")){
+      try{
+        const so=lista.filter(a=>a.tipo==="pdf"&&a.pdfB64).slice(0,2)
+          .map(a=>({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}}));
+        if(so.length){
+          const d0=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:900,
+            system:"Leia os documentos e liste, uma por linha, as atividades e entregas que a unidade executa. "
+                  +"Escreva no vocabulário de resultado (particípio): \"Portaria emitida\", \"Concursos formalizados\". "
+                  +"Sem numeração, sem comentário, no máximo 25 linhas.",
+            messages:[{role:"user",content:so.concat([{type:"text",text:"Liste as atividades desta unidade."}])}]});
+          leituraPdf=(d0.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+          if(leituraPdf) baseBusca=leituraPdf;
+        }
+      }catch{ /* segue sem: o fallback abaixo evita a lista tirada do nome do arquivo */ }
+    }
+    const cands=baseBusca ? buscarCandidatas(textoDistintivo(baseBusca),80) : [];
     const catalogo=cands.length?candidatasTxt(cands):CAT_TXT;
     const ctx=[orgao&&`Órgão: ${orgao}`,unidade&&`Unidade: ${unidade}`].filter(Boolean).join(" · ");
     const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade — tipicamente Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e Regimento Interno, mas também outros que a unidade anexe (PGD, planejamento estratégico, etc.); o rótulo de cada documento vem junto do texto.${ctx?`\n${ctx}`:""}\nIdentifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código exatamente como aparece na lista de candidatas abaixo (8 dígitos, sem ponto — ex.: 02900067). Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
@@ -865,7 +917,7 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
     }
     conteudo.push({type:"text",text: textos ? `Documentos enviados (texto extraído):\n\n${textos}` : "Analise os documentos PDF anexados."});
     try{
-      const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1500,system:sys,messages:[{role:"user",content:conteudo}]});
+      const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:3000,system:sys,messages:[{role:"user",content:conteudo}]});
       const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n").trim();
       setResposta((tx||"Não consegui identificar nada nos documentos enviados.")+(avisoTamanho?`\n\n⚠️ ${avisoTamanho}`:""));
       // os códigos do banco são 8 dígitos sem ponto (ex.: 02900067) — a IA às
@@ -1056,6 +1108,21 @@ function textoDistintivo(t){
 
 /* Quebra o texto em atribuições/atividades e procura o que casa em cada uma —
    uma linha por ideia, que é como regimento e plano de trabalho são escritos. */
+function linhasDeTexto(texto){
+  return String(texto||"").split(/\n+/)
+    .map(l=>l.replace(/^\s*[IVXLCDM]+\s*[-–—]\s*/i,"").replace(/^\s*[a-z0-9]+[).]\s*/i,"").trim())
+    .filter(l=>l.length>18);
+}
+
+/* Casa cada linha com o catálogo. Se vier `expandidas`, usa a versão já
+   traduzida para o vocabulário do catálogo — é o que faz paráfrase funcionar. */
+function sugerirDeLinhas(linhas,expandidas){
+  return linhas.map((l,i)=>{
+    const consulta=(expandidas&&expandidas[i])?expandidas[i]:textoDistintivo(l);
+    return {texto:l, achados:buscarCandidatas(consulta,6).slice(0,4)};
+  }).filter(a=>a.achados.length);
+}
+
 function sugerirDoTexto(texto){
   const linhas=String(texto||"").split(/\n+/)
     .map(l=>l.replace(/^\s*[IVXLCDM]+\s*[-–—]\s*/i,"").replace(/^\s*[a-z0-9]+[).]\s*/i,"").trim())
@@ -1077,17 +1144,21 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
   const anexos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],
                 ["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
 
-  function ler(){
+  async function ler(){
     if(!String(texto||"").trim()){ flash&&flash("Cole as atribuições ou a lista de atividades primeiro."); return; }
     setLendo(true);
     // roda fora do clique para a tela não travar com 31 mil entregas
-    setTimeout(()=>{
-      const achados=sugerirDoTexto(texto);
+    setTimeout(async ()=>{
+      const linhas=linhasDeTexto(texto);
+      // tenta traduzir para o vocabulário do catálogo; sem IA, segue no léxico
+      let expandidas=null, comIA=false;
+      try{ expandidas=await expandirConsulta(linhas); comIA=Array.isArray(expandidas)&&expandidas.some((v,i)=>v!==linhas[i]); }catch{}
+      const achados=linhas.length?sugerirDeLinhas(linhas,expandidas):sugerirDoTexto(texto);
       setAtribs(achados);
       setSugeridos(new Set(achados.flatMap(a=>a.achados.map(e=>e.codigo))));
       setLendo(false); setAberto(false);
       flash&&flash(achados.length
-        ? achados.length+" trecho(s) lido(s) — as sugestões estão logo abaixo."
+        ? achados.length+" trecho(s) lido(s)"+(comIA?"":" — busca local, sem IA")+" — as sugestões estão logo abaixo."
         : "Não encontrei nada parecido. Tente descrever com as palavras do serviço.");
     },30);
   }
@@ -3702,7 +3773,7 @@ function Assistente({onAdd}){
       setMsgs(m=>[...m,{role:"assistant",content:"⚠️ Não consegui falar com o serviço de IA agora. Se o portal está publicado, verifique se a função de IA (backend) está configurada. O arquivo foi lido normalmente e você pode montar a descrição de área manualmente pelo catálogo."}]);
     } finally{ setLoad(false); }
   }
-  const render=content=>{ const cs=[...new Set(content.match(CODIGO_RX)||[])].filter(c=>codMap.has(c));
+  const render=content=>{ const cs=[...new Set((content.match(CODIGO_RX)||[]).map(normCod))].filter(c=>codMap.has(c));
     return (<><div className="px-msg-tx">{content}</div>{cs.length>0&&<div className="px-chips">{cs.map(c=><button key={c} className="px-chip2" onClick={()=>onAdd(codMap.get(c))}><Plus size={11}/> {c}</button>)}</div>}</>); };
   const corpo = (<>
       <div className="px-chat-b">
@@ -4317,9 +4388,12 @@ function ConversorUnificado({add,selSet,sel,notes,orgao,unidade,flash,onAbrirAss
   async function enquadrar(){ const linhas=linhasDoTexto(text); if((!linhas.length&&!anexo)||aiLoad) return;
     setAiLoad(true); setAviso("");
     try{
-      const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(ln,12)}));
+      const expandidas=await expandirConsulta(linhas);
+      // 12 candidatas por linha era apertado demais para paráfrase; 24 com a
+      // consulta já traduzida cobre bem mais sem inchar o pedido.
+      const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(expandidas[idx]||ln,24)}));
       const catalogoPorLinha=bloco.map(b=>`LINHA ${b.idx}: "${b.ln}"\ncandidatas:\n${candidatasTxt(b.cands)}`).join("\n\n");
-      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"0000.0000","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
+      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
       let userContent;
       if(anexo?.tipo==="pdf" && !linhas.length){
         userContent=[{type:"document",source:{type:"base64",media_type:"application/pdf",data:anexo.pdfB64}},{type:"text",text:"Extraia as entregas deste PDF (uma por linha, idx sequencial) e enquadre com até 5 opções cada. Responda só o array JSON."}];
@@ -4331,7 +4405,7 @@ function ConversorUnificado({add,selSet,sel,notes,orgao,unidade,flash,onAbrirAss
       const arr=JSON.parse(tx.replace(/```json|```/g,"").trim());
       const novos=linhas.map((ln,idx)=>{
         const r=arr.find(a=>a.idx===idx)||{opcoes:[]};
-        const opcoes=(r.opcoes||[]).filter(o=>o.cod&&codMap.has(o.cod)).slice(0,5)
+        const opcoes=(r.opcoes||[]).map(o=>({...o,cod:normCod(o.cod)})).filter(o=>o.cod&&codMap.has(o.cod)).slice(0,5)
           .map(o=>({cod:o.cod,conf:["alta","media","baixa"].includes(o.conf)?o.conf:"media",motivo:o.motivo||""}));
         const melhor=opcoes[0]||null;
         return {pgd:ln, opcoes, escolhido:melhor?.cod||null, novaProposta:opcoes.length===0,
@@ -4480,9 +4554,12 @@ function ConversorPGD({onClose,add,selSet,sel,notes,orgao,unidade,flash,inline})
   async function enquadrar(){ const linhas=linhasDoTexto(text); if((!linhas.length&&!anexo)||aiLoad) return;
     setAiLoad(true); setAviso(""); limparExemplo();
     try{
-      const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(ln,12)}));
+      const expandidas=await expandirConsulta(linhas);
+      // 12 candidatas por linha era apertado demais para paráfrase; 24 com a
+      // consulta já traduzida cobre bem mais sem inchar o pedido.
+      const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(expandidas[idx]||ln,24)}));
       const catalogoPorLinha=bloco.map(b=>`LINHA ${b.idx}: "${b.ln}"\ncandidatas:\n${candidatasTxt(b.cands)}`).join("\n\n");
-      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"0000.0000","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
+      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
       let userContent;
       if(anexo?.tipo==="pdf" && !linhas.length){
         userContent=[{type:"document",source:{type:"base64",media_type:"application/pdf",data:anexo.pdfB64}},{type:"text",text:"Extraia as entregas deste PDF (uma por linha, idx sequencial) e enquadre com até 5 opções cada. Responda só o array JSON."}];
@@ -4494,7 +4571,7 @@ function ConversorPGD({onClose,add,selSet,sel,notes,orgao,unidade,flash,inline})
       const arr=JSON.parse(tx.replace(/```json|```/g,"").trim());
       const novos=linhas.map((ln,idx)=>{
         const r=arr.find(a=>a.idx===idx)||{opcoes:[]};
-        const opcoes=(r.opcoes||[]).filter(o=>o.cod&&codMap.has(o.cod)).slice(0,5)
+        const opcoes=(r.opcoes||[]).map(o=>({...o,cod:normCod(o.cod)})).filter(o=>o.cod&&codMap.has(o.cod)).slice(0,5)
           .map(o=>({cod:o.cod,conf:["alta","media","baixa"].includes(o.conf)?o.conf:"media",motivo:o.motivo||""}));
         return {pgd:ln, opcoes, escolhido:opcoes[0]?.cod||null, novaProposta:opcoes.length===0, adicionada:false};
       });
