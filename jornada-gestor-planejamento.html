@@ -29,10 +29,15 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .h-back:hover{border-color:var(--primary)}
 
 .trilha{display:flex;gap:2px;padding:0 24px;overflow-x:auto;border-top:1px solid var(--hair)}
+.bt-exemplo{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 15px;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--sub);cursor:pointer;font-style:normal}
+.bt-exemplo:hover{border-color:var(--primary);color:var(--primary)}
 .tf{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--faint);
   white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
 a.tf:hover{color:var(--primary)}
 .tf.on{color:var(--primaryDark);border-bottom-color:var(--primary)}
+.tf-opc{margin-left:2px;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  background:var(--greySoft);color:var(--faint);border-radius:20px;padding:2px 6px}
 .tf-n{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--sub);font-family:var(--num);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tf.on .tf-n{background:var(--primary);color:#fff}
 
@@ -157,8 +162,8 @@ a.tf:hover{color:var(--primary)}
   </div>
   <div class="trilha">
     <a class="tf" href="./jornada-gestor-unidade.html"><span class="tf-n">1</span>Entregas e meses</a>
-    <div class="tf on"><span class="tf-n">2</span>Planejamento</div>
-    <a class="tf" href="./jornada-gestor-equipe.html"><span class="tf-n">3</span>Equipe e indicadores</a>
+    <a class="tf" href="./jornada-gestor-equipe.html"><span class="tf-n">2</span>Equipe e indicadores</a>
+    <div class="tf on"><span class="tf-n">3</span>Planejamento<span class="tf-opc">opcional</span></div>
   </div>
   <div class="ctx" id="ctx"></div>
 </header>
@@ -231,19 +236,29 @@ const OBJETIVOS = [
 const objDe = id => OBJETIVOS.find(o=>o.id===id) || null;
 
 /* as mesmas 5 entregas da tela 1 */
+/* Demonstração — não é dado de ninguém. O botão "ver um exemplo" carrega isto. */
+const EXEMPLO_ENTREGAS = [
+  {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", obj:null},
+  {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", obj:null},
+  {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", obj:null},
+  {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", obj:null},
+  {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", obj:null},
+];
+
 const est = {
   unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
   ciclo:"2026-1",
   foco:null,          // objetivo em destaque, quando o gestor clica num
-  entregas:[
-    {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", obj:null},
-    {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", obj:null},
-    {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", obj:null},
-    {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", obj:null},
-    {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", obj:null},
-  ],
+  entregas:[],   // vazio: vem da tela de entregas
   esforco:{},         // {cod: {h, eq}} — publicado pela tela de equipe
 };
+
+/* Carrega a demonstração. Existe para o gestor entender a tela sem ter
+   que preencher tudo antes — nunca vem ligado por padrão. */
+function carregarExemplo(){
+  est.entregas=EXEMPLO_ENTREGAS.map(e=>({...e}));
+  render();
+}
 
 const $  = id => document.getElementById(id);
 const n1 = v => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -340,6 +355,18 @@ function renderCtx(){
 }
 
 function renderCorpo(){
+  // sem entregas não há o que planejar: oferece a demonstração
+  if(!est.entregas.length){
+    $("wrap").innerHTML = `<div class="bloco" style="text-align:center;padding:38px 22px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px">Nada para planejar ainda</div>
+      <div style="font-size:12px;color:var(--sub);line-height:1.55;max-width:430px;margin:0 auto 14px">
+        O planejamento parte das entregas da unidade. Traga-as em <b>Entregas e meses</b> —
+        esta etapa é opcional e só faz sentido depois disso.</div>
+      <a class="bt-nav" href="./jornada-gestor-unidade.html">← Entregas e meses</a>
+      <button class="bt-exemplo" style="margin-left:8px" onclick="carregarExemplo()">ver um exemplo preenchido</button>
+    </div>`;
+    return;
+  }
   $("wrap").innerHTML = faixaCiclo() + blocoDistribuicao() +
     `<div class="grade">${colObjetivos()}${colEntregas()}</div>` + rodape();
 }
@@ -516,8 +543,8 @@ function rodape(){
       <div class="rod-s">O plano vale de ${datasDoCiclo().ini} a ${datasDoCiclo().fim}.</div>
     </div>
     <div class="rod-dir">
-      <a class="bt-nav" href="./jornada-gestor-unidade.html">← Entregas e meses</a>
-      <a class="bt-nav forte" href="./jornada-gestor-equipe.html">Equipe e indicadores →</a>
+      <a class="bt-nav" href="./jornada-gestor-equipe.html">← Equipe e indicadores</a>
+      <a class="bt-nav forte" href="./jornada-gestor-unidade.html">Voltar às entregas →</a>
     </div>
   </div>`;
 }

@@ -29,10 +29,15 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .h-back:hover{border-color:var(--primary)}
 
 .trilha{display:flex;gap:2px;padding:0 24px;overflow-x:auto;border-top:1px solid var(--hair)}
+.bt-exemplo{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 15px;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--sub);cursor:pointer;font-style:normal}
+.bt-exemplo:hover{border-color:var(--primary);color:var(--primary)}
 .tf{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--faint);
   white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
 a.tf:hover{color:var(--primary)}
 .tf.on{color:var(--primaryDark);border-bottom-color:var(--primary)}
+.tf-opc{margin-left:2px;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  background:var(--greySoft);color:var(--faint);border-radius:20px;padding:2px 6px}
 .tf-n{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--sub);font-family:var(--num);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tf.on .tf-n{background:var(--primary);color:#fff}
 
@@ -311,8 +316,8 @@ a.tf:hover{color:var(--primary)}
   </div>
   <div class="trilha">
     <a class="tf" href="./jornada-gestor-unidade.html"><span class="tf-n">1</span>Entregas e meses</a>
-    <a class="tf" href="./jornada-gestor-planejamento.html"><span class="tf-n">2</span>Planejamento</a>
-    <div class="tf on"><span class="tf-n">3</span>Equipe e indicadores</div>
+    <div class="tf on"><span class="tf-n">2</span>Equipe e indicadores</div>
+    <a class="tf" href="./jornada-gestor-planejamento.html"><span class="tf-n">3</span>Planejamento<span class="tf-opc">opcional</span></a>
   </div>
   <div class="ctx" id="ctx"></div>
 </header>
@@ -429,6 +434,24 @@ function gravarPasso(k,v){
        localStorage.setItem(CHAVE_JORNADA, JSON.stringify(j)); }catch(e){}
 }
 
+/* Demonstração — não é dado de ninguém. O botão "ver um exemplo" carrega isto. */
+const EXEMPLO_PESSOAS = [
+  /* v[i] = {d: dias em que pertencia à unidade naquele mês, nota} */
+  {id:1, nome:"Ana Ribeiro",    cargo:"Analista Técnico de Políticas Sociais", cat:"servidor",     ch:40, dentro:true, v:null},
+  {id:2, nome:"Bruno Sales",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true, v:null},
+  {id:3, nome:"Carla Nunes",    cargo:"Técnica Administrativa",                cat:"servidor",     ch:40, dentro:true,
+   v:[{d:0,nota:"ainda não estava"},{d:11,nota:"entrou dia 14"},{d:22,nota:""}]},
+  {id:4, nome:"Diego Matos",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true,
+   v:[{d:22,nota:""},{d:21,nota:""},{d:7,nota:"saiu dia 10"}]},
+  {id:5, nome:"Elaine Prado",   cargo:"Coordenadora-Geral",                    cat:"servidor",     ch:40, dentro:true, v:null},
+  {id:6, nome:"Fábio Lima",     cargo:"Apoio administrativo",                  cat:"terceirizado", ch:40, dentro:true, v:null},
+  {id:7, nome:"Gabriela Souza", cargo:"Analista (cedida da CGSD)",             cat:"forca",        ch:20, dentro:true,
+   v:[{d:0,nota:"não estava"},{d:0,nota:"não estava"},{d:22,nota:"força-tarefa"}]},
+  {id:8, nome:"Heitor Campos",  cargo:"Estagiário",                            cat:"estagiario",   ch:20, dentro:true, v:null},
+  {id:9, nome:"Iara Mendes",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true,
+   v:[{d:0,nota:"cedida a outro órgão"},{d:0,nota:"cedida"},{d:0,nota:"cedida"}]},
+];
+
 const est = {
   unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
   visao:"presenca",
@@ -446,22 +469,7 @@ const est = {
   extras:new Map(),      // "pid|mes" → horas extras
   tipo:new Map(),        // "pid|mes" → chave de TIPOS
   esforco:new Map(),     // "pid|cod" → {v, origem:"equipe"|"gestor"|"anterior", quem, em}
-  pessoas:[
-    /* v[i] = {d: dias em que pertencia à unidade naquele mês, nota} */
-    {id:1, nome:"Ana Ribeiro",    cargo:"Analista Técnico de Políticas Sociais", cat:"servidor",     ch:40, dentro:true, v:null},
-    {id:2, nome:"Bruno Sales",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true, v:null},
-    {id:3, nome:"Carla Nunes",    cargo:"Técnica Administrativa",                cat:"servidor",     ch:40, dentro:true,
-     v:[{d:0,nota:"ainda não estava"},{d:11,nota:"entrou dia 14"},{d:22,nota:""}]},
-    {id:4, nome:"Diego Matos",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true,
-     v:[{d:22,nota:""},{d:21,nota:""},{d:7,nota:"saiu dia 10"}]},
-    {id:5, nome:"Elaine Prado",   cargo:"Coordenadora-Geral",                    cat:"servidor",     ch:40, dentro:true, v:null},
-    {id:6, nome:"Fábio Lima",     cargo:"Apoio administrativo",                  cat:"terceirizado", ch:40, dentro:true, v:null},
-    {id:7, nome:"Gabriela Souza", cargo:"Analista (cedida da CGSD)",             cat:"forca",        ch:20, dentro:true,
-     v:[{d:0,nota:"não estava"},{d:0,nota:"não estava"},{d:22,nota:"força-tarefa"}]},
-    {id:8, nome:"Heitor Campos",  cargo:"Estagiário",                            cat:"estagiario",   ch:20, dentro:true, v:null},
-    {id:9, nome:"Iara Mendes",    cargo:"Analista Técnico Administrativo",       cat:"servidor",     ch:40, dentro:true,
-     v:[{d:0,nota:"cedida a outro órgão"},{d:0,nota:"cedida"},{d:0,nota:"cedida"}]},
-  ],
+  pessoas:[],   // vazio: o gestor cadastra ou traz da busca
 };
 
 /* gente que o gestor pode chamar — busca, não digitação do zero */
@@ -473,7 +481,9 @@ const DISPONIVEIS = [
   {id:105, nome:"Tiago Rocha",   cargo:"Analista Técnico Administrativo", origem:"CGAT · SEGES",       cat:"forca",        ch:40},
 ];
 
-(function semear(){
+/* Números de demonstração das 9 pessoas de exemplo. Só roda pelo botão:
+   com a equipe vazia, este bloco quebrava ao procurar pessoa que não existe. */
+function semear(){
   /* quem não tem vínculo declarado esteve o mês inteiro */
   for(const p of est.pessoas)
     if(!p.v) p.v = DIAS_UTEIS.map(d=>({d, nota:""}));
@@ -514,7 +524,15 @@ const DISPONIVEIS = [
     arr.forEach((v,i)=>est.esforco.set(pid+"|"+ENTREGAS[i].c,
       {v, origem: em?"equipe":"anterior", quem: em?pe.nome.split(" ")[0]:null, em: em||null}));
   }
-})();
+}
+
+/* Carrega a demonstração. Existe para o gestor entender a tela sem ter
+   que preencher tudo antes — nunca vem ligado por padrão. */
+function carregarExemplo(){
+  est.pessoas=EXEMPLO_PESSOAS.map(p=>({...p, v:p.v?p.v.map(x=>({...x})):null}));
+  semear();   // preenche dias, perdas, tipos e esforço das pessoas de exemplo
+  render();
+}
 
 const $ = id => document.getElementById(id);
 const k2 = (a,b) => a+"|"+b;
@@ -901,6 +919,7 @@ function blocoAdicionar(){
       <button class="novo-abrir" onclick="alternarNovo()">
         <span>+</span> Não encontrou? Cadastrar pessoa nova
       </button>`}
+      ${est.pessoas.length?``:`<button class="bt-exemplo" style="width:100%;margin-top:8px" onclick="carregarExemplo()">ver um exemplo preenchido</button>`}
       <button class="exp-equipe" onclick="exportarEquipe()" title="Baixa um .csv com a equipe — fica no seu computador">
         ↓ Exportar equipe em planilha
       </button>
