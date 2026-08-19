@@ -133,7 +133,7 @@ function ingestBanco(lite){
   CAT_TXT=sample.map(e=>`${e.codigo} | ${e.entrega} | ${e.macro} > ${e.categoria}`).join("\n");
 }
 
-const CODIGO_RX = /\b\d{4}\.\d{4}\b/g;
+const CODIGO_RX = /\b\d{4}\.?\d{4}\b/g;   // aceita 0605.0016 e 06050016
 
 // ── Enquadramento em 2 fases: (1) retrieval local no banco completo, custo zero;
 //    (2) só as candidatas mais relevantes vão para a IA decidir. Barato + preciso. ──
@@ -865,7 +865,30 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
     if(!lista.length||carregando) return;
     setCarregando(true); setResposta(null); setQtd(0); setErro("");
     const textos=lista.filter(a=>a.tipo!=="pdf").map(a=>`Documento "${a.rotulo?`${a.rotulo} — ${a.nome}`:a.nome}":\n${a.texto}`).join("\n\n");
-    const cands=buscarCandidatas(textos||lista.map(a=>a.nome).join(" "),80);
+    /* Quando os anexos são só PDF (o caso normal: regimento e RGI), não há
+       texto extraído no navegador — e a busca de candidatas caía sobre o NOME
+       DOS ARQUIVOS. O modelo recebia o PDF certo e uma lista de candidatas
+       tirada de "regimento.pdf", proibido de sair dela. Agora, nesse caso, a
+       IA lê o PDF primeiro e devolve o que a unidade faz; é esse texto que
+       alimenta a busca. Se essa leitura falhar, seguimos com o catálogo amplo
+       em vez de trancar o modelo numa lista ruim. */
+    let baseBusca=textos, leituraPdf="";
+    if(!baseBusca && lista.some(a=>a.tipo==="pdf")){
+      try{
+        const so=lista.filter(a=>a.tipo==="pdf"&&a.pdfB64).slice(0,2)
+          .map(a=>({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}}));
+        if(so.length){
+          const d0=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:900,
+            system:"Leia os documentos e liste, uma por linha, as atividades e entregas que a unidade executa. "
+                  +"Escreva no vocabulário de resultado (particípio): \"Portaria emitida\", \"Concursos formalizados\". "
+                  +"Sem numeração, sem comentário, no máximo 25 linhas.",
+            messages:[{role:"user",content:so.concat([{type:"text",text:"Liste as atividades desta unidade."}])}]});
+          leituraPdf=(d0.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+          if(leituraPdf) baseBusca=leituraPdf;
+        }
+      }catch{ /* segue sem: o fallback abaixo evita a lista tirada do nome do arquivo */ }
+    }
+    const cands=baseBusca ? buscarCandidatas(textoDistintivo(baseBusca),80) : [];
     const catalogo=cands.length?candidatasTxt(cands):CAT_TXT;
     const ctx=[orgao&&`Órgão: ${orgao}`,unidade&&`Unidade: ${unidade}`].filter(Boolean).join(" · ");
     const sys=`Você é o Assistente de Marcos Referenciais do SISDIP/DFT (setor público federal). Recebe documentos institucionais de uma unidade — tipicamente Cadeia de Valor, Estrutura Organizacional, Relatório de Gestão Integrado e Regimento Interno, mas também outros que a unidade anexe (PGD, planejamento estratégico, etc.); o rótulo de cada documento vem junto do texto.${ctx?`\n${ctx}`:""}\nIdentifique quais macroprocessos, processos e serviços do catálogo essa unidade executa, citando sempre o código exatamente como aparece na lista de candidatas abaixo (8 dígitos, sem ponto — ex.: 02900067). Baseie-se SOMENTE nas entregas candidatas abaixo. Agrupe por macroprocesso e explique brevemente cada escolha.\nEntregas candidatas (código | entrega | macro > categoria):\n${catalogo}`;
@@ -894,7 +917,7 @@ function MarcosReferenciais({onAdd,onDone,arqs,setArqs,resposta,setResposta,qtd,
     }
     conteudo.push({type:"text",text: textos ? `Documentos enviados (texto extraído):\n\n${textos}` : "Analise os documentos PDF anexados."});
     try{
-      const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1500,system:sys,messages:[{role:"user",content:conteudo}]});
+      const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:3000,system:sys,messages:[{role:"user",content:conteudo}]});
       const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n").trim();
       setResposta((tx||"Não consegui identificar nada nos documentos enviados.")+(avisoTamanho?`\n\n⚠️ ${avisoTamanho}`:""));
       // os códigos do banco são 8 dígitos sem ponto (ex.: 02900067) — a IA às
@@ -3731,7 +3754,7 @@ function Assistente({onAdd}){
       setMsgs(m=>[...m,{role:"assistant",content:"⚠️ Não consegui falar com o serviço de IA agora. Se o portal está publicado, verifique se a função de IA (backend) está configurada. O arquivo foi lido normalmente e você pode montar a descrição de área manualmente pelo catálogo."}]);
     } finally{ setLoad(false); }
   }
-  const render=content=>{ const cs=[...new Set(content.match(CODIGO_RX)||[])].filter(c=>codMap.has(c));
+  const render=content=>{ const cs=[...new Set((content.match(CODIGO_RX)||[]).map(normCod))].filter(c=>codMap.has(c));
     return (<><div className="px-msg-tx">{content}</div>{cs.length>0&&<div className="px-chips">{cs.map(c=><button key={c} className="px-chip2" onClick={()=>onAdd(codMap.get(c))}><Plus size={11}/> {c}</button>)}</div>}</>); };
   const corpo = (<>
       <div className="px-chat-b">
