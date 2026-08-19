@@ -10,7 +10,7 @@ import {
   Menu, Columns, Home, Workflow, Target, ChevronLeft,
   GitMerge, Layers, ClipboardCheck, FilePlus2, RotateCcw, Trophy,
   TrendingDown, TrendingUp, Minus, BarChart3, Clock, CircleDot, ExternalLink, ZoomIn, ZoomOut, Maximize2,
-  AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle,
+  AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle, GraduationCap,
   CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, UploadCloud,
   FlaskConical,
 } from "lucide-react";
@@ -294,6 +294,12 @@ export default function PortalEntregas(){
   const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
   const [escopo,setEscopo]=useState("sel");      // níveis: "sel" (o que a IA achou) · "tudo" (catálogo inteiro)
   const [vistaEntrega,setVistaEntrega]=useState("lista"); // nível 4: "lista" · "arvore"
+  /* Mapa da Unidade: o texto de partida, o que foi lido dele e as sugestões.
+     Vive aqui (e não dentro do componente) para não se perder ao trocar de aba. */
+  const [respons,setRespons]=useState("");
+  const [mapaTexto,setMapaTexto]=useState("");
+  const [mapaAtribs,setMapaAtribs]=useState([]);
+  const [mapaSugeridos,setMapaSugeridos]=useState(new Set());
   const [trocarUnidade,setTrocarUnidade]=useState(false); // modal de cadastro/troca da unidade
   const [descDrawer,setDescDrawer]=useState(false);
   const [descView,setDescView]=useState("lista");
@@ -386,14 +392,16 @@ export default function PortalEntregas(){
      Descer leva o filtro do nível junto; a trilha no topo sobe de volta.
      Reaproveita os filtros que já existiam (macroF / catF / servF), então a
      Lista e a barra de filtros ativos continuam funcionando sem mudança. */
-  const descerNivel=(nivel,valor,semServico)=>{
-    if(nivel==="macro"){ setMacroF(valor||null); setCatF(null); setServF(null); setMode("processo"); return; }
-    if(nivel==="processo"){ setCatF(valor||null); setServF(null); setMode("servico"); return; }
+  /* Descer um nível. No Mapa as 4 colunas convivem na tela, então lá o filtro
+     muda mas a aba continua sendo o Mapa (trocarAba=false). */
+  const descerNivel=(nivel,valor,semServico,trocarAba=true)=>{
+    if(nivel==="macro"){ setMacroF(valor||null); setCatF(null); setServF(null); if(trocarAba) setMode("processo"); return; }
+    if(nivel==="processo"){ setCatF(valor||null); setServF(null); if(trocarAba) setMode("servico"); return; }
     // no nível Serviço, o grupo "sem serviço específico" não tem valor próprio
     // que sirva de filtro quando não há processo escolhido — nesse caso desce
     // sem fixar o serviço, mostrando as entregas do recorte atual.
     setServF(semServico && !catF ? null : (valor||null));
-    setMode("lista");
+    if(trocarAba) setMode("lista");
   };
   const irNivel=id=>{
     if(id==="macro"){ setMacroF(null); setCatF(null); setServF(null); }
@@ -404,12 +412,12 @@ export default function PortalEntregas(){
   const limparTrilha=()=>{ setMacroF(null); setCatF(null); setServF(null); };
 
   /* ---- caminho de 4 etapas (navegação principal) ---- */
-  const etapaAtual = secao!=="catalogo" ? 0 : (mode==="marcos" ? 1 : 2);
+  const etapaAtual = secao!=="catalogo" ? 0 : (mode==="mapa" ? 1 : 2);
   // "feito" só quando há sinal concreto; as etapas 3 e 4 vivem em páginas
   // separadas, então não têm como se marcar sozinhas aqui.
   const etapasFeitas = { 1: !!(orgao||unidade), 2: sel.length>0 };
   const irParaEtapa = n => {
-    if(n===1){ setSecao("catalogo"); setMode("marcos"); return; }
+    if(n===1){ setSecao("catalogo"); setMode("mapa"); return; }
     if(n===2){ setSecao("catalogo"); setMode("macro"); return; }
     if(typeof window==="undefined") return;
     window.location.href = n===3 ? "./jornada-gestor-unidade.html" : "./organizacoes.html";
@@ -427,9 +435,17 @@ export default function PortalEntregas(){
         </div>
         <nav className="px-nav" aria-label="Seções do portal">
           <button className={`px-nav-item ${secao==="inicio"?"on":""}`}
-            onClick={()=>setSecao("inicio")}><Home size={14}/><span>Início</span></button>
+            onClick={()=>setSecao("inicio")}><Home size={14}/><span>Meu painel</span></button>
+          <button className={`px-nav-item ${secao==="catalogo"?"on":""}`}
+            onClick={()=>{setSecao("catalogo");setMode("mapa");}}><MapPin size={14}/><span>Mapa da Unidade</span></button>
+          <button className="px-nav-item"
+            onClick={()=>{ if(typeof window!=="undefined") window.location.href="./jornada-gestor-unidade.html"; }}
+            title="Ciclo da unidade: entregas por mês, equipe e indicadores"><Users size={14}/><span>Ciclo da unidade</span></button>
+          <button className="px-nav-item"
+            onClick={()=>{ if(typeof window!=="undefined") window.location.href="./organizacoes.html"; }}
+            title="Organograma, dimensionamento e relatório por unidade"><Building2 size={14}/><span>Órgãos</span></button>
           <button className={`px-nav-item ${secao==="mentoria"?"on":""}`}
-            onClick={()=>setSecao("mentoria")}><Users size={14}/><span>Mentoria</span></button>
+            onClick={()=>setSecao("mentoria")}><GraduationCap size={14}/><span>Mentoria</span></button>
         </nav>
         <div className="px-head-r">
           <button className="px-org" onClick={()=>setTrocarUnidade(true)}
@@ -510,7 +526,7 @@ export default function PortalEntregas(){
         <div className="px-modes-row">
           <div className="px-modes">
             {/* os 5 passos do trabalho: começar → descer os níveis → chegar na entrega */}
-            <button className={`px-mode ${mode==="marcos"?"on":""}`} onClick={()=>setMode("marcos")} title="Início — traga os documentos da unidade"><Home size={15}/> <span className="px-mode-lbl">Início</span></button>
+            <button className={`px-mode ${mode==="mapa"?"on":""}`} onClick={()=>setMode("mapa")} title="Mapa da Unidade — quem é a unidade, o que ela faz e o desenho nos 4 níveis"><MapPin size={15}/> <span className="px-mode-lbl">Mapa da Unidade</span></button>
             <button className={`px-mode ${mode==="macro"?"on":""}`} onClick={()=>setMode("macro")} title="Macroprocessos"><Layers size={15}/> <span className="px-mode-lbl">Macroprocessos</span></button>
             <button className={`px-mode ${mode==="processo"?"on":""}`} onClick={()=>setMode("processo")} title="Processo"><PieChart size={15}/> <span className="px-mode-lbl">Processo</span></button>
             <button className={`px-mode ${mode==="servico"?"on":""}`} onClick={()=>setMode("servico")} title="Serviço"><Sparkles size={15}/> <span className="px-mode-lbl">Serviço</span></button>
@@ -560,14 +576,15 @@ export default function PortalEntregas(){
               </>}
               {mode==="sunburst" && <Sunburst res={res} add={add} rem={rem} selSet={selSet} compare={compare} toggleCompare={toggleCompare} onFlag={setFlagFor} justAdded={justAdded}/>}
               {mode==="nova" && <NovaEntregaCatalogo onFlash={flash} onPropose={t=>setNovaFor(t||"")}/>}
-              {mode==="marcos" && <MarcosReferenciais onAdd={add} onDone={()=>setMode("macro")}
-                arqs={marcosArqs} setArqs={setMarcosArqs}
-                resposta={marcosResposta} setResposta={setMarcosResposta}
-                qtd={marcosQtd} setQtd={setMarcosQtd}
-                erro={marcosErro} setErro={setMarcosErro}
+              {mode==="mapa" && <MapaDaUnidade sel={sel} selSet={selSet} add={add} rem={rem}
                 orgao={orgao} unidade={unidade} setOrgao={setOrgao} setUnidade={setUnidade}
-                conversor={<ConversorUnificado add={add} selSet={selSet} sel={sel} notes={notes}
-                  orgao={orgao} unidade={unidade} flash={flash} onAbrirAssistente={()=>setMode("assistente")}/>}/>}
+                respons={respons} setRespons={setRespons}
+                arqs={marcosArqs} setArqs={setMarcosArqs}
+                texto={mapaTexto} setTexto={setMapaTexto}
+                atribs={mapaAtribs} setAtribs={setMapaAtribs}
+                sugeridos={mapaSugeridos} setSugeridos={setMapaSugeridos}
+                trilha={{macro:macroF,processo:catF,servico:servF}}
+                descer={(n,v,ss)=>descerNivel(n,v,ss,false)} onGoNova={()=>setMode("nova")} flash={flash} bancoN={bancoN}/>}
               {(mode==="macro"||mode==="processo"||mode==="servico") &&
                 <NivelCatalogo nivel={mode} sel={sel} selSet={selSet} add={add} rem={rem}
                   escopo={escopo} setEscopo={setEscopo}
@@ -1013,6 +1030,343 @@ function VazioSelecaoIA({Icone}){
    O escopo alterna entre "só o que está na Descrição da Área" (o que a IA
    encontrou, que é o padrão) e "todo o catálogo".
 ============================================================================ */
+/* ============================================================================
+   MAPA DA UNIDADE — porta de entrada do Catálogo.
+   Substitui a antiga aba "Início": num só lugar a unidade se apresenta, traz
+   seus documentos, cola o que já tem escrito e sai desenhando nos 4 níveis.
+   O desenho é o MESMO estado do catálogo (a Descrição da Área), então dá para
+   alternar entre desenhar aqui e escolher entregas nas outras abas.
+============================================================================ */
+
+/* Vocabulário que todo regimento repete. Sem tirar isso, "coordenar" pesa
+   tanto quanto "concursos" e a atribuição certa afunda no meio de genéricos. */
+const VERBOS_REGIMENTO=new Set(("planejar coordenar supervisionar monitorar executar promover elaborar "
+ +"desenvolver acompanhar fiscalizar prestar propor subsidiar orientar articular apoiar gerir administrar "
+ +"implementar implantar avaliar analisar manter assegurar garantir definir estabelecer realizar participar "
+ +"zelar exercer dirigir conduzir formular instituir consolidar autorizar deliberar representar aprovar "
+ +"atividades acoes processos procedimentos instituicoes atores ambito respectivas respectivos demais "
+ +"competencias competencia unidade unidades orgao orgaos entidades entidade outras outros diversos "
+ +"aplicacao execucao gestao areas trabalho trabalhos forma formas meio meios").split(/\s+/));
+
+function textoDistintivo(t){
+  const limpo=norm(t).replace(/[^a-z0-9\s]/g," ").split(/\s+/)
+    .filter(w=>w.length>3 && !VERBOS_REGIMENTO.has(w)).join(" ");
+  return limpo.length>4 ? limpo : t;
+}
+
+/* Quebra o texto em atribuições/atividades e procura o que casa em cada uma —
+   uma linha por ideia, que é como regimento e plano de trabalho são escritos. */
+function sugerirDoTexto(texto){
+  const linhas=String(texto||"").split(/\n+/)
+    .map(l=>l.replace(/^\s*[IVXLCDM]+\s*[-–—]\s*/i,"").replace(/^\s*[a-z0-9]+[).]\s*/i,"").trim())
+    .filter(l=>l.length>18);
+  const alvo=linhas.length?linhas:[String(texto||"")];
+  return alvo.map(l=>{
+    const cands=buscarCandidatas(textoDistintivo(l),6);
+    return {texto:l, achados:cands.slice(0,4)};
+  }).filter(a=>a.achados.length);
+}
+
+function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,respons,setRespons,
+                        arqs,setArqs,texto,setTexto,atribs,setAtribs,sugeridos,setSugeridos,
+                        trilha,descer,onGoNova,flash,bancoN}){
+  const [lendo,setLendo]=useState(false);
+  const [aberto,setAberto]=useState(true);      // a leitura recolhe depois de rodar
+  const [busca,setBusca]=useState({macro:"",processo:"",servico:"",entrega:""});
+  const [criar,setCriar]=useState(null);
+  const anexos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],
+                ["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
+
+  function ler(){
+    if(!String(texto||"").trim()){ flash&&flash("Cole as atribuições ou a lista de atividades primeiro."); return; }
+    setLendo(true);
+    // roda fora do clique para a tela não travar com 31 mil entregas
+    setTimeout(()=>{
+      const achados=sugerirDoTexto(texto);
+      setAtribs(achados);
+      setSugeridos(new Set(achados.flatMap(a=>a.achados.map(e=>e.codigo))));
+      setLendo(false); setAberto(false);
+      flash&&flash(achados.length
+        ? achados.length+" trecho(s) lido(s) — as sugestões estão logo abaixo."
+        : "Não encontrei nada parecido. Tente descrever com as palavras do serviço.");
+    },30);
+  }
+
+  async function anexar(chave,ev){
+    const f=ev.target.files?.[0]; if(!f) return;
+    try{
+      const a=await lerArquivo(f);
+      setArqs(s=>({...s,[chave]:a}));
+      // o texto do documento entra no campo de leitura, que é o que é lido
+      if(a.texto) setTexto(t=>(t?t+"\n":"")+a.texto.slice(0,4000));
+      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado.":"Anexado.");
+    }catch(err){ flash&&flash(err.message||"Não consegui ler o arquivo."); }
+    finally{ ev.target.value=""; }
+  }
+
+  const totalSug=atribs.reduce((s,a)=>s+a.achados.length,0);
+  const sugNoMapa=[...sugeridos].filter(c=>selSet.has(c)).length;
+
+  const colunas=useMemo(()=>{
+    const sob=nivel=>ENTREGAS.filter(e=>{
+      if(nivel>0 && trilha.macro && e.macro!==trilha.macro) return false;
+      if(nivel>1 && trilha.processo && e.categoria!==trilha.processo) return false;
+      if(nivel>2 && trilha.servico!=null && (e.servico||SEM_SERVICO)!==trilha.servico) return false;
+      return true;
+    });
+    const agrupa=(itens,campo)=>{
+      const m=new Map();
+      itens.forEach(e=>{
+        const v = campo==="servico" ? (e.servico||SEM_SERVICO) : e[campo];
+        if(!v) return;
+        if(!m.has(v)) m.set(v,{nome:v,valor:v,itens:[],nat:e.natureza,semServ:campo==="servico"&&!e.servico});
+        m.get(v).itens.push(e);
+      });
+      return [...m.values()];
+    };
+    return {
+      macro:    agrupa(sob(0),"macro"),
+      processo: agrupa(sob(1),"categoria"),
+      servico:  agrupa(sob(2),"servico"),
+      entrega:  sob(3).map(e=>({nome:e.entrega,valor:e.codigo,itens:[e],nat:e.natureza,cod:e.codigo})),
+    };
+  },[trilha.macro,trilha.processo,trilha.servico,bancoN]);
+
+  function ordenar(lista,chave){
+    const q=norm(busca[chave]||"");
+    return lista
+      .filter(g=>!q||norm(g.nome).includes(q))
+      .sort((a,b)=>{
+        const sa=a.itens.some(e=>sugeridos.has(e.codigo))?0:1;
+        const sb=b.itens.some(e=>sugeridos.has(e.codigo))?0:1;
+        if(sa!==sb) return sa-sb;
+        const ma=a.itens.some(e=>selSet.has(e.codigo))?0:1;
+        const mb=b.itens.some(e=>selSet.has(e.codigo))?0:1;
+        if(ma!==mb) return ma-mb;
+        return chave==="entrega" ? a.nome.localeCompare(b.nome) : b.itens.length-a.itens.length;
+      })
+      .slice(0, chave==="entrega"?300:600);
+  }
+
+  function alternar(g){
+    const dentro=g.itens.filter(e=>selSet.has(e.codigo));
+    if(dentro.length===g.itens.length) g.itens.forEach(e=>rem(e.codigo));
+    else g.itens.forEach(e=>{ if(!selSet.has(e.codigo)) add(e); });
+  }
+
+  const NIVEL_INFO=[
+    {id:"macro",    rot:"Macroprocesso", ic:Layers},
+    {id:"processo", rot:"Processo",      ic:PieChart},
+    {id:"servico",  rot:"Serviço",       ic:Sparkles},
+    {id:"entrega",  rot:"Entrega",       ic:LayoutGrid},
+  ];
+  const natDoRamo = trilha.macro ? (ENTREGAS.find(e=>e.macro===trilha.macro)||{}).natureza : null;
+
+  return (
+    <div className="mu">
+      <div className="mu-topo">
+        <div className="mu-card">
+          <div className="mu-card-h"><Building2 size={14}/> <b>A unidade</b></div>
+          <div className="mu-campos">
+            <label>Órgão<input value={orgao} onChange={e=>setOrgao(e.target.value)} placeholder="Ex.: Enap"/></label>
+            <label>Unidade<input value={unidade} onChange={e=>setUnidade(e.target.value)} placeholder="Ex.: Diretoria de Concursos Públicos"/></label>
+            <label>Responsável<input value={respons} onChange={e=>setRespons(e.target.value)} placeholder="Seu nome"/></label>
+          </div>
+          <div className="mu-anexos">
+            {anexos.map(([k,rot])=>(
+              <label key={k} className={`mu-anexo ${arqs[k]?"tem":""}`} title={arqs[k]?arqs[k].nome:"Anexar "+rot}>
+                <Paperclip size={11}/>
+                <span>{arqs[k]?arqs[k].nome:rot}</span>
+                {arqs[k]
+                  ? <button onClick={ev=>{ev.preventDefault();setArqs(s=>({...s,[k]:null}));}}><X size={10}/></button>
+                  : <input type="file" accept=".pdf,.docx,.xlsx,.csv" style={{display:"none"}} onChange={ev=>anexar(k,ev)}/>}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="mu-card">
+          <div className="mu-card-h"><Bot size={14}/> <b>De onde partimos</b>
+            {!aberto && <button className="mu-rever" onClick={()=>setAberto(true)}>rever texto</button>}
+          </div>
+          {aberto ? <>
+            <p className="mu-d">Cole as atribuições do regimento ou do decreto <b>e também</b> a lista de atividades que a área já mantém — plano do PGD, planilha de rotinas. Uma por linha. Anexar um documento ao lado também traz o texto para cá.</p>
+            <textarea className="mu-ta" value={texto} onChange={e=>setTexto(e.target.value)}
+              placeholder={"I - planejar, coordenar e supervisionar…\nAnalisar solicitações de concurso público\nElaborar edital"}/>
+            <div className="mu-acoes">
+              <button className="mu-btn p" onClick={ler} disabled={lendo}>
+                <Sparkles size={14}/> {lendo?"Lendo…":"Ler e sugerir"}
+              </button>
+              <button className="mu-btn g" onClick={()=>{setTexto("");setAtribs([]);setSugeridos(new Set());}}>Limpar</button>
+            </div>
+          </> : (
+            <div className="mu-resumo">
+              <span className="mu-ok"><Check size={12}/></span>
+              <span><b>{atribs.length}</b> trecho(s) · <b>{totalSug}</b> sugestões
+                {sugNoMapa?<> · <b style={{color:C.green}}>{sugNoMapa}</b> no mapa</>:null}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {atribs.length>0 && (
+        <div className="mu-sug">
+          <div className="mu-sug-h">
+            <Sparkles size={14}/> <b>O que encontramos no catálogo</b>
+            <span className="mu-sug-n">{totalSug} sugestões</span>
+            <button className="mu-btn v" onClick={()=>{
+              let n=0; atribs.forEach(a=>a.achados.forEach(e=>{ if(!selSet.has(e.codigo)){ add(e); n++; } }));
+              flash&&flash(n?n+" entregas postas no mapa.":"Todas já estavam no mapa.");
+            }}><Plus size={13}/> Pôr todas no mapa</button>
+          </div>
+          <div className="mu-sug-body">
+            {atribs.map((a,i)=>(
+              <div className="mu-atrib" key={i}>
+                <div className="mu-atrib-t">{a.texto.length>150?a.texto.slice(0,148)+"…":a.texto}</div>
+                <div className="mu-atrib-l">
+                  {a.achados.map(e=>{
+                    const dentro=selSet.has(e.codigo);
+                    return (
+                      <button key={e.codigo} className={`mu-sug-i ${dentro?"on":""}`}
+                        onClick={()=>dentro?rem(e.codigo):add(e)}
+                        title={dentro?"Tirar do mapa":"Pôr no mapa"}>
+                        <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
+                        <span className="mu-sug-tx">
+                          <b>{e.entrega}</b>
+                          <span>{e.macro} › {e.categoria}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mu-cols">
+        {NIVEL_INFO.map((niv,idx)=>{
+          const travada = (idx===1&&!trilha.macro)||(idx===2&&!trilha.processo)||(idx===3&&trilha.servico==null);
+          const lista = travada?[]:ordenar(colunas[niv.id],niv.id);
+          const Ic=niv.ic;
+          const podeCriar = niv.id!=="entrega" && (niv.id==="macro" || !natDoRamo || natDoRamo==="finalistico");
+          const aberta = idx===0?trilha.macro : idx===1?trilha.processo : idx===2?trilha.servico : null;
+          return (
+            <div className={`mu-col ${travada?"travada":""}`} key={niv.id}>
+              <div className="mu-col-h">
+                <div className="mu-col-t"><Ic size={12}/> {niv.rot}
+                  <span className="mu-col-n">{travada?"—":lista.length}</span></div>
+                {!travada && <div className="mu-col-busca">
+                  <Search size={11}/>
+                  <input value={busca[niv.id]} placeholder="buscar…"
+                    onChange={e=>setBusca(b=>({...b,[niv.id]:e.target.value}))}/>
+                </div>}
+                {!travada && niv.id!=="entrega" && (
+                  <button className={`mu-criar ${podeCriar?"":"travado"}`}
+                    title={podeCriar?`Propor ${niv.rot.toLowerCase()} que não existe no catálogo`
+                      :`Em ${(NAT[natDoRamo]||{}).rot}, ${niv.rot.toLowerCase()} vem da estrutura existente`}
+                    onClick={()=>podeCriar?setCriar({nivel:niv.id,rot:niv.rot})
+                      :flash&&flash(`Em ${(NAT[natDoRamo]||{}).rot}, ${niv.rot.toLowerCase()} é fechado — mudança passa pela equipe do MGI.`)}>
+                    <Plus size={11}/> propor {niv.rot.toLowerCase()}
+                  </button>
+                )}
+              </div>
+              <div className="mu-col-body">
+                {travada
+                  ? <div className="mu-vazio">Escolha um {NIVEL_INFO[idx-1].rot.toLowerCase()} ao lado.</div>
+                  : !lista.length
+                    ? <div className="mu-vazio">Nada encontrado{busca[niv.id]?` para "${busca[niv.id]}"`:""}.</div>
+                    : lista.map(g=>{
+                        const noMapa=g.itens.filter(e=>selSet.has(e.codigo)).length;
+                        const todas=noMapa===g.itens.length&&noMapa>0;
+                        const sug=g.itens.some(e=>sugeridos.has(e.codigo));
+                        const nat=NAT[g.nat]||{cor:C.faint,rot:""};
+                        return (
+                          <div className={`mu-i ${aberta===g.valor?"aberto":""}`} key={g.valor||g.nome}>
+                            <button className={`mu-cx ${todas?"on":noMapa?"parcial":""}`}
+                              onClick={ev=>{ev.stopPropagation();alternar(g);}}
+                              title={todas?"Tirar do mapa":"Pôr no mapa"}>
+                              {todas?<Check size={10}/>:noMapa?<i/>:null}
+                            </button>
+                            <button className="mu-i-nome" onClick={()=>niv.id!=="entrega"?descer(niv.id,g.valor,g.semServ):alternar(g)}>
+                              <span className="mu-nome">{g.nome}</span>
+                              <span className="mu-meta">
+                                <span className="mu-dot" style={{background:nat.cor}}/>
+                                {niv.id==="entrega"
+                                  ? <code>{g.cod}</code>
+                                  : <>{g.itens.length} {g.itens.length===1?"entrega":"entregas"}</>}
+                                {noMapa>0&&niv.id!=="entrega" ? <b style={{color:C.green}}>{noMapa} no mapa</b> : null}
+                                {sug ? <span className="mu-pill"><Sparkles size={8}/> sugerido</span> : null}
+                              </span>
+                            </button>
+                            {niv.id!=="entrega" && <ChevronRight size={13} className="mu-go"/>}
+                          </div>
+                        );
+                      })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {criar && <ModalPropor nivel={criar} onFechar={()=>setCriar(null)}
+        onCriar={()=>{setCriar(null);onGoNova&&onGoNova();}}/>}
+    </div>
+  );
+}
+
+/* Propor um nível novo — confere semelhança antes, para não duplicar o que o
+   governo já nomeou. Macroprocesso novo é sempre finalístico: os de suporte e
+   governança são fechados. */
+function ModalPropor({nivel,onFechar,onCriar}){
+  const [nome,setNome]=useState("");
+  const campo = nivel.nivel==="macro"?"macro":nivel.nivel==="processo"?"categoria":"servico";
+  const existentes=useMemo(()=>[...new Set(ENTREGAS.map(e=>e[campo]).filter(Boolean))],[campo]);
+  const proximos=useMemo(()=>{
+    if(norm(nome).trim().length<4) return [];
+    const T=new Set(tokenize(nome));
+    return existentes.map(x=>{
+      const B=new Set(tokenize(x)); let inter=0;
+      T.forEach(t=>{ if(B.has(t)) inter++; });
+      return {x, s: inter/Math.sqrt((T.size*B.size)||1)};
+    }).filter(o=>o.s>0.3).sort((a,b)=>b.s-a.s).slice(0,5);
+  },[nome,existentes]);
+  const topo=proximos[0];
+  const veredito = !topo?"ok" : topo.s>=0.85?"bloqueio" : topo.s>=0.5?"atencao":"ok";
+
+  return (
+    <div className="px-modal-bg" onClick={onFechar}>
+      <div className="mu-modal" onClick={e=>e.stopPropagation()}>
+        <div className="mu-modal-h"><FilePlus2 size={16}/> <b>Propor {nivel.rot.toLowerCase()} novo</b>
+          <button onClick={onFechar}><X size={15}/></button></div>
+        <p className="mu-d">Antes de propor, o portal confere se já existe algo parecido — para não duplicar o que o governo já nomeou.</p>
+        {nivel.nivel==="macro" && <div className="mu-verd atencao">
+          <AlertTriangle size={14}/> <span><b>Só finalístico.</b> Macroprocesso novo entra como finalístico — os de suporte e governança são fechados e mudam pela equipe do MGI.</span></div>}
+        <label className="mu-lb">Nome do {nivel.rot.toLowerCase()}</label>
+        <input className="mu-in" value={nome} autoFocus onChange={e=>setNome(e.target.value)}
+          placeholder="Ex.: Aplicação de provas de concursos públicos"/>
+        {norm(nome).trim().length>=4 && <>
+          <div className={`mu-verd ${veredito}`}>
+            {veredito==="bloqueio" && <><AlertTriangle size={14}/> <span>Já existe algo praticamente igual — use o que está no catálogo.</span></>}
+            {veredito==="atencao" && <><AlertTriangle size={14}/> <span>Há nomes bem próximos. Confirme que é mesmo outra coisa.</span></>}
+            {veredito==="ok" && <><Check size={14}/> <span>Nada muito próximo. Parece novo mesmo.</span></>}
+          </div>
+          {proximos.length>0 && <div className="mu-simil">
+            {proximos.map(p=>(<div key={p.x}><span>{Math.round(p.s*100)}%</span>{p.x}</div>))}
+          </div>}
+        </>}
+        <div className="mu-modal-f">
+          <button className="mu-btn g" onClick={onFechar}>Cancelar</button>
+          <button className="mu-btn p" disabled={veredito==="bloqueio"||!nome.trim()} onClick={onCriar}>
+            Abrir formulário completo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SEM_SERVICO="Sem serviço específico";
 const NIVEIS={
   macro:    {campo:"macro",     rot:"Macroprocesso", plural:"macroprocessos", proximo:"processo", ic:Layers},
@@ -4378,6 +4732,122 @@ const css=`
   color:${C.faint};font-size:9px;font-weight:800;}
 .px-nova-cand-niv span.hit{background:${C.primary};color:#fff;}
 /* ---- trilha dos 4 níveis do catálogo ---- */
+/* ---- Mapa da Unidade ---- */
+.mu{padding:18px 20px 30px;min-width:0;max-width:100%;}
+.mu-topo{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;margin-bottom:14px;}
+@media(max-width:1000px){.mu-topo{grid-template-columns:1fr;}}
+.mu-card{background:#fff;border:1px solid ${C.line};border-radius:13px;padding:15px 16px;}
+.mu-card-h{display:flex;align-items:center;gap:7px;font-size:13.5px;color:${C.navy};margin-bottom:10px;}
+.mu-card-h b{font-weight:800;}
+.mu-rever{margin-left:auto;background:none;border:1px solid ${C.line};border-radius:7px;padding:4px 10px;
+  font-family:inherit;font-size:11px;font-weight:700;color:${C.sub};cursor:pointer;}
+.mu-rever:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-campos{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px;}
+@media(max-width:560px){.mu-campos{grid-template-columns:1fr;}}
+.mu-campos label{display:block;font-size:10px;font-weight:800;color:${C.navy};text-transform:uppercase;letter-spacing:.04em;}
+.mu-campos input{width:100%;margin-top:4px;border:1px solid ${C.line};border-radius:8px;padding:8px 10px;
+  font-family:inherit;font-size:12.5px;background:#fbfcfd;}
+.mu-campos input:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.mu-anexos{display:flex;flex-wrap:wrap;gap:6px;}
+.mu-anexo{display:inline-flex;align-items:center;gap:6px;border:1px dashed ${C.line};border-radius:8px;
+  padding:6px 9px;font-size:10.5px;font-weight:700;color:${C.sub};cursor:pointer;max-width:100%;}
+.mu-anexo:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-anexo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;}
+.mu-anexo.tem{border-style:solid;border-color:#BEE0C4;background:${C.greenSoft};color:${C.green};}
+.mu-anexo button{background:none;border:none;color:inherit;cursor:pointer;padding:0;display:grid;place-items:center;opacity:.7;}
+.mu-anexo button:hover{opacity:1;}
+.mu-d{font-size:12px;line-height:1.55;color:${C.sub};margin:0 0 10px;}
+.mu-ta{width:100%;min-height:118px;border:1px solid ${C.line};border-radius:9px;padding:10px 12px;
+  font-family:inherit;font-size:12.5px;line-height:1.55;background:#fbfcfd;resize:vertical;}
+.mu-ta:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.mu-acoes{display:flex;gap:8px;margin-top:10px;}
+.mu-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;
+  padding:9px 15px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .14s;}
+.mu-btn.p{background:${C.primary};color:#fff;} .mu-btn.p:hover{background:${C.primaryDark};}
+.mu-btn.g{background:none;color:${C.sub};border:1px solid ${C.line};} .mu-btn.g:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-btn.v{background:${C.green};color:#fff;} .mu-btn.v:hover{filter:brightness(.93);}
+.mu-btn:disabled{opacity:.45;cursor:default;}
+.mu-resumo{display:flex;align-items:center;gap:9px;font-size:12.5px;color:${C.sub};}
+.mu-resumo b{color:${C.navy};}
+.mu-ok{width:20px;height:20px;border-radius:50%;background:${C.green};color:#fff;display:grid;place-items:center;flex-shrink:0;}
+/* sugestões à mostra */
+.mu-sug{background:#fff;border:1px solid #C7D7F0;border-radius:13px;margin-bottom:14px;overflow:hidden;}
+.mu-sug-h{display:flex;align-items:center;gap:8px;padding:11px 14px;background:${C.primarySoft};color:${C.primaryDark};
+  font-size:13px;border-bottom:1px solid #C7D7F0;flex-wrap:wrap;}
+.mu-sug-n{background:#fff;border-radius:20px;padding:2px 9px;font-size:10.5px;font-weight:800;}
+.mu-sug-h .mu-btn{margin-left:auto;padding:7px 12px;font-size:11.5px;}
+.mu-sug-body{max-height:290px;overflow-y:auto;padding:10px 12px;}
+.mu-atrib{padding:8px 0;border-bottom:1px solid #F2F4F7;}
+.mu-atrib:last-child{border-bottom:none;}
+.mu-atrib-t{font-size:11.5px;color:${C.sub};line-height:1.5;margin-bottom:7px;font-style:italic;}
+.mu-atrib-l{display:flex;flex-wrap:wrap;gap:6px;}
+.mu-sug-i{display:inline-flex;align-items:flex-start;gap:7px;border:1px solid ${C.line};border-radius:9px;
+  padding:7px 10px;background:#fff;cursor:pointer;font-family:inherit;text-align:left;max-width:340px;transition:all .14s;}
+.mu-sug-i:hover{border-color:${C.primary};background:${C.bg};}
+.mu-sug-i.on{border-color:#BEE0C4;background:${C.greenSoft};}
+.mu-sug-cx{width:17px;height:17px;border-radius:5px;display:grid;place-items:center;flex-shrink:0;
+  background:${C.primarySoft};color:${C.primary};margin-top:1px;}
+.mu-sug-i.on .mu-sug-cx{background:${C.green};color:#fff;}
+.mu-sug-tx{min-width:0;}
+.mu-sug-tx b{display:block;font-size:11.5px;font-weight:700;color:${C.ink};line-height:1.35;}
+.mu-sug-tx span{display:block;font-size:10px;color:${C.faint};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* as 4 colunas */
+.mu-cols{display:flex;gap:0;width:100%;background:#fff;border:1px solid ${C.line};border-radius:13px;overflow-x:auto;min-height:340px;}
+.mu-col{flex:0 0 265px;border-right:1px solid ${C.line};display:flex;flex-direction:column;min-width:0;}
+.mu-col:last-child{border-right:none;}
+.mu-col.travada{background:#FCFDFE;}
+.mu-col-h{padding:10px 11px;border-bottom:1px solid ${C.line};}
+.mu-col-t{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;color:${C.navy};
+  text-transform:uppercase;letter-spacing:.05em;}
+.mu-col-n{margin-left:auto;background:${C.bg};color:${C.sub};border-radius:20px;padding:1px 7px;font-size:10px;letter-spacing:0;}
+.mu-col-busca{position:relative;margin-top:7px;}
+.mu-col-busca svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);opacity:.45;}
+.mu-col-busca input{width:100%;border:1px solid ${C.line};border-radius:7px;padding:6px 8px 6px 25px;
+  font-family:inherit;font-size:11.5px;background:#fbfcfd;}
+.mu-col-busca input:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.mu-criar{width:100%;margin-top:7px;border:1px solid #C7D7F0;background:${C.primarySoft};border-radius:8px;
+  padding:6px 8px;font-family:inherit;font-size:11px;font-weight:800;color:${C.primaryDark};cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:5px;transition:all .14s;}
+.mu-criar:hover{background:${C.primary};border-color:${C.primary};color:#fff;}
+.mu-criar.travado{background:${C.bg};border-color:${C.line};border-style:dashed;color:${C.faint};}
+.mu-criar.travado:hover{background:${C.bg};border-color:${C.line};color:${C.faint};}
+.mu-col-body{flex:1;overflow-y:auto;padding:4px;max-height:420px;}
+.mu-i{display:flex;align-items:flex-start;gap:6px;padding:5px 6px;border-radius:8px;}
+.mu-i:hover{background:${C.bg};}
+.mu-i.aberto{background:${C.primarySoft};}
+.mu-cx{width:16px;height:16px;flex-shrink:0;border:1.5px solid ${C.line};border-radius:4px;background:#fff;
+  display:grid;place-items:center;cursor:pointer;margin-top:3px;color:#fff;transition:all .12s;}
+.mu-cx:hover{border-color:${C.primary};}
+.mu-cx.on{background:${C.green};border-color:${C.green};}
+.mu-cx.parcial{border-color:${C.green};}
+.mu-cx.parcial i{width:8px;height:2px;background:${C.green};border-radius:2px;}
+.mu-i-nome{flex:1;min-width:0;background:none;border:none;padding:2px 0;font-family:inherit;text-align:left;cursor:pointer;}
+.mu-nome{display:block;font-size:11.5px;font-weight:600;color:${C.ink};line-height:1.35;word-break:break-word;}
+.mu-i.aberto .mu-nome{color:${C.primaryDark};}
+.mu-meta{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:9.5px;color:${C.faint};font-weight:700;flex-wrap:wrap;}
+.mu-meta code{font-family:ui-monospace,monospace;background:${C.bg};border-radius:4px;padding:1px 4px;}
+.mu-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.mu-pill{display:inline-flex;align-items:center;gap:3px;background:${C.primarySoft};color:${C.primary};
+  padding:1px 6px;border-radius:20px;font-size:9px;font-weight:800;}
+.mu-go{color:${C.faint};flex-shrink:0;margin-top:4px;}
+.mu-vazio{font-size:11.5px;color:${C.faint};padding:20px 12px;text-align:center;line-height:1.5;}
+/* modal de propor */
+.mu-modal{background:#fff;border-radius:14px;padding:20px;width:min(560px,100%);max-height:88vh;overflow-y:auto;}
+.mu-modal-h{display:flex;align-items:center;gap:8px;font-size:15px;color:${C.navy};margin-bottom:6px;}
+.mu-modal-h button{margin-left:auto;background:none;border:none;color:${C.faint};cursor:pointer;display:grid;place-items:center;}
+.mu-modal-h button:hover{color:${C.ink};}
+.mu-lb{display:block;font-size:10px;font-weight:800;color:${C.navy};text-transform:uppercase;letter-spacing:.04em;margin:14px 0 5px;}
+.mu-in{width:100%;border:1px solid ${C.line};border-radius:8px;padding:9px 11px;font-family:inherit;font-size:13px;background:#fbfcfd;}
+.mu-in:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.mu-verd{display:flex;align-items:flex-start;gap:8px;border-radius:9px;padding:10px 12px;font-size:11.5px;
+  line-height:1.5;margin-top:12px;font-weight:600;}
+.mu-verd.ok{background:${C.greenSoft};color:${C.green};}
+.mu-verd.atencao{background:#FBF3DC;color:#9A6A00;}
+.mu-verd.bloqueio{background:#FBEDE4;color:#C2410C;}
+.mu-simil{margin-top:9px;display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;}
+.mu-simil div{display:flex;align-items:center;gap:8px;border:1px solid ${C.line};border-radius:8px;padding:6px 9px;font-size:11px;}
+.mu-simil span{font-weight:800;font-size:10px;background:${C.bg};color:${C.sub};border-radius:5px;padding:2px 6px;flex-shrink:0;}
+.mu-modal-f{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
 .px-trilha{display:flex;align-items:center;gap:2px;flex-wrap:wrap;background:#fff;border:1px solid ${C.line};
   border-radius:11px;padding:7px 10px;margin-bottom:16px;}
 .px-trilha-sep{color:${C.line};flex-shrink:0;}
@@ -4570,7 +5040,10 @@ const css=`
 .px-search.full{padding:13px 16px;border-radius:12px;}
 .px-search.full input{font-size:15px;}
 .px-fbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;padding-bottom:2px;}
-.px-modes-row{display:flex;margin-top:4px;}
+/* em tela estreita a barra de modos não cabe: rola no eixo dela mesma, em vez
+   de empurrar a página inteira para o lado */
+.px-modes-row{display:flex;margin-top:4px;max-width:100%;overflow-x:auto;padding-bottom:2px;}
+.px-modes{flex-shrink:0;}
 .px-mode-badge{margin-left:2px;font-size:10px;font-weight:800;background:${C.primary};color:#fff;border-radius:10px;padding:1px 6px;line-height:1.4;}
 .px-filtros-ativos{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px;background:${C.primarySoft};border:1px solid ${C.line};border-radius:10px;padding:8px 12px;}
 .px-fa-tags{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
@@ -4582,7 +5055,7 @@ const css=`
 
 .px-body{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;}
 .px-body.solo{grid-template-columns:1fr;}
-.px-main{min-height:55vh;}
+.px-main{min-height:55vh;min-width:0;}
 .px-empty{background:#fff;border:1px dashed ${C.line};border-radius:12px;padding:36px;text-align:center;color:${C.sub};}
 .px-group{margin-bottom:22px;}
 .px-group-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
@@ -5406,6 +5879,12 @@ const css=`
 .px-tipw{position:relative;display:inline-flex;}
 .px-tip{position:absolute;z-index:60;left:50%;top:calc(100% + 9px);transform:translateX(-50%) translateY(4px);background:${C.navy};color:#fff;font-size:11.5px;font-weight:600;line-height:1.4;padding:8px 11px;border-radius:8px;width:max-content;max-width:230px;box-shadow:0 8px 22px rgba(13,49,111,.3);opacity:0;pointer-events:none;transition:opacity .14s,transform .14s;text-align:left;}
 .px-tip.wide{max-width:300px;}
+/* Dicas coladas na borda direita da tela (painel da Descrição, fim da barra de
+   modos) estouravam a janela e criavam rolagem lateral. Ali elas ancoram pela
+   direita em vez de centralizar. */
+.px-doc .px-tip, .px-modes .px-tipw:last-of-type .px-tip{left:auto;right:0;transform:translateY(4px);}
+.px-doc .px-tipw:hover .px-tip, .px-modes .px-tipw:last-of-type:hover .px-tip{transform:translateY(0);}
+.px-doc .px-tip::after, .px-modes .px-tipw:last-of-type .px-tip::after{left:auto;right:14px;transform:none;}
 .px-tip::after{content:"";position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:${C.navy};}
 .px-tipw:hover .px-tip{opacity:1;transform:translateX(-50%) translateY(0);}
 .px-tip.top{top:auto;bottom:calc(100% + 9px);transform:translateX(-50%) translateY(-4px);}
