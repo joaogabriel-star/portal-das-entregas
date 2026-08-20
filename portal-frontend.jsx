@@ -498,8 +498,8 @@ export default function PortalEntregas(){
         </div>
       </header>
 
-      {/* faixa das 4 etapas — navegação principal do portal */}
-      <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>
+      {/* faixa das 4 etapas — navegação principal do portal (não faz sentido na Mentoria, que é uma seção à parte) */}
+      {secao!=="mentoria" && <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>}
 
       {trocarUnidade && <ModalUnidade orgao={orgao} unidade={unidade}
         setOrgao={setOrgao} setUnidade={setUnidade} onClose={()=>setTrocarUnidade(false)}/>}
