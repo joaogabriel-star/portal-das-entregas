@@ -35,10 +35,15 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .bt-pgd.on i{background:var(--purple)}
 
 .trilha{display:flex;gap:2px;padding:0 24px;overflow-x:auto;border-top:1px solid var(--hair)}
+.bt-exemplo{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 15px;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--sub);cursor:pointer;font-style:normal}
+.bt-exemplo:hover{border-color:var(--primary);color:var(--primary)}
 .tf{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--faint);
   white-space:nowrap;border-bottom:2.5px solid transparent;text-decoration:none}
 a.tf:hover{color:var(--primary)}
 .tf.on{color:var(--primaryDark);border-bottom-color:var(--primary)}
+.tf-opc{margin-left:2px;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  background:var(--greySoft);color:var(--faint);border-radius:20px;padding:2px 6px}
 .tf-n{width:17px;height:17px;border-radius:50%;background:var(--greySoft);color:var(--sub);font-family:var(--num);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tf.on .tf-n{background:var(--primary);color:#fff}
 
@@ -389,8 +394,8 @@ select.filtro{width:auto;min-width:170px;font-size:11.5px;padding:8px 10px}
   </div>
   <div class="trilha">
     <div class="tf on"><span class="tf-n">1</span>Entregas e meses</div>
-    <a class="tf" href="./jornada-gestor-planejamento.html"><span class="tf-n">2</span>Planejamento</a>
-    <a class="tf" href="./jornada-gestor-equipe.html"><span class="tf-n">3</span>Equipe e indicadores</a>
+    <a class="tf" href="./jornada-gestor-equipe.html"><span class="tf-n">2</span>Equipe e indicadores</a>
+    <a class="tf" href="./jornada-gestor-planejamento.html"><span class="tf-n">3</span>Planejamento<span class="tf-opc">opcional</span></a>
   </div>
   <div class="ctx" id="ctx"></div>
 </header>
@@ -577,23 +582,28 @@ function lerPlanejamento(){
 function limparPassos(){ try{ localStorage.removeItem(CHAVE_JORNADA); }catch(e){} }
 function limparPasso(k){ try{ const j=lerPassos(); delete j[k]; localStorage.setItem(CHAVE_JORNADA, JSON.stringify(j)); }catch(e){} }
 
+/* Demonstração — não é dado de ninguém. Fica fora do estado inicial para o
+   gestor abrir a tela limpa; o botão "ver um exemplo" carrega isto. */
+const EXEMPLO_ENTREGAS = [
+  {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", tipo:"qtd", obj:null},
+  {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", tipo:"qtd", obj:null},
+  {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", tipo:"pct", obj:null},
+  {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", tipo:"sn", obj:null},
+  {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", tipo:"qtd", obj:null},
+];
+const EXEMPLO_MESES = [3,4,5];
+
 const est = {
   unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
   pgd: new URLSearchParams(location.search).get("pgd")==="1",
   ciclo:"2026-1",       // vigência do plano de entregas no PGD; resolve as datas de todas
-  entregas:[
-    {c:"11420031", e:"Análise de processo de aposentadoria", m:"Gestão de Pessoas", tipo:"qtd", obj:null},
-    {c:"11420089", e:"Homologação de perícia médica oficial", m:"Saúde do Servidor", tipo:"qtd", obj:null},
-    {c:"11420108", e:"Elaboração de plano anual de capacitação", m:"Desenvolvimento de Pessoas", tipo:"pct", obj:null},
-    {c:"11420164", e:"Resposta a demanda de órgão de controle", m:"Governança", tipo:"sn", obj:null},
-    {c:"11420178", e:"Atendimento a solicitação via central de serviços", m:"Atendimento", tipo:"qtd", obj:null},
-  ],
+  entregas:[],   // vazio: o gestor traz as suas (o botão de exemplo carrega a demonstração)
   meta:new Map(),        // "cod|mes" → planejado
   real:new Map(),        // "cod|mes" → realizado
   antes:new Map(),       // cod → o que já estava acumulado
   agora:new Map(),       // cod → correção manual do calculado (só se o gestor discordar)
   causas:new Map(),      // "cod|mes" → array de etiquetas
-  mesesSel:new Set([3,4,5]),
+  mesesSel:new Set(),      // sem meses marcados: o gestor escolhe o intervalo
   modo:new Map(),        // mes → "meta" | "real"  (troca manual pelo cabeçalho)
   visao:"tudo",          // tudo | planejar | curso | registrar
   medidaAberta:false, buscaAberta:false, verLacunas:false,
@@ -621,6 +631,14 @@ const est = {
   est.causas.set("11420178|0", ["faltou gente"]);
   est.retratos.push({id:1, rot:"DFT jan–mar/"+ANO, meses:[0,1,2], em:"12/04/"+ANO, nec:"5,20", qtd:5, pessoas:8});
 })();
+
+/* Carrega a demonstração. Existe para o gestor entender a tela sem ter
+   que preencher tudo antes — nunca vem ligado por padrão. */
+function carregarExemplo(){
+  est.entregas=EXEMPLO_ENTREGAS.map(e=>({...e}));
+  est.mesesSel=new Set(EXEMPLO_MESES);
+  render();
+}
 
 const $ = id => document.getElementById(id);
 const chave = (c,i) => c+"|"+i;
@@ -909,12 +927,14 @@ function blocoGrade(){
   if(!est.mesesSel.size){
     return `<div class="bloco">${cabeca}
       <div class="vazio">Abra os <b>meses</b> na aba da esquerda e marque os que quer trabalhar.<br>
-        Mês que já passou pede o realizado; mês por vir pede a meta.</div>
+        Marcar dois meses puxa todos os do meio — o dimensionamento cobre um período contínuo.<br>
+        Mês que já passou pede o realizado; mês por vir pede a meta.
+        <div style="margin-top:12px"><button class="bt-exemplo" onclick="carregarExemplo()">ver um exemplo preenchido</button></div></div>
       ${rodapeTabela()}</div>`;
   }
   if(!est.entregas.length){
     return `<div class="bloco">${cabeca}
-      <div class="vazio">A unidade ainda não tem entregas.<br>Use <b>+ entregas</b> abaixo para trazer do catálogo.</div>
+      <div class="vazio">A unidade ainda não tem entregas.<br>Use <b>+ entregas</b> abaixo para trazer do catálogo.<div style="margin-top:12px"><button class="bt-exemplo" onclick="carregarExemplo()">ver um exemplo preenchido</button></div></div>
       ${rodapeTabela()}</div>`;
   }
   if(!sel.length){
@@ -1351,7 +1371,28 @@ function aplicarGavetas(){
   fecharPop();
 }
 
-function alternarMes(i){ est.mesesSel.has(i) ? est.mesesSel.delete(i) : est.mesesSel.add(i); render(); }
+/* O dimensionamento cobre um período CONTÍNUO: buraco no meio quebra o DFT.
+   Por isso a marcação de meses é sempre um intervalo — clicar num mês distante
+   puxa todos os do caminho. Clicar numa ponta encurta; clicar no meio encerra
+   o intervalo ali. Mês já travado (que entrou num DFT gerado) fica de fora. */
+function alternarMes(i){
+  if(horizonte(i)==="fechado") return avisarTravado(i);
+  const sel=[...est.mesesSel].sort((a,b)=>a-b);
+  let ini, fim;
+  if(!sel.length){ ini=fim=i; }
+  else{
+    const min=sel[0], max=sel[sel.length-1];
+    if(!est.mesesSel.has(i)){ ini=Math.min(min,i); fim=Math.max(max,i); }   // estende e preenche o caminho
+    else if(sel.length===1){ est.mesesSel=new Set(); render(); return; }    // desmarca o único
+    else if(i===min){ ini=i+1; fim=max; }                                   // encurta pelo começo
+    else if(i===max){ ini=min; fim=i-1; }                                   // encurta pelo fim
+    else{ ini=min; fim=i; }                                                 // clique no meio: termina aqui
+  }
+  const novo=new Set();
+  for(let k=ini;k<=fim;k++) if(horizonte(k)!=="fechado") novo.add(k);
+  est.mesesSel=novo;
+  render();
+}
 function avisarTravado(i){
   alert(MESES[i]+"/"+ANO+" já entrou num DFT gerado.\n\nOs números dele ficam como estavam na geração.");
 }
