@@ -72,13 +72,17 @@ async function lerPdfsComIA(lista){
 /* ---------- exportar Descrição de Área como .xlsx ---------- */
 function exportarDescricaoXLSX(sel,notes,orgao,unidade){
   const NATROT={finalistico:"Finalístico",governanca:"Governança",suporte:"Suporte"};
+  // a planilha mostra o desenho inteiro, mas separa o que é entrega do que ainda
+  // é só estrutura escolhida — quem lê precisa saber o que já dá para dimensionar
+  const nEntregas=soEntregas(sel).length, nNos=soNos(sel).length;
   const cab=[["Descrição de Área — DFT/SISDIP"],["Órgão:",orgao||""],["Unidade:",unidade||""],
-    ["Gerado em:",new Date().toLocaleString("pt-BR")],["Total de entregas:",sel.length],[]];
-  const colunas=["#","Código","Entrega","Atividade","Serviço","Categoria de Serviço","Macroprocesso","Natureza","Metodologia","Situação","Observações da unidade"];
-  const linhas=sel.map((e,i)=>[i+1,e.nova?"(nova)":e.codigo,e.entrega,e.atividade||"",e.servico||"",e.categoria||"",e.macro||"",e.nova?"—":(NATROT[e.natureza]||e.natureza),e.metod||(e.nova?"—":"Típica"),e.nova?"Nova — aguarda curadoria":"No catálogo",notes[e.codigo]||""]);
+    ["Gerado em:",new Date().toLocaleString("pt-BR")],["Total de entregas:",nEntregas],
+    ...(nNos?[["Níveis marcados sem entrega detalhada:",nNos]]:[]),[]];
+  const colunas=["#","Nível","Código","Entrega","Atividade","Serviço","Categoria de Serviço","Macroprocesso","Natureza","Metodologia","Situação","Observações da unidade"];
+  const linhas=sel.map((e,i)=>[i+1,e.no?NIVEL_ROT[e.nivel]:"Entrega",e.no?"—":(e.nova?"(nova)":e.codigo),e.entrega,e.atividade||"",e.servico||"",e.categoria||"",e.macro||"",e.no?"—":(e.nova?"—":(NATROT[e.natureza]||e.natureza)),e.no?"—":(e.metod||(e.nova?"—":"Típica")),e.no?"Nível marcado — falta detalhar as entregas":(e.nova?"Nova — aguarda curadoria":"No catálogo"),notes[e.codigo]||""]);
   const aoa=[...cab,colunas,...linhas];
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"]=[{wch:5},{wch:12},{wch:48},{wch:48},{wch:28},{wch:28},{wch:26},{wch:14},{wch:12},{wch:22},{wch:36}];
+  ws["!cols"]=[{wch:5},{wch:14},{wch:12},{wch:48},{wch:48},{wch:28},{wch:28},{wch:26},{wch:14},{wch:12},{wch:34},{wch:36}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Descrição de Área");
   const nomeArq=`descricao-area-${(unidade||"unidade").replace(/[^a-z0-9]+/gi,"-").toLowerCase().slice(0,40)}.xlsx`;
@@ -242,6 +246,38 @@ async function expandirConsulta(linhas){
   }catch{ return lista; }
 }
 function normCod(c){ return String(c==null?"":c).replace(/\D/g,""); }
+
+/* ============================================================================
+   NÓS DE ESTRUTURA NA DESCRIÇÃO DA ÁREA
+
+   A Descrição da Área nasceu como uma lista de entregas. Mas quem está
+   descrevendo a unidade nem sempre começa pela entrega: começa dizendo "a
+   gente faz gestão de pessoas", depois desce para "recrutamento", depois para
+   o serviço, e só então para as entregas. Para o desenho acompanhar esse
+   caminho, a Descrição passa a aceitar o nó de qualquer nível — macroprocesso,
+   processo ou serviço — e não só a folha.
+
+   Truque para não reescrever o portal inteiro: o nó também tem "codigo", uma
+   chave sintética. Assim add/rem/selSet continuam iguais. Quem precisa MESMO de
+   entrega (o registro no DFT, a contagem, a planilha) filtra pelos que não são
+   nó (soEntregas).
+============================================================================ */
+const NIVEL_ROT={macro:"Macroprocesso",processo:"Processo",servico:"Serviço"};
+function chaveNo(nivel,d){
+  const partes=[nivel, d.macro||"", nivel==="macro"?"":(d.categoria||""), nivel==="servico"?(d.servico||""):""];
+  return "N|"+partes.join("|");
+}
+function fazerNo(nivel,d){
+  const nome = nivel==="macro" ? d.macro : nivel==="processo" ? d.categoria : d.servico;
+  return {codigo:chaveNo(nivel,d), no:true, nivel, entrega:nome,
+          macro:d.macro||"", categoria:nivel==="macro"?"":(d.categoria||""),
+          servico:nivel==="servico"?(d.servico||""):"",
+          natureza:d.natureza||"finalistico", qtd:d.qtd||0};
+}
+/* separa o que é entrega de verdade do que é só estrutura desenhada */
+const soEntregas=lista=>(lista||[]).filter(e=>!e.no);
+const soNos=lista=>(lista||[]).filter(e=>e.no);
+
 /* ============================================================================
    EQUIVALÊNCIA COM A PLANILHA OFICIAL E BANCO DE PROPOSTAS DE TROCA
 
@@ -759,13 +795,13 @@ export default function PortalEntregas(){
       {descView==="cadeia" && <CadeiaValor sel={sel} rem={rem} objUnidade={objUnidade} setObjUnidade={setObjUnidade} objOrgao={objOrgao} setObjOrgao={setObjOrgao} onClose={()=>setDescView("lista")}/>}
 
       {compareOpen && <CompareModal items={compare} onClose={()=>setCompareOpen(false)} onAdd={add} selSet={selSet} onDrop={c=>setCompare(x=>x.filter(e=>e.codigo!==c))} onClear={()=>{setCompare([]);setCompareOpen(false);}}/>}
-      {preview && <PreviewDFT sel={sel} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={async()=>{
+      {preview && <PreviewDFT sel={soEntregas(sel)} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={async()=>{
         const resp=await fetch(`${API_BASE}/api/mentoria/submissoes`,{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
             orgao, unidade,
-            conteudo:{entregas:sel.map(e=>({codigo:e.codigo,entrega:e.entrega,macro:e.macro,categoria:e.categoria,servico:e.servico})),notes},
+            conteudo:{entregas:soEntregas(sel).map(e=>({codigo:e.codigo,entrega:e.entrega,macro:e.macro,categoria:e.categoria,servico:e.servico})),notes},
           }),
         });
         const dados=await resp.json().catch(()=>({}));
@@ -1231,6 +1267,165 @@ function sugerirDoTexto(texto){
   }).filter(a=>a.achados.length);
 }
 
+/* ============================================================================
+   SUGESTÕES SEGMENTADAS POR NÍVEL
+
+   A leitura do documento devolve entregas. Mas descrever a unidade não começa
+   pela entrega: começa por "a gente faz gestão de pessoas". Este painel quebra
+   o mesmo achado nos quatro níveis do catálogo e deixa a pessoa entrar por
+   onde quiser — marcar só o macroprocesso, descer até o serviço, ou puxar a
+   cadeia inteira de uma vez. O que ela marca vai formando a Descrição da Área.
+============================================================================ */
+function SugestoesPorNivel({atribs,selSet,add,rem,flash}){
+  const [nivel,setNivel]=useState("macro");
+  const [aberto,setAberto]=useState(null);   // chave da linha expandida
+
+  // quantas entregas o catálogo inteiro tem sob cada nó — dá a noção do que
+  // ainda existe abaixo do que a leitura sugeriu
+  const totaisCatalogo=useMemo(()=>{
+    const m=new Map(), p=new Map(), s=new Map();
+    ENTREGAS.forEach(e=>{
+      const km=e.macro||"", kp=km+"|"+(e.categoria||""), ks=kp+"|"+(e.servico||"");
+      m.set(km,(m.get(km)||0)+1); p.set(kp,(p.get(kp)||0)+1); s.set(ks,(s.get(ks)||0)+1);
+    });
+    return {macro:m,processo:p,servico:s};
+  },[ENTREGAS.length]);
+
+  const grupos=useMemo(()=>{
+    const achados=[...new Map(atribs.flatMap(a=>a.achados).map(e=>[e.codigo,e])).values()];
+    const mk=(mapa,chave,dados)=>{
+      if(!mapa.has(chave)) mapa.set(chave,{...dados,entregas:[]});
+      return mapa.get(chave);
+    };
+    const M=new Map(), P=new Map(), S=new Map();
+    achados.forEach(e=>{
+      const macro=e.macro||"", cat=e.categoria||"", serv=e.servico||"";
+      if(macro) mk(M,macro,{nivel:"macro",nome:macro,macro,natureza:e.natureza,
+        total:totaisCatalogo.macro.get(macro)||0}).entregas.push(e);
+      if(macro&&cat) mk(P,macro+"|"+cat,{nivel:"processo",nome:cat,macro,categoria:cat,natureza:e.natureza,
+        total:totaisCatalogo.processo.get(macro+"|"+cat)||0}).entregas.push(e);
+      if(macro&&serv) mk(S,macro+"|"+cat+"|"+serv,{nivel:"servico",nome:serv,macro,categoria:cat,servico:serv,natureza:e.natureza,
+        total:totaisCatalogo.servico.get(macro+"|"+cat+"|"+serv)||0}).entregas.push(e);
+    });
+    const ord=m=>[...m.values()].sort((a,b)=>b.entregas.length-a.entregas.length);
+    return {macro:ord(M), processo:ord(P), servico:ord(S), entrega:achados};
+  },[atribs,totaisCatalogo]);
+
+  const ABAS=[["macro","Macroprocesso",Layers],["processo","Processo",PieChart],
+              ["servico","Serviço",Sparkles],["entrega","Entrega",LayoutGrid]];
+  const lista=grupos[nivel]||[];
+
+  /* põe no mapa o nó e tudo o que a leitura sugeriu abaixo dele — é o
+     "quero a cadeia inteira deste macroprocesso" */
+  function porCadeia(g){
+    let n=0;
+    const meter=item=>{ if(!selSet.has(item.codigo)){ add(item); n++; } };
+    meter(fazerNo(g.nivel,{...g,qtd:g.total}));
+    if(g.nivel==="macro"){
+      const cats=new Set(g.entregas.map(e=>e.categoria||""));
+      cats.forEach(c=>{ if(c) meter(fazerNo("processo",{macro:g.macro,categoria:c,natureza:g.natureza,
+        qtd:totaisCatalogo.processo.get(g.macro+"|"+c)||0})); });
+    }
+    if(g.nivel==="macro"||g.nivel==="processo"){
+      const servs=new Set(g.entregas.map(e=>(e.categoria||"")+"|"+(e.servico||"")));
+      servs.forEach(k=>{ const [c,s]=k.split("|"); if(s) meter(fazerNo("servico",{macro:g.macro,categoria:c,servico:s,
+        natureza:g.natureza, qtd:totaisCatalogo.servico.get(g.macro+"|"+c+"|"+s)||0})); });
+    }
+    g.entregas.forEach(meter);
+    flash&&flash(n?n+" item(ns) posto(s) na descrição — o nível e o que a leitura achou abaixo dele.":"Esta cadeia já estava toda na descrição.");
+  }
+
+  function alternarNo(g){
+    const no=fazerNo(g.nivel,{...g,qtd:g.total});
+    if(selSet.has(no.codigo)) rem(no.codigo); else add(no);
+  }
+
+  if(!atribs.length) return null;
+  const totalAchados=grupos.entrega.length;
+
+  return (
+    <div className="mu-sug">
+      <div className="mu-sug-h">
+        <Sparkles size={14}/> <b>O que a leitura encontrou no catálogo</b>
+        <span className="mu-sug-n">{totalAchados} entregas · {grupos.macro.length} macroprocessos</span>
+      </div>
+      <div className="mu-niv-abas">
+        {ABAS.map(([id,rot,Ic])=>(
+          <button key={id} className={nivel===id?"on":""} onClick={()=>{setNivel(id);setAberto(null);}}>
+            <Ic size={12}/> {rot} <em>{(grupos[id]||[]).length}</em>
+          </button>
+        ))}
+      </div>
+      <div className="mu-sug-dica">
+        {nivel==="entrega"
+          ? "Marque as entregas que a unidade executa — é o que o DFT dimensiona."
+          : `Marque o ${NIVEL_ROT[nivel].toLowerCase()} para desenhar a estrutura da unidade, ou abra para escolher o que vem abaixo. O DFT só dimensiona entregas.`}
+      </div>
+      <div className="mu-sug-body">
+        {nivel==="entrega"
+          ? grupos.entrega.map(e=>{
+              const dentro=selSet.has(e.codigo);
+              return (
+                <button key={e.codigo} className={`mu-sug-i ${dentro?"on":""}`}
+                  onClick={()=>dentro?rem(e.codigo):add(e)} title={dentro?"Tirar da descrição":"Pôr na descrição"}>
+                  <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
+                  <span className="mu-sug-tx"><b>{e.entrega}</b><span>{e.macro} › {e.categoria}</span></span>
+                </button>
+              );
+            })
+          : lista.map(g=>{
+              const no=fazerNo(g.nivel,{...g,qtd:g.total});
+              const dentro=selSet.has(no.codigo);
+              const chave=no.codigo;
+              const exp=aberto===chave;
+              return (
+                <div className={`mu-niv ${dentro?"on":""}`} key={chave}>
+                  <div className="mu-niv-l">
+                    <button className="mu-niv-cx" onClick={()=>alternarNo(g)}
+                      title={dentro?"Tirar da descrição":`Pôr este ${NIVEL_ROT[g.nivel].toLowerCase()} na descrição`}>
+                      {dentro?<Check size={11}/>:<Plus size={11}/>}
+                    </button>
+                    <div className="mu-niv-tx">
+                      <b>{g.nome}</b>
+                      <span>{g.nivel!=="macro"&&<>{g.macro}{g.nivel==="servico"&&` › ${g.categoria}`} · </>}
+                        {g.entregas.length} sugerida{g.entregas.length===1?"":"s"} · {g.total.toLocaleString("pt-BR")} no catálogo</span>
+                    </div>
+                    <button className="mu-niv-cadeia" onClick={()=>porCadeia(g)}
+                      title="Põe este nível e tudo o que a leitura achou abaixo dele">cadeia</button>
+                    <button className="mu-niv-exp" onClick={()=>setAberto(exp?null:chave)}
+                      title={exp?"Fechar":"Ver o que a leitura achou aqui dentro"}>
+                      <ChevronDown size={13} style={{transform:exp?"rotate(180deg)":"none",transition:"transform .15s"}}/>
+                    </button>
+                  </div>
+                  {exp && (
+                    <div className="mu-niv-filhos">
+                      {g.entregas.map(e=>{
+                        const d=selSet.has(e.codigo);
+                        return (
+                          <button key={e.codigo} className={`mu-sug-i ${d?"on":""}`}
+                            onClick={()=>d?rem(e.codigo):add(e)}>
+                            <span className="mu-sug-cx">{d?<Check size={10}/>:<Plus size={10}/>}</span>
+                            <span className="mu-sug-tx"><b>{e.entrega}</b><span>{e.categoria}{e.servico?` › ${e.servico}`:""}</span></span>
+                          </button>
+                        );
+                      })}
+                      {g.total>g.entregas.length && (
+                        <div className="mu-niv-resto">
+                          A leitura achou {g.entregas.length} de {g.total.toLocaleString("pt-BR")} entregas deste {NIVEL_ROT[g.nivel].toLowerCase()}.
+                          Para ver o resto, marque o nível e desça pelas colunas abaixo.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+      </div>
+    </div>
+  );
+}
+
+
 function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,respons,setRespons,
                         arqs,setArqs,texto,setTexto,atribs,setAtribs,sugeridos,setSugeridos,
                         trilha,descer,onGoNova,flash,bancoN}){
@@ -1466,41 +1661,7 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
         </div>
       </div>
 
-      {atribs.length>0 && (
-        <div className="mu-sug">
-          <div className="mu-sug-h">
-            <Sparkles size={14}/> <b>O que encontramos no catálogo</b>
-            <span className="mu-sug-n">{totalSug} sugestões</span>
-            <button className="mu-btn v" onClick={()=>{
-              let n=0; atribs.forEach(a=>a.achados.forEach(e=>{ if(!selSet.has(e.codigo)){ add(e); n++; } }));
-              flash&&flash(n?n+" entregas postas no mapa.":"Todas já estavam no mapa.");
-            }}><Plus size={13}/> Pôr todas no mapa</button>
-          </div>
-          <div className="mu-sug-body">
-            {atribs.map((a,i)=>(
-              <div className="mu-atrib" key={i}>
-                <div className="mu-atrib-t">{a.texto.length>150?a.texto.slice(0,148)+"…":a.texto}</div>
-                <div className="mu-atrib-l">
-                  {a.achados.map(e=>{
-                    const dentro=selSet.has(e.codigo);
-                    return (
-                      <button key={e.codigo} className={`mu-sug-i ${dentro?"on":""}`}
-                        onClick={()=>dentro?rem(e.codigo):add(e)}
-                        title={dentro?"Tirar do mapa":"Pôr no mapa"}>
-                        <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
-                        <span className="mu-sug-tx">
-                          <b>{e.entrega}</b>
-                          <span>{e.macro} › {e.categoria}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <SugestoesPorNivel atribs={atribs} selSet={selSet} add={add} rem={rem} flash={flash}/>
 
       <div className="mu-cols">
         {NIVEL_INFO.map((niv,idx)=>{
@@ -2985,6 +3146,8 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
   const novas=sel.filter(e=>e.nova);
   if(novas.length) groups.push({nat:"__novas__",itens:novas});
   const dist=NAT_ORDER.map(nat=>({nat,n:sel.filter(e=>!e.nova&&e.natureza===nat).length}));
+  // o desenho pode conter níveis ainda sem entrega detalhada; só entrega vai ao DFT
+  const nEntregas=soEntregas(sel).length, nNos=soNos(sel).length;
   let idx=0;
   return (<>
     <div className="px-doc-list">
@@ -3001,10 +3164,14 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
           <div className="px-doc-group" key={g.nat}>
             <div className="px-doc-gh">{ehNova?<><Sparkles size={11} color={C.primary}/> Entregas novas (aguardam curadoria)</>:<><span className="px-doc-dot" style={{background:n.cor}}/>{n.rot}</>}<span className="px-doc-gc">{g.itens.length}</span></div>
             {g.itens.map(e=>{ idx++; const has=notes[e.codigo]!==undefined; return (
-              <div className={`px-doc-item ${e.nova?"nova":""}`} key={e.codigo}>
+              <div className={`px-doc-item ${e.nova?"nova":""} ${e.no?"no":""}`} key={e.codigo}>
                 <span className="px-doc-n">{String(idx).padStart(2,"0")}</span>
                 <div className="px-doc-body">
-                  <div className="px-doc-row"><code>{e.nova?"nova":e.codigo}</code>{e.nova && <span className="px-doc-novatag" title="Entrega proposta — passará pela curadoria do banco antes de entrar no catálogo"><Sparkles size={9}/> nova · aguarda curadoria</span>}</div>
+                  <div className="px-doc-row">
+                    {e.no
+                      ? <span className="px-doc-niveltag" title="Nível do catálogo marcado — o desenho da unidade passa por aqui. Detalhe as entregas quando quiser dimensionar."><Layers size={9}/> {NIVEL_ROT[e.nivel]}{e.qtd?` · ${e.qtd.toLocaleString("pt-BR")} entregas abaixo`:""}</span>
+                      : <><code>{e.nova?"nova":e.codigo}</code>{e.nova && <span className="px-doc-novatag" title="Entrega proposta — passará pela curadoria do banco antes de entrar no catálogo"><Sparkles size={9}/> nova · aguarda curadoria</span>}</>}
+                  </div>
                   <div className="px-doc-name">{e.entrega}</div>
                   {has
                     ? <div className="px-doc-notebox"><textarea value={notes[e.codigo]} placeholder="Observação que vai para o DFT…" onChange={ev=>setNote(e.codigo,ev.target.value)}/></div>
@@ -3016,14 +3183,17 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
     </div>
     <div className="px-doc-foot">
       {sel.length>0 && <div className="px-doc-dist">
-        <span className="px-doc-dist-tot"><b>{sel.length}</b> entrega{sel.length===1?"":"s"}</span>
+        <span className="px-doc-dist-tot"><b>{nEntregas}</b> entrega{nEntregas===1?"":"s"}
+          {nNos>0 && <em className="px-doc-dist-nos" title="Níveis do catálogo marcados sem entrega detalhada — desenham a estrutura, mas ainda não dimensionam"> · {nNos} nível{nNos===1?"":"eis"} sem detalhar</em>}</span>
         <span className="px-doc-dist-sep"/>
         {dist.map(d=>{ const n=NAT[d.nat]; return (
           <span key={d.nat} className={`px-doc-dist-n ${d.n===0?"zero":""}`} title={n.rot}><i style={{background:n.cor}}/>{d.n} {n.rot.toLowerCase()}</span>
         ); })}
       </div>}
-      <button className="px-inject" disabled={!sel.length} onClick={onInject}>
-        <ShieldCheck size={16}/> Registrar no DFT {sel.length>0 && <em>({sel.length})</em>}
+      {/* o DFT dimensiona entrega; nível marcado é desenho, e por isso não conta aqui */}
+      <button className="px-inject" disabled={!nEntregas} onClick={onInject}
+        title={nEntregas?undefined:"Marque ao menos uma entrega — o DFT dimensiona entregas, não níveis."}>
+        <ShieldCheck size={16}/> Registrar no DFT {nEntregas>0 && <em>({nEntregas})</em>}
       </button>
       <button className="px-export" disabled={!sel.length} onClick={()=>exportarDescricaoXLSX(sel,notes,orgao,unidade)}>
         <Download size={15}/> Baixar planilha (.xlsx)
@@ -5284,6 +5454,37 @@ const css=`
 .mu-sug-n{background:#fff;border-radius:20px;padding:2px 9px;font-size:10.5px;font-weight:800;}
 .mu-sug-h .mu-btn{margin-left:auto;padding:7px 12px;font-size:11.5px;}
 .mu-sug-body{max-height:290px;overflow-y:auto;padding:10px 12px;}
+/* ---- sugestão segmentada por nível ---- */
+.mu-niv-abas{display:flex;gap:0;border-bottom:1px solid ${C.line};padding:0 12px;background:#FBFCFE;overflow-x:auto;}
+.mu-niv-abas button{display:inline-flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;
+  padding:9px 12px;font-family:inherit;font-size:11.5px;font-weight:700;color:${C.sub};white-space:nowrap;
+  border-bottom:2px solid transparent;margin-bottom:-1px;}
+.mu-niv-abas button:hover{color:${C.primaryDark};}
+.mu-niv-abas button.on{color:${C.primaryDark};border-bottom-color:${C.primary};}
+.mu-niv-abas em{font-style:normal;background:${C.line};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:800;}
+.mu-niv-abas button.on em{background:${C.primary};color:#fff;}
+.mu-sug-dica{padding:8px 14px 0;font-size:10.5px;line-height:1.5;color:${C.faint};}
+.mu-niv{border:1px solid ${C.line};border-radius:9px;margin-bottom:6px;background:#fff;overflow:hidden;}
+.mu-niv.on{border-color:#BEE0C4;background:${C.greenSoft};}
+.mu-niv-l{display:flex;align-items:center;gap:9px;padding:8px 10px;}
+.mu-niv-cx{flex:0 0 auto;width:20px;height:20px;border-radius:6px;border:1px solid ${C.line};background:#fff;
+  color:${C.faint};cursor:pointer;display:grid;place-items:center;transition:all .13s;}
+.mu-niv-cx:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-niv.on .mu-niv-cx{background:${C.green};border-color:${C.green};color:#fff;}
+.mu-niv-tx{flex:1 1 auto;min-width:0;}
+.mu-niv-tx b{display:block;font-size:12px;font-weight:700;color:${C.ink};line-height:1.35;}
+.mu-niv-tx span{display:block;font-size:10px;color:${C.faint};margin-top:2px;}
+.mu-niv-cadeia{flex:0 0 auto;border:1px solid ${C.line};background:#fff;border-radius:7px;padding:4px 9px;
+  font-family:inherit;font-size:10px;font-weight:800;color:${C.sub};cursor:pointer;text-transform:uppercase;letter-spacing:.04em;}
+.mu-niv-cadeia:hover{border-color:${C.primary};color:${C.primaryDark};background:${C.primarySoft};}
+.mu-niv-exp{flex:0 0 auto;border:none;background:none;color:${C.faint};cursor:pointer;display:grid;place-items:center;padding:2px;}
+.mu-niv-exp:hover{color:${C.primaryDark};}
+.mu-niv-filhos{border-top:1px solid ${C.line};padding:8px 10px;background:#FBFCFE;}
+.mu-niv-resto{font-size:10px;line-height:1.5;color:${C.faint};padding:6px 2px 0;}
+.px-doc-item.no{background:${C.primarySoft}33;}
+.px-doc-niveltag{display:inline-flex;align-items:center;gap:4px;background:${C.primarySoft};color:${C.primaryDark};
+  border-radius:5px;padding:2px 7px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;}
+.px-doc-dist-nos{font-style:normal;color:${C.faint};font-weight:600;}
 .mu-atrib{padding:8px 0;border-bottom:1px solid #F2F4F7;}
 .mu-atrib:last-child{border-bottom:none;}
 .mu-atrib-t{font-size:11.5px;color:${C.sub};line-height:1.5;margin-bottom:7px;font-style:italic;}
