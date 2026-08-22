@@ -12,7 +12,7 @@ import {
   TrendingDown, TrendingUp, Minus, BarChart3, Clock, CircleDot, ExternalLink, ZoomIn, ZoomOut, Maximize2,
   AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle, GraduationCap,
   CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, UploadCloud,
-  FlaskConical,
+  FlaskConical, ThumbsUp, Eye, EyeOff,
 } from "lucide-react";
 
 /* ---------- leitura de arquivos no navegador (planilha / pdf / docx) ---------- */
@@ -310,8 +310,34 @@ function semelhanca(a,b){
    ("Contrato celebrado" × "Contratos firmados" partilham só um), então o score
    decide sozinho. */
 const LIMIAR_EQUIVALENTE=0.12;
-function classificarEquivalencia(sugerida,oficial){
-  const {score,comuns}=semelhanca(sugerida,oficial);
+
+/* Nome de nível (macroprocesso, processo, serviço) é curto e quase sempre
+   começa por uma palavra de estrutura — boa parte dos 217 macroprocessos abre
+   com "Gestão". Num texto curto, essa palavra sozinha basta para o Jaccard
+   passar do limiar: medindo, "Gestão da logística pública" × "Gestão de
+   pessoas" dava 0,25 e entrava como equivalente, o que é falso. Na entrega o
+   problema não existe, porque o texto é longo o bastante para a palavra genérica
+   se diluir. Por isso, e SÓ nos níveis acima da entrega, essas palavras de
+   estrutura saem antes da comparação. */
+/* passa a lista pelo próprio tokenize para os radicais baterem com os do texto,
+   em vez de eu adivinhar como o stemmer corta cada palavra. Preguiçoso porque
+   tokenize depende de norm, que só existe mais abaixo no arquivo. */
+let _estrutura=null;
+const palavrasEstrutura=()=>(_estrutura||(_estrutura=new Set(tokenize(
+  "gestão gerenciamento administração coordenação execução controle monitoramento "
+ +"política políticas pública públicas público públicos federal nacional institucional "
+ +"geral gerais apoio processo processos serviço serviços"))));
+function semelhancaNivel(a,b){
+  const est=palavrasEstrutura();
+  const filtra=s=>new Set(tokenize(s||"").filter(t=>!est.has(t)));
+  const A=filtra(a), B=filtra(b);
+  if(!A.size||!B.size) return {score:0, comuns:0};
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  return {score: inter/(A.size+B.size-inter), comuns: inter};
+}
+function classificarEquivalencia(sugerida,oficial,nivel){
+  const ehNivel = nivel && nivel!=="entrega";
+  const {score,comuns}=ehNivel?semelhancaNivel(sugerida,oficial):semelhanca(sugerida,oficial);
   const mesmo = norm(String(sugerida||"").trim())===norm(String(oficial||"").trim());
   const veredito = mesmo ? "igual"
     : score>=LIMIAR_EQUIVALENTE ? "equivalente"
@@ -330,21 +356,27 @@ function gravarPropostas(lista){
 }
 /* Um voto por (código oficial + redação proposta). Votar de novo na mesma
    proposta soma apoio em vez de duplicar a linha. */
-function votarProposta({cod,oficial,sugerida,score,origem,orgao,unidade,justificativa}){
+/* A proposta pode ser sobre uma entrega (que tem código) ou sobre um nível
+   acima — macroprocesso, processo, serviço — que não tem. Por isso a identidade
+   de uma proposta é nível + redação oficial + redação sugerida: para a entrega,
+   o código entra junto; para os outros, o nome oficial faz esse papel. */
+function chaveProposta(p){
+  return (p.nivel||"entrega")+"|"+(normCod(p.cod)||norm(p.oficial||""))+"|"+norm(p.sugerida||"");
+}
+function votarProposta({cod,oficial,sugerida,score,origem,orgao,unidade,justificativa,nivel}){
   const lista=lerPropostas();
-  const chave=p=>normCod(p.cod)+"|"+norm(p.sugerida);
   const nova={id:"p"+Date.now().toString(36), criadaEm:new Date().toISOString(),
-    cod:normCod(cod), oficial:oficial||"", sugerida:sugerida||"", score:+(score||0).toFixed(3),
+    cod:normCod(cod), nivel:nivel||"entrega", oficial:oficial||"", sugerida:sugerida||"", score:+(score||0).toFixed(3),
     origem:origem||"", orgao:orgao||"", unidade:unidade||"", justificativa:justificativa||"", votos:1};
-  const i=lista.findIndex(p=>chave(p)===chave(nova));
+  const i=lista.findIndex(p=>chaveProposta(p)===chaveProposta(nova));
   if(i>=0){ lista[i].votos=(lista[i].votos||1)+1; lista[i].em=nova.criadaEm; }
   else lista.unshift(nova);
   gravarPropostas(lista);
   return i>=0 ? lista[i].votos : 1;
 }
-function jaVotou(cod,sugerida){
-  const c=normCod(cod), s=norm(sugerida||"");
-  return lerPropostas().some(p=>normCod(p.cod)===c && norm(p.sugerida)===s);
+function jaVotou(cod,sugerida,nivel,oficial){
+  const alvo=chaveProposta({cod,sugerida,nivel,oficial});
+  return lerPropostas().some(p=>chaveProposta(p)===alvo);
 }
 
 function candidatasTxt(list){ return list.map(e=>`${e.codigo} | ${e.entrega}${e.servico?" | serviço: "+e.servico:""} | ${e.macro} > ${e.categoria}`).join("\n"); }
@@ -1268,6 +1300,79 @@ function sugerirDoTexto(texto){
 }
 
 /* ============================================================================
+   A IA NOMEIA, O BANCO CONFRONTA, A UNIDADE VOTA
+
+   A metodologia do DFT pede que a área escreva seus próprios macroprocessos,
+   categorias de serviço, serviços e entregas. Seguir isso ao pé da letra faria
+   a IA inventar uma estrutura paralela, solta do catálogo oficial — e o
+   catálogo é justamente o que dá comparabilidade entre 74 órgãos.
+
+   O caminho aqui é outro: a busca continua sendo no banco, e é o nome do banco
+   que vale. A IA entra depois, dizendo como ELA escreveria aquele mesmo item
+   com as palavras desta unidade. Quando as duas redações dizem a mesma coisa
+   de jeitos diferentes, as duas aparecem lado a lado e quem está usando vota.
+   Nada muda no catálogo por causa do voto — a proposta vai para o banco à
+   parte e a curadoria decide.
+============================================================================ */
+async function nomearNiveis(texto,alvos){
+  const lista=(alvos||[]).slice(0,40);
+  if(!lista.length) return new Map();
+  const contexto=String(texto||"").slice(0,2500);
+  const sys="Você escreve nomes de itens do catálogo de entregas do SISDIP (setor público federal), seguindo a "
+    +"metodologia do DFT. Para MACROPROCESSO, CATEGORIA DE SERVIÇO e SERVIÇO use sintagma nominal "
+    +"(\"Gestão de pessoas\", \"Recrutamento e seleção\"). Para ENTREGA use o resultado no particípio "
+    +"(\"Edital publicado\", \"Contratos formalizados\"). Você recebe o nome OFICIAL de cada item e a descrição "
+    +"do que a unidade faz. Para cada item, escreva como ESTA unidade nomearia o MESMO item, com as palavras "
+    +"dela. Não invente item novo, não mude o escopo: é o mesmo item, outra redação. Se o nome oficial já for "
+    +"a melhor redação para esta unidade, repita-o igual. Máximo de 90 caracteres por nome. Responda APENAS um "
+    +"array JSON de strings, na mesma ordem e com o mesmo tamanho da entrada.";
+  const user="O que a unidade faz:\n"+contexto+"\n\nItens (nível | nome oficial):\n"
+    +lista.map((a,i)=>i+": "+(NIVEL_ROT[a.nivel]||"Entrega")+" | "+a.oficial).join("\n");
+  try{
+    const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:2000,system:sys,
+      messages:[{role:"user",content:user}]});
+    const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+    const arr=JSON.parse(tx.replace(/```json|```/g,"").trim());
+    if(!Array.isArray(arr)) return new Map();
+    const saida=new Map();
+    lista.forEach((a,i)=>{
+      const s=typeof arr[i]==="string"?arr[i].trim():"";
+      if(!s) return;
+      const {score,veredito}=classificarEquivalencia(s,a.oficial,a.nivel);
+      // só interessa o que diz o mesmo com outras palavras: igual não é proposta,
+      // distante não é a mesma coisa e viraria ruído na tela de quem revisa
+      if(veredito==="equivalente") saida.set(a.chave,{sugerida:s,score,nivel:a.nivel,oficial:a.oficial,cod:a.cod||""});
+    });
+    return saida;
+  }catch{ return new Map(); }
+}
+
+/* faixa de confronto: nome do banco × nome da IA, com o voto */
+function ConfrontoRedacao({item,origem,orgao,unidade,flash}){
+  const [votado,setVotado]=useState(()=>jaVotou(item.cod,item.sugerida,item.nivel,item.oficial));
+  function votar(){
+    if(votado) return;
+    votarProposta({cod:item.cod,oficial:item.oficial,sugerida:item.sugerida,score:item.score,
+      nivel:item.nivel,origem,orgao,unidade,justificativa:""});
+    setVotado(true);
+    flash&&flash("Voto registrado — vai para a curadoria. O catálogo não muda agora.");
+  }
+  return (
+    <div className="mu-conf">
+      <div className="mu-conf-par">
+        <span className="mu-conf-of" title="Redação que está hoje no catálogo oficial">banco: {item.oficial}</span>
+        <span className="mu-conf-ia" title="Como a IA escreveria o mesmo item com as palavras desta unidade">IA: {item.sugerida}</span>
+      </div>
+      <button className={`mu-conf-bt ${votado?"votado":""}`} onClick={votar} disabled={votado}
+        title={votado?"Você já votou nesta troca":"Votar que a redação da IA diz melhor — vai para a curadoria"}>
+        {votado ? <><Check size={10}/> votado</> : <><ThumbsUp size={10}/> a da IA diz melhor</>}
+      </button>
+    </div>
+  );
+}
+
+
+/* ============================================================================
    SUGESTÕES SEGMENTADAS POR NÍVEL
 
    A leitura do documento devolve entregas. Mas descrever a unidade não começa
@@ -1276,9 +1381,15 @@ function sugerirDoTexto(texto){
    onde quiser — marcar só o macroprocesso, descer até o serviço, ou puxar a
    cadeia inteira de uma vez. O que ela marca vai formando a Descrição da Área.
 ============================================================================ */
-function SugestoesPorNivel({atribs,selSet,add,rem,flash}){
+const CHAVE_COMPARAR="portal:comparar-redacoes";
+function SugestoesPorNivel({atribs,selSet,add,rem,flash,texto,orgao,unidade}){
   const [nivel,setNivel]=useState("macro");
   const [aberto,setAberto]=useState(null);   // chave da linha expandida
+  // o confronto de redações fica ligado por padrão, mas quem só quer marcar o
+  // que a unidade faz pode desligar — e a escolha vale para as próximas leituras
+  const [comparar,setComparar]=useState(()=>{ try{ return localStorage.getItem(CHAVE_COMPARAR)!=="0"; }catch{ return true; } });
+  const [nomesIA,setNomesIA]=useState(new Map());
+  const [nomeando,setNomeando]=useState(false);
 
   // quantas entregas o catálogo inteiro tem sob cada nó — dá a noção do que
   // ainda existe abaixo do que a leitura sugeriu
@@ -1315,6 +1426,30 @@ function SugestoesPorNivel({atribs,selSet,add,rem,flash}){
               ["servico","Serviço",Sparkles],["entrega","Entrega",LayoutGrid]];
   const lista=grupos[nivel]||[];
 
+  /* Pede à IA a redação dela para os mesmos itens que o banco devolveu. Roda uma
+     vez por leitura, com os 4 níveis na mesma chamada. Se falhar, simplesmente
+     não aparece confronto nenhum — o cardápio continua servindo. */
+  useEffect(()=>{
+    if(!comparar||!atribs.length){ return; }
+    let vivo=true;
+    const alvos=[
+      ...grupos.macro.slice(0,10).map(g=>({chave:chaveNo("macro",g),nivel:"macro",oficial:g.nome})),
+      ...grupos.processo.slice(0,10).map(g=>({chave:chaveNo("processo",g),nivel:"processo",oficial:g.nome})),
+      ...grupos.servico.slice(0,10).map(g=>({chave:chaveNo("servico",g),nivel:"servico",oficial:g.nome})),
+      ...grupos.entrega.slice(0,10).map(e=>({chave:e.codigo,nivel:"entrega",oficial:e.entrega,cod:e.codigo})),
+    ];
+    if(!alvos.length) return;
+    setNomeando(true);
+    nomearNiveis(texto,alvos).then(m=>{ if(vivo){ setNomesIA(m); setNomeando(false); } })
+                             .catch(()=>{ if(vivo) setNomeando(false); });
+    return ()=>{ vivo=false; };
+  },[atribs,comparar]);
+
+  function alternarComparar(){
+    setComparar(v=>{ const n=!v; try{ localStorage.setItem(CHAVE_COMPARAR,n?"1":"0"); }catch{} return n; });
+  }
+  const nConfrontos=nomesIA.size;
+
   /* põe no mapa o nó e tudo o que a leitura sugeriu abaixo dele — é o
      "quero a cadeia inteira deste macroprocesso" */
   function porCadeia(g){
@@ -1348,6 +1483,12 @@ function SugestoesPorNivel({atribs,selSet,add,rem,flash}){
       <div className="mu-sug-h">
         <Sparkles size={14}/> <b>O que a leitura encontrou no catálogo</b>
         <span className="mu-sug-n">{totalAchados} entregas · {grupos.macro.length} macroprocessos</span>
+        <button className={`mu-comp-bt ${comparar?"on":""}`} onClick={alternarComparar}
+          title={comparar?"Esconder a comparação entre a redação do banco e a da IA"
+                         :"Mostrar, em cada item, como a IA escreveria com as palavras desta unidade"}>
+          {comparar?<Eye size={12}/>:<EyeOff size={12}/>} comparar redações
+          {comparar && (nomeando ? <em>…</em> : nConfrontos>0 ? <em>{nConfrontos}</em> : null)}
+        </button>
       </div>
       <div className="mu-niv-abas">
         {ABAS.map(([id,rot,Ic])=>(
@@ -1365,12 +1506,16 @@ function SugestoesPorNivel({atribs,selSet,add,rem,flash}){
         {nivel==="entrega"
           ? grupos.entrega.map(e=>{
               const dentro=selSet.has(e.codigo);
+              const conf=comparar?nomesIA.get(e.codigo):null;
               return (
-                <button key={e.codigo} className={`mu-sug-i ${dentro?"on":""}`}
-                  onClick={()=>dentro?rem(e.codigo):add(e)} title={dentro?"Tirar da descrição":"Pôr na descrição"}>
-                  <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
-                  <span className="mu-sug-tx"><b>{e.entrega}</b><span>{e.macro} › {e.categoria}</span></span>
-                </button>
+                <div key={e.codigo}>
+                  <button className={`mu-sug-i ${dentro?"on":""}`}
+                    onClick={()=>dentro?rem(e.codigo):add(e)} title={dentro?"Tirar da descrição":"Pôr na descrição"}>
+                    <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
+                    <span className="mu-sug-tx"><b>{e.entrega}</b><span>{e.macro} › {e.categoria}</span></span>
+                  </button>
+                  {conf && <ConfrontoRedacao item={conf} origem="mapa" orgao={orgao} unidade={unidade} flash={flash}/>}
+                </div>
               );
             })
           : lista.map(g=>{
@@ -1397,6 +1542,8 @@ function SugestoesPorNivel({atribs,selSet,add,rem,flash}){
                       <ChevronDown size={13} style={{transform:exp?"rotate(180deg)":"none",transition:"transform .15s"}}/>
                     </button>
                   </div>
+                  {comparar && nomesIA.get(chave) &&
+                    <ConfrontoRedacao item={nomesIA.get(chave)} origem="mapa" orgao={orgao} unidade={unidade} flash={flash}/>}
                   {exp && (
                     <div className="mu-niv-filhos">
                       {g.entregas.map(e=>{
@@ -1661,7 +1808,7 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
         </div>
       </div>
 
-      <SugestoesPorNivel atribs={atribs} selSet={selSet} add={add} rem={rem} flash={flash}/>
+      <SugestoesPorNivel atribs={atribs} selSet={selSet} add={add} rem={rem} flash={flash} texto={texto} orgao={orgao} unidade={unidade}/>
 
       <div className="mu-cols">
         {NIVEL_INFO.map((niv,idx)=>{
@@ -5390,6 +5537,9 @@ const css=`
 .cr-prop-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;}
 .cr-prop-top code{font-family:ui-monospace,monospace;font-size:10.5px;background:${C.bg};border-radius:5px;padding:2px 7px;color:${C.sub};}
 .cr-prop-sim{font-size:10px;font-weight:800;background:${C.primarySoft};color:${C.primary};border-radius:20px;padding:2px 8px;}
+/* proposta sobre um nível não tem código — o nível ocupa esse lugar */
+.cr-prop-niv{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  background:${C.bg};color:${C.sub};border:1px solid ${C.line};border-radius:5px;padding:2px 7px;}
 .cr-prop-votos{font-size:10px;font-weight:800;background:${C.greenSoft};color:${C.green};border-radius:20px;padding:2px 8px;}
 .cr-prop-org{font-size:10.5px;color:${C.faint};font-weight:700;}
 .cr-prop-x{margin-left:auto;background:none;border:none;color:${C.faint};cursor:pointer;display:grid;place-items:center;}
@@ -5481,6 +5631,25 @@ const css=`
 .mu-niv-exp:hover{color:${C.primaryDark};}
 .mu-niv-filhos{border-top:1px solid ${C.line};padding:8px 10px;background:#FBFCFE;}
 .mu-niv-resto{font-size:10px;line-height:1.5;color:${C.faint};padding:6px 2px 0;}
+/* ---- confronto: redação do banco × redação da IA ---- */
+.mu-comp-bt{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid ${C.line};
+  background:#fff;border-radius:7px;padding:5px 9px;font-family:inherit;font-size:10.5px;font-weight:700;
+  color:${C.faint};cursor:pointer;white-space:nowrap;}
+.mu-comp-bt:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-comp-bt.on{color:${C.primaryDark};border-color:#C7D7F0;background:${C.primarySoft};}
+.mu-comp-bt em{font-style:normal;background:${C.primary};color:#fff;border-radius:20px;padding:0 6px;font-size:9.5px;font-weight:800;}
+.mu-conf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px 30px;padding:6px 9px;
+  background:#FBF8EE;border:1px solid #EDE3C8;border-radius:8px;}
+.mu-conf-par{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.mu-conf-of,.mu-conf-ia{font-size:10px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mu-conf-of{color:${C.faint};}
+.mu-conf-of::first-line{font-weight:700;}
+.mu-conf-ia{color:#8A6100;font-weight:700;}
+.mu-conf-bt{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border:1px solid #E0CE9E;
+  background:#fff;border-radius:7px;padding:5px 10px;font-family:inherit;font-size:10px;font-weight:800;
+  color:#8A6100;cursor:pointer;text-transform:uppercase;letter-spacing:.03em;}
+.mu-conf-bt:hover{background:#FDF6E3;}
+.mu-conf-bt.votado{border-color:#BEE0C4;background:${C.greenSoft};color:${C.green};cursor:default;}
 .px-doc-item.no{background:${C.primarySoft}33;}
 .px-doc-niveltag{display:inline-flex;align-items:center;gap:4px;background:${C.primarySoft};color:${C.primaryDark};
   border-radius:5px;padding:2px 7px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;}
@@ -7243,8 +7412,8 @@ function AbaPropostas({flash}){
                ["Gerado em",new Date().toLocaleString("pt-BR")],
                ["Propostas",String(lista.length)],
                ["Observação","Nenhuma alterou o catálogo. É insumo para a curadoria."],[]];
-    const cols=[["Código","Redação oficial hoje","Redação proposta","Semelhança","Apoios","Origem","Órgão","Unidade","Justificativa","Registrada em"]];
-    const linhas=ordenada.map(p=>[p.cod,p.oficial,p.sugerida,Math.round((p.score||0)*100)+"%",
+    const cols=[["Nível","Código","Redação oficial hoje","Redação proposta","Semelhança","Apoios","Origem","Órgão","Unidade","Justificativa","Registrada em"]];
+    const linhas=ordenada.map(p=>[NIVEL_ROT[p.nivel]||"Entrega",p.cod||"—",p.oficial,p.sugerida,Math.round((p.score||0)*100)+"%",
       p.votos||1,p.origem||"",p.orgao||"",p.unidade||"",p.justificativa||"",
       new Date(p.criadaEm).toLocaleString("pt-BR")]);
     const csv=[...cab,...cols,...linhas].map(l=>l.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(";")).join("\n");
@@ -7286,7 +7455,7 @@ function AbaPropostas({flash}){
       {ordenada.map(p=>(
         <div className="cr-prop-i" key={p.id}>
           <div className="cr-prop-top">
-            <code>{p.cod}</code>
+            {p.cod ? <code>{p.cod}</code> : <span className="cr-prop-niv">{NIVEL_ROT[p.nivel]||"Entrega"}</span>}
             <span className="cr-prop-sim">{Math.round((p.score||0)*100)}% em comum</span>
             <span className="cr-prop-votos">{p.votos||1} apoio{(p.votos||1)===1?"":"s"}</span>
             {(p.orgao||p.unidade) && <span className="cr-prop-org">{p.unidade||p.orgao}</span>}
