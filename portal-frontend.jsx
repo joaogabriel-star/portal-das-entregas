@@ -41,6 +41,34 @@ async function lerArquivo(file){
   throw new Error("Formato não suportado: ."+ext);
 }
 
+/* ---------- ler PDFs com a IA ----------
+   O navegador extrai texto de .xlsx/.csv/.docx sozinho, mas de PDF não: ali só
+   temos o arquivo em base64. Quem lê é a IA. Esta é a porta comum das telas que
+   aceitam anexo — respeita o limite de payload da função serverless (~6MB),
+   devolve o texto lido e diz quais arquivos ficaram de fora por tamanho. */
+const LIMITE_PDF_B64=4000000, LIMITE_TOTAL_B64=4500000;   // ~3MB e ~3,4MB de arquivo original
+async function lerPdfsComIA(lista){
+  const pdfs=(lista||[]).filter(a=>a&&a.tipo==="pdf"&&a.pdfB64);
+  if(!pdfs.length) return {texto:"",grandes:[],enviou:0};
+  const grandes=[]; let total=0; const conteudo=[];
+  pdfs.forEach(a=>{
+    const tam=a.pdfB64.length;
+    if(tam>LIMITE_PDF_B64||total+tam>LIMITE_TOTAL_B64){ grandes.push(a.nome); return; }
+    total+=tam;
+    conteudo.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}});
+  });
+  if(!conteudo.length) return {texto:"",grandes,enviou:0};
+  const enviou=conteudo.length;
+  conteudo.push({type:"text",text:"Liste as atividades e entregas desta unidade."});
+  const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1400,
+    system:"Leia os documentos e liste, uma por linha, as atividades e entregas que a unidade executa. "
+          +"Escreva no vocabulário de resultado (particípio): \"Portaria emitida\", \"Concursos formalizados\". "
+          +"Sem numeração, sem marcador, sem comentário, no máximo 40 linhas.",
+    messages:[{role:"user",content:conteudo}]});
+  const texto=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+  return {texto,grandes,enviou};
+}
+
 /* ---------- exportar Descrição de Área como .xlsx ---------- */
 function exportarDescricaoXLSX(sel,notes,orgao,unidade){
   const NATROT={finalistico:"Finalístico",governanca:"Governança",suporte:"Suporte"};
@@ -1207,22 +1235,29 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
                         arqs,setArqs,texto,setTexto,atribs,setAtribs,sugeridos,setSugeridos,
                         trilha,descer,onGoNova,flash,bancoN}){
   const [lendo,setLendo]=useState(false);
+  const [lendoDocs,setLendoDocs]=useState(false);
   const [aberto,setAberto]=useState(true);      // a leitura recolhe depois de rodar
   const [busca,setBusca]=useState({macro:"",processo:"",servico:"",entrega:""});
   const [criar,setCriar]=useState(null);
   const anexos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],
                 ["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
+  // além dos 4 sugeridos, a unidade anexa quantos outros quiser (PGD,
+  // planejamento estratégico, ata, manual) — cada um com rótulo livre
+  const extras=Object.keys(arqs).filter(k=>k.startsWith("extra")&&arqs[k]);
+  const anexados=Object.values(arqs).filter(Boolean);
+  const pdfsPendentes=anexados.filter(a=>a.tipo==="pdf"&&!a.lido).length;
 
-  async function ler(){
-    if(!String(texto||"").trim()){ flash&&flash("Cole as atribuições ou a lista de atividades primeiro."); return; }
+  async function ler(txtIn){
+    const base=String(txtIn!=null?txtIn:texto||"");
+    if(!base.trim()){ flash&&flash("Cole as atribuições, ou anexe um documento e clique em Ler documentos."); return; }
     setLendo(true);
     // roda fora do clique para a tela não travar com 31 mil entregas
     setTimeout(async ()=>{
-      const linhas=linhasDeTexto(texto);
+      const linhas=linhasDeTexto(base);
       // tenta traduzir para o vocabulário do catálogo; sem IA, segue no léxico
       let expandidas=null, comIA=false;
       try{ expandidas=await expandirConsulta(linhas); comIA=Array.isArray(expandidas)&&expandidas.some((v,i)=>v!==linhas[i]); }catch{}
-      const achados=linhas.length?sugerirDeLinhas(linhas,expandidas):sugerirDoTexto(texto);
+      const achados=linhas.length?sugerirDeLinhas(linhas,expandidas):sugerirDoTexto(base);
       setAtribs(achados);
       setSugeridos(new Set(achados.flatMap(a=>a.achados.map(e=>e.codigo))));
       setLendo(false); setAberto(false);
@@ -1232,16 +1267,73 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
     },30);
   }
 
+  /* O PDF é o caso comum aqui (regimento, RGI) e é justamente o que o navegador
+     não sabe abrir sozinho: antes, anexar um PDF punha o chip na tela e mais
+     nada — o campo ao lado continuava vazio e a leitura recusava. Este botão é
+     o passo que faltava: manda os PDFs para a IA ler, joga o que ela achou no
+     campo e já emenda a busca no catálogo. */
+  async function lerDocumentos(){
+    if(lendoDocs||lendo) return;
+    const pend=anexados.filter(a=>a.tipo==="pdf"&&!a.lido);
+    const semTexto=anexados.filter(a=>a.tipo!=="pdf"&&!a.texto);
+    if(!anexados.length){ flash&&flash("Anexe um documento primeiro."); return; }
+    if(!pend.length){
+      // os que não são PDF já entraram no campo na hora do anexo
+      if(String(texto||"").trim()) ler();
+      else flash&&flash("Estes documentos já foram lidos — o texto está no campo ao lado.");
+      return;
+    }
+    setLendoDocs(true);
+    try{
+      const {texto:lido,grandes,enviou}=await lerPdfsComIA(pend);
+      if(grandes.length) flash&&flash("Grande demais para a IA: "+grandes.join(", ")+". Exporte só o trecho de atribuições, ou cole o texto no campo.");
+      if(!lido){
+        flash&&flash(enviou?"A IA não devolveu nada para estes PDFs. Cole as atribuições no campo ao lado."
+                          :"Não consegui enviar estes PDFs. Cole as atribuições no campo ao lado.");
+        return;
+      }
+      // marca como lido para não pagar a mesma leitura duas vezes
+      const nomes=new Set(pend.map(a=>a.nome));
+      setArqs(s=>{ const n={...s}; Object.keys(n).forEach(k=>{ if(n[k]&&nomes.has(n[k].nome)) n[k]={...n[k],lido:true}; }); return n; });
+      const novoTexto=(String(texto||"").trim()?texto.trim()+String.fromCharCode(10):"")+lido;
+      setTexto(novoTexto);
+      flash&&flash("Li "+enviou+" documento(s) — o texto entrou no campo ao lado.");
+      ler(novoTexto);
+    }catch(err){
+      flash&&flash("Não consegui ler os PDFs pela IA. Cole as atribuições no campo ao lado.");
+    }finally{ setLendoDocs(false); }
+  }
+
   async function anexar(chave,ev){
     const f=ev.target.files?.[0]; if(!f) return;
     try{
       const a=await lerArquivo(f);
-      setArqs(s=>({...s,[chave]:a}));
+      setArqs(s=>({...s,[chave]:{...a,rotulo:s[chave]?.rotulo||""}}));
       // o texto do documento entra no campo de leitura, que é o que é lido
-      if(a.texto) setTexto(t=>(t?t+"\n":"")+a.texto.slice(0,4000));
-      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado.":"Anexado.");
+      if(a.texto) setTexto(t=>(t?t+String.fromCharCode(10):"")+a.texto.slice(0,4000));
+      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado."
+                          :"Anexado. Clique em Ler documentos para a IA abrir o PDF.");
     }catch(err){ flash&&flash(err.message||"Não consegui ler o arquivo."); }
     finally{ ev.target.value=""; }
+  }
+
+  async function anexarExtra(ev){
+    const f=ev.target.files?.[0]; if(!f) return;
+    try{
+      const a=await lerArquivo(f);
+      const chave="extra"+Date.now().toString(36);
+      setArqs(s=>({...s,[chave]:{...a,rotulo:"Outro documento"}}));
+      if(a.texto) setTexto(t=>(t?t+String.fromCharCode(10):"")+a.texto.slice(0,4000));
+      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado."
+                          :"Anexado. Clique em Ler documentos para a IA abrir o PDF.");
+    }catch(err){ flash&&flash(err.message||"Não consegui ler o arquivo."); }
+    finally{ ev.target.value=""; }
+  }
+
+  function removerAnexo(chave){
+    // extras somem de vez; os 4 sugeridos voltam a ser espaço vazio
+    if(chave.startsWith("extra")) setArqs(s=>{ const n={...s}; delete n[chave]; return n; });
+    else setArqs(s=>({...s,[chave]:null}));
   }
 
   const totalSug=atribs.reduce((s,a)=>s+a.achados.length,0);
@@ -1318,11 +1410,36 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
                 <Paperclip size={11}/>
                 <span>{arqs[k]?arqs[k].nome:rot}</span>
                 {arqs[k]
-                  ? <button onClick={ev=>{ev.preventDefault();setArqs(s=>({...s,[k]:null}));}}><X size={10}/></button>
+                  ? <button onClick={ev=>{ev.preventDefault();removerAnexo(k);}} title="Remover"><X size={10}/></button>
                   : <input type="file" accept=".pdf,.docx,.xlsx,.csv" style={{display:"none"}} onChange={ev=>anexar(k,ev)}/>}
               </label>
             ))}
+            {extras.map(k=>(
+              <span key={k} className="mu-anexo tem" title={arqs[k].nome}>
+                <Paperclip size={11}/>
+                <input className="mu-rotulo" value={arqs[k].rotulo||""} placeholder="Que documento é este?" maxLength={40}
+                  onChange={e=>setArqs(s=>({...s,[k]:{...s[k],rotulo:e.target.value}}))}/>
+                <span className="mu-arq">{arqs[k].nome}</span>
+                <button onClick={()=>removerAnexo(k)} title="Remover"><X size={10}/></button>
+              </span>
+            ))}
+            <label className="mu-anexo mu-mais" title="Anexar outro documento que ajude a descrever a área">
+              <Plus size={11}/><span>outro documento</span>
+              <input type="file" accept=".pdf,.docx,.xlsx,.csv" style={{display:"none"}} onChange={anexarExtra}/>
+            </label>
           </div>
+          {anexados.length>0 && (
+            <div className="mu-acoes">
+              <button className="mu-btn p" onClick={lerDocumentos} disabled={lendoDocs||lendo}>
+                <Sparkles size={14}/> {lendoDocs?"Lendo os documentos…":"Ler documentos"}
+              </button>
+              <span className="mu-nota">
+                {pdfsPendentes
+                  ? pdfsPendentes+" PDF"+(pdfsPendentes>1?"s":"")+" à espera — a IA abre e traz o texto para o campo ao lado."
+                  : "Os anexos já foram lidos; o texto está no campo ao lado."}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="mu-card">
@@ -1334,7 +1451,7 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
             <textarea className="mu-ta" value={texto} onChange={e=>setTexto(e.target.value)}
               placeholder={"I - planejar, coordenar e supervisionar…\nAnalisar solicitações de concurso público\nElaborar edital"}/>
             <div className="mu-acoes">
-              <button className="mu-btn p" onClick={ler} disabled={lendo}>
+              <button className="mu-btn p" onClick={()=>ler()} disabled={lendo}>
                 <Sparkles size={14}/> {lendo?"Lendo…":"Ler e sugerir"}
               </button>
               <button className="mu-btn g" onClick={()=>{setTexto("");setAtribs([]);setSugeridos(new Set());}}>Limpar</button>
@@ -5138,6 +5255,14 @@ const css=`
 .mu-anexo.tem{border-style:solid;border-color:#BEE0C4;background:${C.greenSoft};color:${C.green};}
 .mu-anexo button{background:none;border:none;color:inherit;cursor:pointer;padding:0;display:grid;place-items:center;opacity:.7;}
 .mu-anexo button:hover{opacity:1;}
+.mu-anexo.mu-mais{border-style:dashed;color:${C.primaryDark};border-color:${C.primary};background:${C.primarySoft};}
+.mu-anexo.mu-mais:hover{filter:brightness(.97);}
+.mu-rotulo{border:none;background:transparent;font-family:inherit;font-size:10.5px;font-weight:800;
+  color:inherit;width:9.5em;padding:0;border-bottom:1px dashed currentColor;}
+.mu-rotulo:focus{outline:none;border-bottom-style:solid;}
+.mu-rotulo::placeholder{color:inherit;opacity:.55;font-weight:700;}
+.mu-arq{opacity:.7;font-weight:600;max-width:120px;}
+.mu-nota{align-self:center;font-size:10.5px;line-height:1.4;color:${C.faint};}
 .mu-d{font-size:12px;line-height:1.55;color:${C.sub};margin:0 0 10px;}
 .mu-ta{width:100%;min-height:118px;border:1px solid ${C.line};border-radius:9px;padding:10px 12px;
   font-family:inherit;font-size:12.5px;line-height:1.55;background:#fbfcfd;resize:vertical;}
