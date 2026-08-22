@@ -214,6 +214,75 @@ async function expandirConsulta(linhas){
   }catch{ return lista; }
 }
 function normCod(c){ return String(c==null?"":c).replace(/\D/g,""); }
+/* ============================================================================
+   EQUIVALÊNCIA COM A PLANILHA OFICIAL E BANCO DE PROPOSTAS DE TROCA
+
+   O catálogo (banco.json) é a planilha oficial de entregas. Quando a IA sugere
+   uma redação que diz a MESMA coisa que uma entrega oficial mas com outras
+   palavras, isso é um sinal: ou a unidade fala diferente, ou a redação oficial
+   envelheceu. Em vez de escolher por conta própria, o portal mostra as duas
+   lado a lado e deixa quem está usando propor a troca.
+
+   Os votos não tocam o catálogo. Vão para um banco à parte, no navegador, que
+   é o protótipo do processo de mudança: acumula quem propôs, quantos apoiaram
+   e a justificativa, e sai em planilha para a curadoria decidir.
+============================================================================ */
+function semelhanca(a,b){
+  const A=new Set(tokenize(a||"")), B=new Set(tokenize(b||""));
+  if(!A.size||!B.size) return {score:0, comuns:0};
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  return {score: inter/(A.size+B.size-inter), comuns: inter};   // Jaccard sobre os radicais
+}
+
+/* Classifica a sugestão contra a entrega oficial escolhida.
+   "igual"      — mesma redação, nada a propor.
+   "equivalente"— diz o mesmo com outras palavras: é aqui que cabe propor troca.
+   "distante"   — provavelmente é outra coisa; propor troca seria forçar.
+
+   O limiar foi medido, não estimado: com 8 pares equivalentes escritos à mão e
+   7 pares claramente diferentes, os diferentes deram TODOS 0,00 e os
+   equivalentes ficaram entre 0,13 e 0,50. Em 0,12 pega os 8 e barra os 7.
+   Testei também exigir 2 radicais em comum — derrubou 3 equivalentes legítimos
+   ("Contrato celebrado" × "Contratos firmados" partilham só um), então o score
+   decide sozinho. */
+const LIMIAR_EQUIVALENTE=0.12;
+function classificarEquivalencia(sugerida,oficial){
+  const {score,comuns}=semelhanca(sugerida,oficial);
+  const mesmo = norm(String(sugerida||"").trim())===norm(String(oficial||"").trim());
+  const veredito = mesmo ? "igual"
+    : score>=LIMIAR_EQUIVALENTE ? "equivalente"
+    : "distante";
+  return {score, comuns, veredito};
+}
+
+const CHAVE_PROPOSTAS="portal:propostas-catalogo";
+function lerPropostas(){
+  try{ const c=window.localStorage.getItem(CHAVE_PROPOSTAS); return c?JSON.parse(c):[]; }
+  catch{ return []; }
+}
+function gravarPropostas(lista){
+  try{ window.localStorage.setItem(CHAVE_PROPOSTAS,JSON.stringify(lista.slice(0,500))); }
+  catch{ /* aba anônima ou storage cheio: o protótipo segue sem lembrar */ }
+}
+/* Um voto por (código oficial + redação proposta). Votar de novo na mesma
+   proposta soma apoio em vez de duplicar a linha. */
+function votarProposta({cod,oficial,sugerida,score,origem,orgao,unidade,justificativa}){
+  const lista=lerPropostas();
+  const chave=p=>normCod(p.cod)+"|"+norm(p.sugerida);
+  const nova={id:"p"+Date.now().toString(36), criadaEm:new Date().toISOString(),
+    cod:normCod(cod), oficial:oficial||"", sugerida:sugerida||"", score:+(score||0).toFixed(3),
+    origem:origem||"", orgao:orgao||"", unidade:unidade||"", justificativa:justificativa||"", votos:1};
+  const i=lista.findIndex(p=>chave(p)===chave(nova));
+  if(i>=0){ lista[i].votos=(lista[i].votos||1)+1; lista[i].em=nova.criadaEm; }
+  else lista.unshift(nova);
+  gravarPropostas(lista);
+  return i>=0 ? lista[i].votos : 1;
+}
+function jaVotou(cod,sugerida){
+  const c=normCod(cod), s=norm(sugerida||"");
+  return lerPropostas().some(p=>normCod(p.cod)===c && norm(p.sugerida)===s);
+}
+
 function candidatasTxt(list){ return list.map(e=>`${e.codigo} | ${e.entrega}${e.servico?" | serviço: "+e.servico:""} | ${e.macro} > ${e.categoria}`).join("\n"); }
 
 // endpoints: em produção, a Netlify Function protege a chave; no preview do Claude,
@@ -4393,7 +4462,7 @@ function ConversorUnificado({add,selSet,sel,notes,orgao,unidade,flash,onAbrirAss
       // consulta já traduzida cobre bem mais sem inchar o pedido.
       const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(expandidas[idx]||ln,24)}));
       const catalogoPorLinha=bloco.map(b=>`LINHA ${b.idx}: "${b.ln}"\ncandidatas:\n${candidatasTxt(b.cands)}`).join("\n\n");
-      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
+      const sys=`Você enquadra o trabalho de uma área no catálogo oficial de entregas do SISDIP/DFT. No DFT o encadeamento é Macroprocesso > Categoria de Serviço > Macroentrega/Serviço > Atividade > Entrega, e vale a regra 1 Atividade = 1 Entrega: cada linha recebida é UMA atividade e deve casar com UMA entrega. Entrega é o resultado concreto e quantificável da atividade, escrito no particípio ("Portaria emitida"), nunca o verbo da ação. Escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Marque conf "alta" só quando a entrega oficial cobre o mesmo resultado da linha; se cobre parcialmente, "media"; se é vizinha mas não a mesma coisa, "baixa". Não invente correspondência para não deixar a linha vazia: sem entrega equivalente, devolva "opcoes":[] — o portal trata como proposta de entrega nova. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
       let userContent;
       if(anexo?.tipo==="pdf" && !linhas.length){
         userContent=[{type:"document",source:{type:"base64",media_type:"application/pdf",data:anexo.pdfB64}},{type:"text",text:"Extraia as entregas deste PDF (uma por linha, idx sequencial) e enquadre com até 5 opções cada. Responda só o array JSON."}];
@@ -4508,11 +4577,56 @@ function ConversorUnificado({add,selSet,sel,notes,orgao,unidade,flash,onAbrirAss
                     onClick={()=>setItem(i,{escolhido:o.cod,incluir:o.conf==="alta"?true:it.incluir})}>{codMap.get(o.cod)?.entrega.slice(0,34)}{codMap.get(o.cod)?.entrega.length>34?"…":""}</button>))}
                   <button className="nv" onClick={()=>setItem(i,{novaProposta:true,escolhido:null})}>propor nova</button>
                 </div>}
+                {ent && <ProporTroca sugerida={it.pgd} oficial={ent.entrega} cod={ent.codigo}
+                  origem="conversor" orgao={orgao} unidade={unidade} flash={flash}/>}
               </>}
           </div>
         </div>);
       })}
       <div className="px-cu-rodape">A triagem é sua: alta confiança já vem marcada; revise as demais, troque a opção ou proponha uma nova entrega. Nada entra na descrição sem o seu clique.</div>
+    </div>
+  );
+}
+
+/* Aparece só quando a redação sugerida diz o mesmo que a oficial com outras
+   palavras. Se for igual, não há o que propor; se for distante, propor troca
+   seria forçar duas coisas diferentes na mesma linha. */
+function ProporTroca({sugerida,oficial,cod,origem,orgao,unidade,flash}){
+  const {score,veredito}=useMemo(()=>classificarEquivalencia(sugerida,oficial),[sugerida,oficial]);
+  const [aberto,setAberto]=useState(false);
+  const [just,setJust]=useState("");
+  const [votos,setVotos]=useState(()=>jaVotou(cod,sugerida)?1:0);
+  if(veredito!=="equivalente") return null;
+
+  function votar(){
+    const n=votarProposta({cod,oficial,sugerida,score,origem,orgao,unidade,justificativa:just});
+    setVotos(n); setAberto(false);
+    flash&&flash("Proposta registrada — vai para a curadoria, o catálogo não muda agora.");
+  }
+
+  return (
+    <div className="px-troca">
+      <div className="px-troca-h">
+        <GitMerge size={12}/>
+        <span>Sua redação diz o mesmo com outras palavras <b>({Math.round(score*100)}% em comum)</b></span>
+        {votos>0
+          ? <span className="px-troca-ok"><Check size={11}/> proposta registrada</span>
+          : <button onClick={()=>setAberto(v=>!v)}>propor troca da oficial</button>}
+      </div>
+      {aberto && <div className="px-troca-corpo">
+        <div className="px-troca-par">
+          <div><span>hoje no catálogo</span><b>{oficial}</b></div>
+          <div><span>sua redação</span><b>{sugerida}</b></div>
+        </div>
+        <input value={just} onChange={e=>setJust(e.target.value)} maxLength={180}
+          placeholder="Por que a sua diz melhor? (opcional, ajuda a curadoria)"/>
+        <div className="px-troca-acoes">
+          <button className="g" onClick={()=>setAberto(false)}>Cancelar</button>
+          <button className="p" onClick={votar}>Registrar proposta</button>
+        </div>
+        <div className="px-troca-nota">O catálogo não muda com isto. A proposta fica num banco à parte,
+          com quantos apoiaram, e sai em planilha para a curadoria decidir.</div>
+      </div>}
     </div>
   );
 }
@@ -4559,7 +4673,7 @@ function ConversorPGD({onClose,add,selSet,sel,notes,orgao,unidade,flash,inline})
       // consulta já traduzida cobre bem mais sem inchar o pedido.
       const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(expandidas[idx]||ln,24)}));
       const catalogoPorLinha=bloco.map(b=>`LINHA ${b.idx}: "${b.ln}"\ncandidatas:\n${candidatasTxt(b.cands)}`).join("\n\n");
-      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
+      const sys=`Você enquadra o trabalho de uma área no catálogo oficial de entregas do SISDIP/DFT. No DFT o encadeamento é Macroprocesso > Categoria de Serviço > Macroentrega/Serviço > Atividade > Entrega, e vale a regra 1 Atividade = 1 Entrega: cada linha recebida é UMA atividade e deve casar com UMA entrega. Entrega é o resultado concreto e quantificável da atividade, escrito no particípio ("Portaria emitida"), nunca o verbo da ação. Escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Marque conf "alta" só quando a entrega oficial cobre o mesmo resultado da linha; se cobre parcialmente, "media"; se é vizinha mas não a mesma coisa, "baixa". Não invente correspondência para não deixar a linha vazia: sem entrega equivalente, devolva "opcoes":[] — o portal trata como proposta de entrega nova. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
       let userContent;
       if(anexo?.tipo==="pdf" && !linhas.length){
         userContent=[{type:"document",source:{type:"base64",media_type:"application/pdf",data:anexo.pdfB64}},{type:"text",text:"Extraia as entregas deste PDF (uma por linha, idx sequencial) e enquadre com até 5 opções cada. Responda só o array JSON."}];
@@ -4828,6 +4942,51 @@ const css=`
   color:${C.faint};font-size:9px;font-weight:800;}
 .px-nova-cand-niv span.hit{background:${C.primary};color:#fff;}
 /* ---- trilha dos 4 níveis do catálogo ---- */
+/* ---- propor troca da redação oficial (dentro do Conversor) ---- */
+.px-troca{margin-top:9px;border-top:1px dashed ${C.line};padding-top:8px;}
+.px-troca-h{display:flex;align-items:center;gap:7px;font-size:11px;color:${C.sub};flex-wrap:wrap;}
+.px-troca-h b{color:${C.navy};}
+.px-troca-h button{margin-left:auto;background:${C.primarySoft};border:1px solid #C7D7F0;border-radius:7px;
+  padding:4px 10px;font-family:inherit;font-size:10.5px;font-weight:800;color:${C.primaryDark};cursor:pointer;}
+.px-troca-h button:hover{background:${C.primary};border-color:${C.primary};color:#fff;}
+.px-troca-ok{margin-left:auto;display:inline-flex;align-items:center;gap:4px;background:${C.greenSoft};
+  color:${C.green};border-radius:20px;padding:3px 9px;font-size:10px;font-weight:800;}
+.px-troca-corpo{margin-top:9px;background:${C.bg};border-radius:9px;padding:11px;}
+.px-troca-par{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;}
+@media(max-width:700px){.px-troca-par{grid-template-columns:1fr;}}
+.px-troca-par>div{background:#fff;border:1px solid ${C.line};border-radius:8px;padding:8px 10px;}
+.px-troca-par span{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${C.faint};margin-bottom:3px;}
+.px-troca-par b{font-size:11.5px;font-weight:600;color:${C.ink};line-height:1.4;}
+.px-troca-corpo input{width:100%;border:1px solid ${C.line};border-radius:8px;padding:8px 10px;
+  font-family:inherit;font-size:11.5px;background:#fff;}
+.px-troca-corpo input:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.px-troca-acoes{display:flex;justify-content:flex-end;gap:7px;margin-top:9px;}
+.px-troca-acoes button{border:none;border-radius:7px;padding:7px 13px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;}
+.px-troca-acoes .g{background:none;border:1px solid ${C.line};color:${C.sub};}
+.px-troca-acoes .p{background:${C.primary};color:#fff;}
+.px-troca-nota{margin-top:8px;font-size:10.5px;color:${C.faint};line-height:1.5;}
+/* ---- aba de propostas na Central de Revisão ---- */
+.cr-prop{max-width:920px;margin:0 auto;}
+.cr-prop-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.cr-prop-h b{font-size:14px;color:${C.navy};display:block;}
+.cr-prop-h span{font-size:11.5px;color:${C.sub};}
+.cr-prop-acoes{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.cr-prop-acoes select{border:1px solid ${C.line};border-radius:8px;padding:7px 10px;font-family:inherit;font-size:11.5px;background:#fff;}
+.cr-prop-i{background:#fff;border:1px solid ${C.line};border-radius:11px;padding:12px 14px;margin-bottom:9px;}
+.cr-prop-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;}
+.cr-prop-top code{font-family:ui-monospace,monospace;font-size:10.5px;background:${C.bg};border-radius:5px;padding:2px 7px;color:${C.sub};}
+.cr-prop-sim{font-size:10px;font-weight:800;background:${C.primarySoft};color:${C.primary};border-radius:20px;padding:2px 8px;}
+.cr-prop-votos{font-size:10px;font-weight:800;background:${C.greenSoft};color:${C.green};border-radius:20px;padding:2px 8px;}
+.cr-prop-org{font-size:10.5px;color:${C.faint};font-weight:700;}
+.cr-prop-x{margin-left:auto;background:none;border:none;color:${C.faint};cursor:pointer;display:grid;place-items:center;}
+.cr-prop-x:hover{color:#C2410C;}
+.cr-prop-par{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:700px){.cr-prop-par{grid-template-columns:1fr;}}
+.cr-prop-par>div{background:${C.bg};border-radius:8px;padding:9px 11px;}
+.cr-prop-par>div.nova{background:${C.primarySoft};}
+.cr-prop-par span{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${C.faint};margin-bottom:3px;}
+.cr-prop-par b{font-size:12px;font-weight:600;color:${C.ink};line-height:1.45;}
+.cr-prop-just{margin-top:9px;font-size:11.5px;color:${C.sub};font-style:italic;line-height:1.5;}
 /* ---- Mapa da Unidade ---- */
 .mu{padding:18px 20px 30px;min-width:0;max-width:100%;}
 .mu-topo{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;margin-bottom:14px;}
@@ -6346,10 +6505,12 @@ function CentralRevisao({ onClose, embutido, flags }){
   const paresF=useMemo(()=>pares.filter(p=>(!filtro.mac||p.macro===filtro.mac)&&(!filtro.cat||p.cat===filtro.cat)),[pares,filtro]);
   const semServicoF=useMemo(()=>semServico.filter(x=>(!filtro.mac||x.mac===filtro.mac)&&(!filtro.cat||x.cat===filtro.cat)),[semServico,filtro]);
   const sinalizacoes=flags||[];
+  const propostas=lerPropostas();
   const abas=[
     ["similares","Similares",GitMerge, paresF.length],
     ["servicos","Serviços",Sparkles, semServicoF.length],
     ["sinalizacoes","Sinalizações",Flag, sinalizacoes.length],
+    ["propostas","Propostas de troca",FilePlus2, propostas.length],
   ];
 
   return (
@@ -6395,6 +6556,7 @@ function CentralRevisao({ onClose, embutido, flags }){
           {aba==="similares" && <AbaSimilares pares={paresF} revisor={revisor} onDecidir={registrar} flash={flash}/>}
           {aba==="servicos"  && <AbaServicos itens={semServicoF} revisor={revisor} onAprovar={registrar} flash={flash}/>}
           {aba==="sinalizacoes" && <QualidadePanel embutido flags={sinalizacoes} onClose={onClose}/>}
+          {aba==="propostas" && <AbaPropostas flash={flash}/>}
         </main>
       </div>
 
@@ -6603,6 +6765,93 @@ function Badge({st}){ const c=st==="Ativa"?"ativa":st==="Inativa"?"inativa":"nao
 /* ============================================================
    ABA 2 — SERVIÇOS (sugestão IA + aprovação humana)
    ============================================================ */
+/* ---------- Propostas de troca da redação oficial ----------
+   O que o uso do portal acumulou: onde a redação do catálogo destoa de como as
+   unidades falam. Nada aqui mudou o catálogo — é insumo de decisão. */
+function AbaPropostas({flash}){
+  const [lista,setLista]=useState(()=>lerPropostas());
+  const [ordem,setOrdem]=useState("votos");
+  const ordenada=useMemo(()=>{
+    const l=[...lista];
+    if(ordem==="votos") l.sort((a,b)=>(b.votos||1)-(a.votos||1)||b.criadaEm.localeCompare(a.criadaEm));
+    else if(ordem==="semelhanca") l.sort((a,b)=>(b.score||0)-(a.score||0));
+    else l.sort((a,b)=>b.criadaEm.localeCompare(a.criadaEm));
+    return l;
+  },[lista,ordem]);
+
+  function descartar(id){
+    const nova=lista.filter(p=>p.id!==id);
+    setLista(nova); gravarPropostas(nova);
+    flash&&flash("Proposta descartada.");
+  }
+  function exportar(){
+    if(!lista.length) return;
+    const cab=[["Propostas de troca da redação oficial"],
+               ["Gerado em",new Date().toLocaleString("pt-BR")],
+               ["Propostas",String(lista.length)],
+               ["Observação","Nenhuma alterou o catálogo. É insumo para a curadoria."],[]];
+    const cols=[["Código","Redação oficial hoje","Redação proposta","Semelhança","Apoios","Origem","Órgão","Unidade","Justificativa","Registrada em"]];
+    const linhas=ordenada.map(p=>[p.cod,p.oficial,p.sugerida,Math.round((p.score||0)*100)+"%",
+      p.votos||1,p.origem||"",p.orgao||"",p.unidade||"",p.justificativa||"",
+      new Date(p.criadaEm).toLocaleString("pt-BR")]);
+    const csv=[...cab,...cols,...linhas].map(l=>l.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(";")).join("\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+    a.download="propostas-troca-catalogo.csv"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+    flash&&flash(lista.length+" propostas exportadas.");
+  }
+
+  if(!lista.length) return (
+    <div className="cr-vazio" style={{padding:"46px 24px",textAlign:"center"}}>
+      <FilePlus2 size={22} style={{opacity:.4}}/>
+      <div style={{marginTop:10,fontSize:13.5,fontWeight:700,color:C.navy}}>Nenhuma proposta ainda</div>
+      <div style={{marginTop:6,fontSize:12.5,color:C.sub,lineHeight:1.6,maxWidth:470,margin:"6px auto 0"}}>
+        Quando o Conversor encontra uma entrega oficial que diz o mesmo que a redação da unidade,
+        mas com outras palavras, ele oferece <b>propor troca da oficial</b>. O que for proposto
+        aparece aqui, com quantos apoiaram.
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="cr-prop">
+      <div className="cr-prop-h">
+        <div>
+          <b>{lista.length} proposta{lista.length===1?"":"s"} de troca</b>
+          <span>vindas do uso do portal · nenhuma alterou o catálogo</span>
+        </div>
+        <div className="cr-prop-acoes">
+          <select value={ordem} onChange={e=>setOrdem(e.target.value)}>
+            <option value="votos">mais apoiadas</option>
+            <option value="semelhanca">mais parecidas</option>
+            <option value="data">mais recentes</option>
+          </select>
+          <button className="cr-primary" onClick={exportar}><Download size={13}/> Exportar</button>
+        </div>
+      </div>
+      {ordenada.map(p=>(
+        <div className="cr-prop-i" key={p.id}>
+          <div className="cr-prop-top">
+            <code>{p.cod}</code>
+            <span className="cr-prop-sim">{Math.round((p.score||0)*100)}% em comum</span>
+            <span className="cr-prop-votos">{p.votos||1} apoio{(p.votos||1)===1?"":"s"}</span>
+            {(p.orgao||p.unidade) && <span className="cr-prop-org">{p.unidade||p.orgao}</span>}
+            <button className="cr-prop-x" onClick={()=>descartar(p.id)} title="Descartar">
+              <X size={13}/>
+            </button>
+          </div>
+          <div className="cr-prop-par">
+            <div><span>hoje no catálogo</span><b>{p.oficial}</b></div>
+            <div className="nova"><span>proposta</span><b>{p.sugerida}</b></div>
+          </div>
+          {p.justificativa && <div className="cr-prop-just">“{p.justificativa}”</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AbaServicos({ itens, revisor, onAprovar, flash }){
   const [estado,setEstado]=useState({});   // cod -> {sug,just,val,load,err,aprovado}
   const [q,setQ]=useState("");
