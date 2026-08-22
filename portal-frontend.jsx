@@ -567,8 +567,8 @@ export default function PortalEntregas(){
         </div>
       </header>
 
-      {/* faixa das 4 etapas — navegação principal do portal */}
-      <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>
+      {/* faixa das 4 etapas — navegação principal do portal (não faz sentido na Mentoria, que é uma seção à parte) */}
+      {secao!=="mentoria" && <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>}
 
       {trocarUnidade && <ModalUnidade orgao={orgao} unidade={unidade}
         setOrgao={setOrgao} setUnidade={setUnidade} onClose={()=>setTrocarUnidade(false)}/>}
@@ -1859,9 +1859,14 @@ function PainelMentoria(){
   const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
   const [subaba,setSubaba]=useState("vinculos"); // "vinculos" · "calendario" · "documentos"
 
-  const [tela,setTela]=useState("login"); // "login" · "cadastro"
+  const [tela,setTela]=useState("login"); // "login" · "cadastro" · "admin"
   const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
   const [erroLogin,setErroLogin]=useState(""); const [entrando,setEntrando]=useState(false);
+
+  // Primeiro acesso de administrador — tela separada do cadastro de mentor,
+  // só pros e-mails autorizados no backend (ver ADMINS_PERMITIDOS).
+  const [adminEmail,setAdminEmail]=useState(""); const [adminSenha,setAdminSenha]=useState(""); const [adminConfirmar,setAdminConfirmar]=useState("");
+  const [erroAdmin,setErroAdmin]=useState(""); const [configurandoAdmin,setConfigurandoAdmin]=useState(false);
 
   const [vinculos,setVinculos]=useState([]); const [verTodos,setVerTodos]=useState(false);
   const [vinculoSel,setVinculoSel]=useState(null);
@@ -1930,6 +1935,23 @@ function PainelMentoria(){
       await fazerLogin(cad.email,cad.senha);
     }catch(err){ setErroCadastro(err.message||"Não consegui cadastrar."); }
     finally{ setCadastrando(false); }
+  }
+
+  async function configurarAdmin(ev){
+    ev.preventDefault();
+    if(configurandoAdmin) return;
+    setConfigurandoAdmin(true); setErroAdmin("");
+    try{
+      if(adminSenha!==adminConfirmar) throw new Error("As senhas não coincidem.");
+      const resp=await fetch(`${API_BASE}/api/mentoria/admin/primeiro-acesso`,{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:adminEmail,senha:adminSenha}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao configurar acesso.");
+      await fazerLogin(adminEmail,adminSenha);
+    }catch(err){ setErroAdmin(err.message||"Não consegui configurar o acesso."); }
+    finally{ setConfigurandoAdmin(false); }
   }
 
   function sair(){ localStorage.removeItem(MENTORIA_TOKEN_KEY); setToken(null); setVinculoSel(null); }
@@ -2016,6 +2038,35 @@ function PainelMentoria(){
         </form>
         <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("cadastro")}>
           <Plus size={14}/> <span className="px-mode-lbl">Ainda não é mentor? Cadastre-se</span>
+        </button>
+        <button className="px-mode" style={{marginTop:"6px"}} onClick={()=>setTela("admin")}>
+          <ShieldCheck size={14}/> <span className="px-mode-lbl">Sou administrador · primeiro acesso</span>
+        </button>
+      </div>
+    );
+  }
+
+  if(!token && tela==="admin"){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"360px"}}>
+        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
+          <ShieldCheck size={15}/>
+          <span>Primeiro acesso de administrador. Só funciona para os e-mails já autorizados pela coordenação do DFT.</span>
+        </div>
+        <form onSubmit={configurarAdmin} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          <input type="email" required placeholder="E-mail institucional" value={adminEmail} onChange={e=>setAdminEmail(e.target.value)}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          <input type="password" required placeholder="Crie uma senha" value={adminSenha} onChange={e=>setAdminSenha(e.target.value)}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          <input type="password" required placeholder="Confirme a senha" value={adminConfirmar} onChange={e=>setAdminConfirmar(e.target.value)}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          {erroAdmin && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erroAdmin}</div>}
+          <button className="px-mode cta-bot" disabled={configurandoAdmin} type="submit">
+            <ShieldCheck size={15}/> <span className="px-mode-lbl">{configurandoAdmin?"Configurando…":"Criar acesso"}</span>
+          </button>
+        </form>
+        <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("login")}>
+          <ChevronsLeft size={14}/> <span className="px-mode-lbl">Voltar para o login</span>
         </button>
       </div>
     );
@@ -7391,7 +7442,7 @@ const STATUS = {
   estr:       { cor: T.sub,    soft: "#fff",       txt: "" },
 };
 
-const API_BASE = "https://portal-backend-production-945b.up.railway.app";
+const API_BASE = "https://portal-dft-backend.onrender.com";
 
 /* ============================================================
    NORMALIZAÇÃO DE TEXTO (para busca/filtro sem acento)
