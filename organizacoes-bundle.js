@@ -330,6 +330,20 @@ Character number: `+e.characterNumber};Ir.prototype.lineNumber=function(){return
 .px-troca-acoes .g{background:none;border:1px solid ${c.line};color:${c.sub};}
 .px-troca-acoes .p{background:${c.primary};color:#fff;}
 .px-troca-nota{margin-top:8px;font-size:10.5px;color:${c.faint};line-height:1.5;}
+/* ---- propor troca a partir do chat ---- */
+.px-chip-par{display:inline-flex;align-items:stretch;}
+.px-chip-par .px-chip2{border-top-right-radius:0;border-bottom-right-radius:0;}
+.px-chip-troca{border:1px solid ${c.line};border-left:none;border-top-right-radius:7px;border-bottom-right-radius:7px;
+  background:#fff;color:${c.faint};cursor:pointer;padding:0 7px;display:grid;place-items:center;transition:all .14s;}
+.px-chip-troca:hover{color:${c.primaryDark};border-color:${c.primary};background:${c.primarySoft};}
+.px-chip-troca.on{background:${c.primary};border-color:${c.primary};color:#fff;}
+.px-troca-ta{width:100%;border:1px solid ${c.line};border-radius:7px;padding:6px 8px;font-family:inherit;
+  font-size:11.5px;line-height:1.4;background:#fff;resize:vertical;margin-top:2px;}
+.px-troca-ta:focus{outline:2px solid ${c.primarySoft};border-color:${c.primary};}
+.px-troca-verd{font-size:11px;line-height:1.5;border-radius:8px;padding:8px 10px;margin-bottom:9px;font-weight:600;}
+.px-troca-verd.equivalente{background:${c.greenSoft};color:${c.green};}
+.px-troca-verd.distante{background:#FBF3DC;color:#9A6A00;}
+.px-troca-verd.igual{background:${c.bg};color:${c.sub};}
 /* ---- aba de propostas na Central de Revis\xE3o ---- */
 .cr-prop{max-width:920px;margin:0 auto;}
 .cr-prop-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}

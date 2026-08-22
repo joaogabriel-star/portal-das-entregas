@@ -689,7 +689,7 @@ export default function PortalEntregas(){
                   trilha={{macro:macroF,processo:catF,servico:servF}}
                   descer={descerNivel} irNivel={irNivel} limparTrilha={limparTrilha}
                   onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
-              {mode==="assistente" && <Assistente onAdd={add}/>}
+              {mode==="assistente" && <Assistente onAdd={add} orgao={orgao} unidade={unidade} flash={flash}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("marcos")}/>}
               {mode==="revisao" && <CentralRevisao embutido flags={flags} onClose={()=>setMode("lista")}/>}
               {/* A Descrição da Área deixou de ter botão próprio na barra: vive no
@@ -3790,12 +3790,60 @@ function PreviewDFT({sel,notes,orgao,unidade,onClose,onConfirm}){
 }
 
 /* ---------- assistente (encaixe por IA) ---------- */
-function Assistente({onAdd}){
+/* No chat não há o pareamento linha-a-linha do Conversor: a mensagem do usuário
+   costuma ser uma descrição inteira, não a redação de uma entrega. Por isso aqui
+   a redação proposta é editável, e a semelhança com a oficial é recalculada
+   enquanto se digita. */
+function ProporTrocaChat({cod,oficial,sugestaoInicial,orgao,unidade,flash,onFechar}){
+  const [texto,setTexto]=useState(String(sugestaoInicial||"").slice(0,160));
+  const [just,setJust]=useState("");
+  const {score,veredito}=useMemo(()=>classificarEquivalencia(texto,oficial),[texto,oficial]);
+  const vazio=!texto.trim();
+  const semNada=!vazio && score===0;
+
+  function registrar(){
+    if(vazio||semNada) return;
+    votarProposta({cod,oficial,sugerida:texto.trim(),score,origem:"assistente",orgao,unidade,justificativa:just});
+    flash&&flash("Proposta registrada — vai para a curadoria, o catálogo não muda agora.");
+    onFechar&&onFechar();
+  }
+
+  return (
+    <div className="px-troca-corpo" style={{marginTop:8}}>
+      <div className="px-troca-par">
+        <div><span>hoje no catálogo</span><b>{oficial}</b></div>
+        <div><span>sua redação</span>
+          <textarea className="px-troca-ta" value={texto} maxLength={160} rows={2}
+            onChange={e=>setTexto(e.target.value)}
+            placeholder="Como a sua área chama esta entrega?"/>
+        </div>
+      </div>
+      <div className={`px-troca-verd ${veredito}`}>
+        {vazio ? "Escreva como a sua área chama esta entrega."
+         : semNada ? "Não há nada em comum com a redação oficial — isso parece outra entrega, não outro nome para a mesma. Considere propor entrega nova."
+         : veredito==="igual" ? "É a mesma redação que já está no catálogo."
+         : veredito==="equivalente" ? `Diz o mesmo com outras palavras (${Math.round(score*100)}% em comum) — é o caso de propor troca.`
+         : `Pouca coisa em comum (${Math.round(score*100)}%). Dá para registrar, mas a curadoria vai ver essa distância.`}
+      </div>
+      <input value={just} onChange={e=>setJust(e.target.value)} maxLength={180}
+        placeholder="Por que a sua diz melhor? (opcional, ajuda a curadoria)"/>
+      <div className="px-troca-acoes">
+        <button className="g" onClick={onFechar}>Cancelar</button>
+        <button className="p" disabled={vazio||semNada||veredito==="igual"} onClick={registrar}>Registrar proposta</button>
+      </div>
+      <div className="px-troca-nota">O catálogo não muda com isto. A proposta fica num banco à parte,
+        com quantos apoiaram, e sai em planilha para a curadoria decidir.</div>
+    </div>
+  );
+}
+
+function Assistente({onAdd,orgao,unidade,flash}){
   // inline: renderiza como visualização do .px-main (mesma área da Lista/Árvore/
   // Explosão solar). Padrão (flutuante): FAB + janela, controlados por open/setOpen.
   const [msgs,setMsgs]=useState([{role:"assistant",content:"Sou o Assistente de Entregas. Descreva o que sua área faz, cole trechos do PGD/planejamento, ou anexe uma planilha (.xlsx/.csv), PDF ou Word com a descrição de área — eu enquadro no catálogo (com o código), aviso se já existe algo parecido e proponho novas quando preciso. Os códigos viram botões de adicionar."}]);
   const [input,setInput]=useState(""); const [load,setLoad]=useState(false); const endRef=useRef(null);
   const [anexo,setAnexo]=useState(null);      // {tipo,nome,texto?,pdfB64?}
+  const [trocaAberta,setTrocaAberta]=useState(null);   // código com o formulário de troca aberto
   const [anexoErro,setAnexoErro]=useState("");
   const fileRef=useRef(null);
   const codMap=useMemo(()=>{const m=new Map();ENTREGAS.forEach(e=>m.set(e.codigo,e));return m;},[]);
@@ -3842,11 +3890,25 @@ function Assistente({onAdd}){
       setMsgs(m=>[...m,{role:"assistant",content:"⚠️ Não consegui falar com o serviço de IA agora. Se o portal está publicado, verifique se a função de IA (backend) está configurada. O arquivo foi lido normalmente e você pode montar a descrição de área manualmente pelo catálogo."}]);
     } finally{ setLoad(false); }
   }
-  const render=content=>{ const cs=[...new Set((content.match(CODIGO_RX)||[]).map(normCod))].filter(c=>codMap.has(c));
-    return (<><div className="px-msg-tx">{content}</div>{cs.length>0&&<div className="px-chips">{cs.map(c=><button key={c} className="px-chip2" onClick={()=>onAdd(codMap.get(c))}><Plus size={11}/> {c}</button>)}</div>}</>); };
+  /* o que o usuário escreveu logo antes desta resposta é a melhor semente para a
+     redação proposta — é ali que ele descreveu o trabalho com as palavras da área */
+  const sementeAntes=idx=>{ for(let i=idx-1;i>=0;i--) if(msgs[i].role==="user") return msgs[i].content; return ""; };
+  const render=(content,idx)=>{ const cs=[...new Set((content.match(CODIGO_RX)||[]).map(normCod))].filter(c=>codMap.has(c));
+    const chave=c=>idx+":"+c, abertaAqui=cs.find(c=>chave(c)===trocaAberta);
+    return (<><div className="px-msg-tx">{content}</div>
+      {cs.length>0&&<div className="px-chips">{cs.map(c=>(
+        <span key={c} className="px-chip-par">
+          <button className="px-chip2" onClick={()=>onAdd(codMap.get(c))}><Plus size={11}/> {c}</button>
+          <button className={`px-chip-troca ${trocaAberta===chave(c)?"on":""}`} title="Propor outra redação para esta entrega oficial"
+            onClick={()=>setTrocaAberta(t=>t===chave(c)?null:chave(c))}><GitMerge size={11}/></button>
+        </span>))}</div>}
+      {abertaAqui && <ProporTrocaChat cod={abertaAqui} oficial={codMap.get(abertaAqui)?.entrega}
+        sugestaoInicial={sementeAntes(idx)} orgao={orgao} unidade={unidade} flash={flash}
+        onFechar={()=>setTrocaAberta(null)}/>}
+    </>); };
   const corpo = (<>
       <div className="px-chat-b">
-        {msgs.map((m,i)=><div key={i} className={`px-msg ${m.role}`}>{m.role==="assistant"?render(m.content):<div className="px-msg-tx">{m.content}</div>}</div>)}
+        {msgs.map((m,i)=><div key={i} className={`px-msg ${m.role}`}>{m.role==="assistant"?render(m.content,i):<div className="px-msg-tx">{m.content}</div>}</div>)}
         {load&&<div className="px-msg assistant"><div className="px-typing"><span/><span/><span/></div></div>}
         <div ref={endRef}/>
       </div>
@@ -4965,6 +5027,20 @@ const css=`
 .px-troca-acoes .g{background:none;border:1px solid ${C.line};color:${C.sub};}
 .px-troca-acoes .p{background:${C.primary};color:#fff;}
 .px-troca-nota{margin-top:8px;font-size:10.5px;color:${C.faint};line-height:1.5;}
+/* ---- propor troca a partir do chat ---- */
+.px-chip-par{display:inline-flex;align-items:stretch;}
+.px-chip-par .px-chip2{border-top-right-radius:0;border-bottom-right-radius:0;}
+.px-chip-troca{border:1px solid ${C.line};border-left:none;border-top-right-radius:7px;border-bottom-right-radius:7px;
+  background:#fff;color:${C.faint};cursor:pointer;padding:0 7px;display:grid;place-items:center;transition:all .14s;}
+.px-chip-troca:hover{color:${C.primaryDark};border-color:${C.primary};background:${C.primarySoft};}
+.px-chip-troca.on{background:${C.primary};border-color:${C.primary};color:#fff;}
+.px-troca-ta{width:100%;border:1px solid ${C.line};border-radius:7px;padding:6px 8px;font-family:inherit;
+  font-size:11.5px;line-height:1.4;background:#fff;resize:vertical;margin-top:2px;}
+.px-troca-ta:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.px-troca-verd{font-size:11px;line-height:1.5;border-radius:8px;padding:8px 10px;margin-bottom:9px;font-weight:600;}
+.px-troca-verd.equivalente{background:${C.greenSoft};color:${C.green};}
+.px-troca-verd.distante{background:#FBF3DC;color:#9A6A00;}
+.px-troca-verd.igual{background:${C.bg};color:${C.sub};}
 /* ---- aba de propostas na Central de Revisão ---- */
 .cr-prop{max-width:920px;margin:0 auto;}
 .cr-prop-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
