@@ -196,6 +196,16 @@ table.heat th:first-child{text-align:left}
 table.heat td.hc{text-align:center;font-family:var(--num);font-weight:600;font-size:10.5px;padding:6px 4px}
 table.heat td.hc span{display:inline-block;min-width:42px;padding:4px 6px;border-radius:6px}
 table.heat td.cat{font-size:10.5px;font-weight:600;color:var(--sub);max-width:210px}
+/* rodapé com o total de cada carreira: é o que impede ler 100% de uma carreira
+   pequena como se pesasse o mesmo que 100% de uma grande */
+table.heat tr.heat-tot td{border-top:2px solid var(--hair);padding-top:9px}
+table.heat tr.heat-tot td.cat{color:var(--faint);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em}
+table.heat tr.heat-tot span.tot{background:none;color:var(--sub);font-weight:700;font-size:10.5px;min-width:0;padding:0}
+table.heat tr.heat-tot span.tot small{display:block;font-size:8px;color:var(--faint);font-weight:600;letter-spacing:.04em}
+table.heat tr.heat-tot span.tot small.corte{color:var(--coral);margin-top:2px}
+.seg-mat{margin-bottom:2px}
+.heat-exp{font-size:10px;line-height:1.55;color:var(--faint);max-width:760px;margin:6px 0 12px}
+.heat-exp b{color:var(--sub)}
 
 .empty-state{text-align:center;padding:44px 20px;color:var(--faint)}
 .empty-state p{font-size:12px;max-width:420px;margin:8px auto 0;line-height:1.6}
@@ -1152,7 +1162,42 @@ function carrDist(c){
   }).join("");
 }
 
-/* visão 3 — matriz carreira × categoria: de onde vem a necessidade */
+/* visão 3 — matriz carreira × categoria: de onde vem a necessidade.
+
+   Duas leituras da mesma matriz, e elas respondem a perguntas diferentes.
+
+   "Horas por mês" mostra o tamanho absoluto: a Específica pesa mais que a ACE
+   em qualquer categoria, simplesmente porque a Específica é maior. Serve para
+   dimensionar.
+
+   "% dentro da carreira" normaliza cada COLUNA em 100. Aí a pergunta vira outra:
+   dado o trabalho de uma carreira, quanto dele vai para cada categoria? É assim
+   que se compara o perfil de uma carreira pequena com o de uma grande sem que o
+   tamanho atropele a leitura.
+
+   Cuidado obrigatório na visão normalizada: 100% da ACE são 47 h/mês e 100% da
+   Específica são 612 — treze vezes mais. Equiparar sem dizer isso convida a ler
+   uma carreira minúscula como se pesasse igual. Por isso a linha de rodapé com
+   o total real de cada carreira aparece SEMPRE, e o realce fica na própria
+   coluna. */
+let carrMatMode=0;   // 0 = horas por mês · 1 = % dentro da carreira
+function setCarrMatMode(i){carrMatMode=i;render();}
+
+/* Arredondar cada célula por conta própria faz a coluna fechar em 99 ou 101, e
+   aí a promessa "cada carreira soma 100" vira mentira na tela. Maior resto
+   resolve: distribui os pontos inteiros e devolve as sobras a quem tem a maior
+   fração pendente, garantindo que a soma dê exatamente o alvo. */
+function repartirPontos(valores,alvo){
+  const soma=valores.reduce((s,v)=>s+v,0);
+  if(soma<=0||alvo<=0) return valores.map(()=>0);
+  const exatos=valores.map(v=>alvo*v/soma);
+  const base=exatos.map(Math.floor);
+  const sobra=alvo-base.reduce((s,v)=>s+v,0);
+  const ordem=exatos.map((v,i)=>[v-Math.floor(v),i]).sort((a,b)=>b[0]-a[0]);
+  for(let k=0;k<sobra&&ordem.length;k++) base[ordem[k%ordem.length][1]]++;
+  return base;
+}
+
 function carrMatriz(c){
   const porCat={},porCarr={};
   c.matriz.forEach(m=>{
@@ -1164,20 +1209,71 @@ function carrMatriz(c){
   const cel={};
   c.matriz.forEach(m=>{cel[m.categoria+"|"+m.carreira]=m.horas});
   const maxCel=Math.max(...cats.flatMap(ct=>carrs.map(cr=>cel[ct+"|"+cr]||0)),1);
-  const head=`<tr><th>Categoria de serviço</th>${carrs.map(cr=>`<th>${cnome(cr)}</th>`).join("")}<th class="num">Total</th></tr>`;
+  const pct=carrMatMode===1;
+
+  /* A tabela mostra só as 8 maiores categorias. Se uma carreira tem trabalho
+     fora dessas 8, a coluna dela NÃO deve fechar em 100 — e forçar seria
+     esconder o que ficou de fora. Por isso o alvo de cada coluna é a fatia que
+     as linhas visíveis representam do total da carreira. */
+  const visivel={}, alvoCol={}, pontos={};
+  carrs.forEach(cr=>{
+    const horas=cats.map(ct=>cel[ct+"|"+cr]||0);
+    visivel[cr]=horas.reduce((s,v)=>s+v,0);
+    alvoCol[cr]=porCarr[cr]>0?Math.round(100*visivel[cr]/porCarr[cr]):0;
+    const dist=repartirPontos(horas,alvoCol[cr]);
+    cats.forEach((ct,i)=>{ pontos[ct+"|"+cr]=dist[i]; });
+  });
+
+  const head=`<tr><th>Categoria de serviço</th>${carrs.map(cr=>`<th>${cnome(cr)}</th>`).join("")}<th class="num">Total h/mês</th></tr>`;
   const body=cats.map(ct=>{
     const cells=carrs.map(cr=>{
       const v=cel[ct+"|"+cr]||0;
       if(v<=0) return `<td class="hc"><span style="color:var(--hair)">·</span></td>`;
+      if(pct){
+        // o denominador é a carreira inteira: a coluna é o perfil dela
+        const p=pontos[ct+"|"+cr]||0;
+        const share=v/(porCarr[cr]||1);
+        const a=(0.08+0.72*share).toFixed(2);
+        const escuro=share>0.55;
+        return `<td class="hc"><span style="background:rgba(19,81,180,${a});color:${escuro?"#fff":"var(--navy)"}"
+          title="${fmt(Math.round(v))} h/mês de ${fmt(Math.round(porCarr[cr]))} h/mês da carreira ${cnome(cr)}">${p}%</span></td>`;
+      }
       const a=(0.08+0.55*v/maxCel).toFixed(2);
       const escuro=v/maxCel>0.62;
       return `<td class="hc"><span style="background:rgba(19,81,180,${a});color:${escuro?"#fff":"var(--navy)"}">${fmt(Math.round(v))}</span></td>`;
     }).join("");
     return `<tr><td class="cat">${ct}</td>${cells}<td class="num">${fmt(Math.round(porCat[ct]))}</td></tr>`;
   }).join("");
+
+  /* o rodapé é o antídoto da visão normalizada: mostra de que tamanho é o 100%
+     de cada carreira, para ninguém equiparar carreira pequena com grande */
+  const totalGeral=carrs.reduce((s,cr)=>s+(porCarr[cr]||0),0);
+  const cortou=carrs.some(cr=>alvoCol[cr]<100);
+  const rodape=`<tr class="heat-tot">
+    <td class="cat">${pct?"100% de cada carreira equivale a":"Total da carreira"}</td>
+    ${carrs.map(cr=>{
+      const falta=pct&&alvoCol[cr]<100;
+      return `<td class="hc"><span class="tot">${fmt(Math.round(porCarr[cr]||0))}<small>h/mês</small>${
+        falta?`<small class="corte" title="O restante está em categorias fora das 8 listadas">${alvoCol[cr]}% acima</small>`:""}</span></td>`;
+    }).join("")}
+    <td class="num">${fmt(Math.round(totalGeral))}</td></tr>`;
+
+  const seg=`<div class="seg seg-mat">
+    <button class="${!pct?'on':''}" onclick="setCarrMatMode(0)">Horas por mês</button>
+    <button class="${pct?'on':''}" onclick="setCarrMatMode(1)">% dentro da carreira</button>
+  </div>`;
+  const explica=`<div class="heat-exp">${pct
+    ? "Cada coluna é a distribuição do trabalho <b>daquela carreira</b>, com o tamanho dela neutralizado — serve para comparar em que uma carreira pequena se concentra com aquilo em que uma grande se concentra."
+      +(cortou
+        ? " Onde a coluna não fecha em 100%, o restante está em categorias fora das 8 listadas; o rodapé diz quanto as linhas acima cobrem."
+        : " Aqui todas as colunas fecham em 100%.")
+      +" O rodapé lembra de que tamanho é esse 100%: equiparar sem olhar isso faz uma carreira de 47 h/mês parecer do mesmo peso que uma de 612."
+    : "Horas-alvo mensais por categoria × carreira. Os tons mais fortes são as maiores concentrações da unidade inteira — carreira grande domina o mapa. Para comparar o <b>perfil</b> de cada carreira, troque para % dentro da carreira."}</div>`;
+
   const nota=Object.keys(porCat).length>8?`<div style="font-size:9.5px;color:var(--faint);font-weight:500;margin-top:10px">Mostrando as 8 categorias com maior necessidade, de ${Object.keys(porCat).length} no total.</div>`:"";
-  return `<div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>${nota}`;
+  return seg+explica+`<div style="overflow-x:auto"><table class="heat">${head}${body}${rodape}</table></div>${nota}`;
 }
+
 
 /* As três visões de Carreiras (fila, por carreira, matriz) só existem depois que
    o pipeline de alocação roda. Como isso ainda não vale para toda unidade, a aba
