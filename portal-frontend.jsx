@@ -3331,7 +3331,7 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
     <div className="px-doc-foot">
       {sel.length>0 && <div className="px-doc-dist">
         <span className="px-doc-dist-tot"><b>{nEntregas}</b> entrega{nEntregas===1?"":"s"}
-          {nNos>0 && <em className="px-doc-dist-nos" title="Níveis do catálogo marcados sem entrega detalhada — desenham a estrutura, mas ainda não dimensionam"> · {nNos} nível{nNos===1?"":"eis"} sem detalhar</em>}</span>
+          {nNos>0 && <em className="px-doc-dist-nos" title="Níveis do catálogo marcados sem entrega detalhada — desenham a estrutura, mas ainda não dimensionam"> · {nNos===1?"1 nível":nNos+" níveis"} sem detalhar</em>}</span>
         <span className="px-doc-dist-sep"/>
         {dist.map(d=>{ const n=NAT[d.nat]; return (
           <span key={d.nat} className={`px-doc-dist-n ${d.n===0?"zero":""}`} title={n.rot}><i style={{background:n.cor}}/>{d.n} {n.rot.toLowerCase()}</span>
