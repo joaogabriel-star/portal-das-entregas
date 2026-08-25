@@ -593,8 +593,22 @@ const EXEMPLO_ENTREGAS = [
 ];
 const EXEMPLO_MESES = [3,4,5];
 
+/* mesma unidade escolhida na Primeira etapa/Catálogo de entregas (chave
+   gravada pelo portal principal em portal-frontend.jsx) -- sem isso essa
+   tela ficava presa na CGGP de exemplo, desconectada do que o gestor
+   preencheu nas etapas 1 e 2. */
+function lerUnidadePortal(){
+  try{
+    const cru = localStorage.getItem("portal:unidade");
+    if(!cru) return null;
+    const d = JSON.parse(cru);
+    if(!d.orgao && !d.unidade) return null;
+    return {s: d.unidade||d.orgao, n: d.unidade||d.orgao, pai: d.unidade?d.orgao:""};
+  }catch(e){ return null; }
+}
+
 const est = {
-  unidade:{s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
+  unidade: lerUnidadePortal() || {s:"CGGP", n:"Coordenação-Geral de Gestão de Pessoas", pai:"SGP · MGI"},
   pgd: new URLSearchParams(location.search).get("pgd")==="1",
   ciclo:"2026-1",       // vigência do plano de entregas no PGD; resolve as datas de todas
   entregas:[],   // vazio: o gestor traz as suas (o botão de exemplo carrega a demonstração)
