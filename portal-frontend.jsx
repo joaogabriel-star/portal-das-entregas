@@ -12,7 +12,7 @@ import {
   TrendingDown, TrendingUp, Minus, BarChart3, Clock, CircleDot, ExternalLink, ZoomIn, ZoomOut, Maximize2,
   AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle, GraduationCap,
   CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, UploadCloud,
-  FlaskConical,
+  FlaskConical, ThumbsUp, Eye, EyeOff,
 } from "lucide-react";
 
 /* ---------- leitura de arquivos no navegador (planilha / pdf / docx) ---------- */
@@ -41,16 +41,48 @@ async function lerArquivo(file){
   throw new Error("Formato não suportado: ."+ext);
 }
 
+/* ---------- ler PDFs com a IA ----------
+   O navegador extrai texto de .xlsx/.csv/.docx sozinho, mas de PDF não: ali só
+   temos o arquivo em base64. Quem lê é a IA. Esta é a porta comum das telas que
+   aceitam anexo — respeita o limite de payload da função serverless (~6MB),
+   devolve o texto lido e diz quais arquivos ficaram de fora por tamanho. */
+const LIMITE_PDF_B64=4000000, LIMITE_TOTAL_B64=4500000;   // ~3MB e ~3,4MB de arquivo original
+async function lerPdfsComIA(lista){
+  const pdfs=(lista||[]).filter(a=>a&&a.tipo==="pdf"&&a.pdfB64);
+  if(!pdfs.length) return {texto:"",grandes:[],enviou:0};
+  const grandes=[]; let total=0; const conteudo=[];
+  pdfs.forEach(a=>{
+    const tam=a.pdfB64.length;
+    if(tam>LIMITE_PDF_B64||total+tam>LIMITE_TOTAL_B64){ grandes.push(a.nome); return; }
+    total+=tam;
+    conteudo.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:a.pdfB64}});
+  });
+  if(!conteudo.length) return {texto:"",grandes,enviou:0};
+  const enviou=conteudo.length;
+  conteudo.push({type:"text",text:"Liste as atividades e entregas desta unidade."});
+  const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:1400,
+    system:"Leia os documentos e liste, uma por linha, as atividades e entregas que a unidade executa. "
+          +"Escreva no vocabulário de resultado (particípio): \"Portaria emitida\", \"Concursos formalizados\". "
+          +"Sem numeração, sem marcador, sem comentário, no máximo 40 linhas.",
+    messages:[{role:"user",content:conteudo}]});
+  const texto=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+  return {texto,grandes,enviou};
+}
+
 /* ---------- exportar Descrição de Área como .xlsx ---------- */
 function exportarDescricaoXLSX(sel,notes,orgao,unidade){
   const NATROT={finalistico:"Finalístico",governanca:"Governança",suporte:"Suporte"};
+  // a planilha mostra o desenho inteiro, mas separa o que é entrega do que ainda
+  // é só estrutura escolhida — quem lê precisa saber o que já dá para dimensionar
+  const nEntregas=soEntregas(sel).length, nNos=soNos(sel).length;
   const cab=[["Descrição de Área — DFT/SISDIP"],["Órgão:",orgao||""],["Unidade:",unidade||""],
-    ["Gerado em:",new Date().toLocaleString("pt-BR")],["Total de entregas:",sel.length],[]];
-  const colunas=["#","Código","Entrega","Atividade","Serviço","Categoria de Serviço","Macroprocesso","Natureza","Metodologia","Situação","Observações da unidade"];
-  const linhas=sel.map((e,i)=>[i+1,e.nova?"(nova)":e.codigo,e.entrega,e.atividade||"",e.servico||"",e.categoria||"",e.macro||"",e.nova?"—":(NATROT[e.natureza]||e.natureza),e.metod||(e.nova?"—":"Típica"),e.nova?"Nova — aguarda curadoria":"No catálogo",notes[e.codigo]||""]);
+    ["Gerado em:",new Date().toLocaleString("pt-BR")],["Total de entregas:",nEntregas],
+    ...(nNos?[["Níveis marcados sem entrega detalhada:",nNos]]:[]),[]];
+  const colunas=["#","Nível","Código","Entrega","Atividade","Serviço","Categoria de Serviço","Macroprocesso","Natureza","Metodologia","Situação","Observações da unidade"];
+  const linhas=sel.map((e,i)=>[i+1,e.no?NIVEL_ROT[e.nivel]:"Entrega",e.no?"—":(e.nova?"(nova)":e.codigo),e.entrega,e.atividade||"",e.servico||"",e.categoria||"",e.macro||"",e.no?"—":(e.nova?"—":(NATROT[e.natureza]||e.natureza)),e.no?"—":(e.metod||(e.nova?"—":"Típica")),e.no?"Nível marcado — falta detalhar as entregas":(e.nova?"Nova — aguarda curadoria":"No catálogo"),notes[e.codigo]||""]);
   const aoa=[...cab,colunas,...linhas];
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"]=[{wch:5},{wch:12},{wch:48},{wch:48},{wch:28},{wch:28},{wch:26},{wch:14},{wch:12},{wch:22},{wch:36}];
+  ws["!cols"]=[{wch:5},{wch:14},{wch:12},{wch:48},{wch:48},{wch:28},{wch:28},{wch:26},{wch:14},{wch:12},{wch:34},{wch:36}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Descrição de Área");
   const nomeArq=`descricao-area-${(unidade||"unidade").replace(/[^a-z0-9]+/gi,"-").toLowerCase().slice(0,40)}.xlsx`;
@@ -214,6 +246,139 @@ async function expandirConsulta(linhas){
   }catch{ return lista; }
 }
 function normCod(c){ return String(c==null?"":c).replace(/\D/g,""); }
+
+/* ============================================================================
+   NÓS DE ESTRUTURA NA DESCRIÇÃO DA ÁREA
+
+   A Descrição da Área nasceu como uma lista de entregas. Mas quem está
+   descrevendo a unidade nem sempre começa pela entrega: começa dizendo "a
+   gente faz gestão de pessoas", depois desce para "recrutamento", depois para
+   o serviço, e só então para as entregas. Para o desenho acompanhar esse
+   caminho, a Descrição passa a aceitar o nó de qualquer nível — macroprocesso,
+   processo ou serviço — e não só a folha.
+
+   Truque para não reescrever o portal inteiro: o nó também tem "codigo", uma
+   chave sintética. Assim add/rem/selSet continuam iguais. Quem precisa MESMO de
+   entrega (o registro no DFT, a contagem, a planilha) filtra pelos que não são
+   nó (soEntregas).
+============================================================================ */
+const NIVEL_ROT={macro:"Macroprocesso",processo:"Processo",servico:"Serviço"};
+function chaveNo(nivel,d){
+  const partes=[nivel, d.macro||"", nivel==="macro"?"":(d.categoria||""), nivel==="servico"?(d.servico||""):""];
+  return "N|"+partes.join("|");
+}
+function fazerNo(nivel,d){
+  const nome = nivel==="macro" ? d.macro : nivel==="processo" ? d.categoria : d.servico;
+  return {codigo:chaveNo(nivel,d), no:true, nivel, entrega:nome,
+          macro:d.macro||"", categoria:nivel==="macro"?"":(d.categoria||""),
+          servico:nivel==="servico"?(d.servico||""):"",
+          natureza:d.natureza||"finalistico", qtd:d.qtd||0};
+}
+/* separa o que é entrega de verdade do que é só estrutura desenhada */
+const soEntregas=lista=>(lista||[]).filter(e=>!e.no);
+const soNos=lista=>(lista||[]).filter(e=>e.no);
+
+/* ============================================================================
+   EQUIVALÊNCIA COM A PLANILHA OFICIAL E BANCO DE PROPOSTAS DE TROCA
+
+   O catálogo (banco.json) é a planilha oficial de entregas. Quando a IA sugere
+   uma redação que diz a MESMA coisa que uma entrega oficial mas com outras
+   palavras, isso é um sinal: ou a unidade fala diferente, ou a redação oficial
+   envelheceu. Em vez de escolher por conta própria, o portal mostra as duas
+   lado a lado e deixa quem está usando propor a troca.
+
+   Os votos não tocam o catálogo. Vão para um banco à parte, no navegador, que
+   é o protótipo do processo de mudança: acumula quem propôs, quantos apoiaram
+   e a justificativa, e sai em planilha para a curadoria decidir.
+============================================================================ */
+function semelhanca(a,b){
+  const A=new Set(tokenize(a||"")), B=new Set(tokenize(b||""));
+  if(!A.size||!B.size) return {score:0, comuns:0};
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  return {score: inter/(A.size+B.size-inter), comuns: inter};   // Jaccard sobre os radicais
+}
+
+/* Classifica a sugestão contra a entrega oficial escolhida.
+   "igual"      — mesma redação, nada a propor.
+   "equivalente"— diz o mesmo com outras palavras: é aqui que cabe propor troca.
+   "distante"   — provavelmente é outra coisa; propor troca seria forçar.
+
+   O limiar foi medido, não estimado: com 8 pares equivalentes escritos à mão e
+   7 pares claramente diferentes, os diferentes deram TODOS 0,00 e os
+   equivalentes ficaram entre 0,13 e 0,50. Em 0,12 pega os 8 e barra os 7.
+   Testei também exigir 2 radicais em comum — derrubou 3 equivalentes legítimos
+   ("Contrato celebrado" × "Contratos firmados" partilham só um), então o score
+   decide sozinho. */
+const LIMIAR_EQUIVALENTE=0.12;
+
+/* Nome de nível (macroprocesso, processo, serviço) é curto e quase sempre
+   começa por uma palavra de estrutura — boa parte dos 217 macroprocessos abre
+   com "Gestão". Num texto curto, essa palavra sozinha basta para o Jaccard
+   passar do limiar: medindo, "Gestão da logística pública" × "Gestão de
+   pessoas" dava 0,25 e entrava como equivalente, o que é falso. Na entrega o
+   problema não existe, porque o texto é longo o bastante para a palavra genérica
+   se diluir. Por isso, e SÓ nos níveis acima da entrega, essas palavras de
+   estrutura saem antes da comparação. */
+/* passa a lista pelo próprio tokenize para os radicais baterem com os do texto,
+   em vez de eu adivinhar como o stemmer corta cada palavra. Preguiçoso porque
+   tokenize depende de norm, que só existe mais abaixo no arquivo. */
+let _estrutura=null;
+const palavrasEstrutura=()=>(_estrutura||(_estrutura=new Set(tokenize(
+  "gestão gerenciamento administração coordenação execução controle monitoramento "
+ +"política políticas pública públicas público públicos federal nacional institucional "
+ +"geral gerais apoio processo processos serviço serviços"))));
+function semelhancaNivel(a,b){
+  const est=palavrasEstrutura();
+  const filtra=s=>new Set(tokenize(s||"").filter(t=>!est.has(t)));
+  const A=filtra(a), B=filtra(b);
+  if(!A.size||!B.size) return {score:0, comuns:0};
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  return {score: inter/(A.size+B.size-inter), comuns: inter};
+}
+function classificarEquivalencia(sugerida,oficial,nivel){
+  const ehNivel = nivel && nivel!=="entrega";
+  const {score,comuns}=ehNivel?semelhancaNivel(sugerida,oficial):semelhanca(sugerida,oficial);
+  const mesmo = norm(String(sugerida||"").trim())===norm(String(oficial||"").trim());
+  const veredito = mesmo ? "igual"
+    : score>=LIMIAR_EQUIVALENTE ? "equivalente"
+    : "distante";
+  return {score, comuns, veredito};
+}
+
+const CHAVE_PROPOSTAS="portal:propostas-catalogo";
+function lerPropostas(){
+  try{ const c=window.localStorage.getItem(CHAVE_PROPOSTAS); return c?JSON.parse(c):[]; }
+  catch{ return []; }
+}
+function gravarPropostas(lista){
+  try{ window.localStorage.setItem(CHAVE_PROPOSTAS,JSON.stringify(lista.slice(0,500))); }
+  catch{ /* aba anônima ou storage cheio: o protótipo segue sem lembrar */ }
+}
+/* Um voto por (código oficial + redação proposta). Votar de novo na mesma
+   proposta soma apoio em vez de duplicar a linha. */
+/* A proposta pode ser sobre uma entrega (que tem código) ou sobre um nível
+   acima — macroprocesso, processo, serviço — que não tem. Por isso a identidade
+   de uma proposta é nível + redação oficial + redação sugerida: para a entrega,
+   o código entra junto; para os outros, o nome oficial faz esse papel. */
+function chaveProposta(p){
+  return (p.nivel||"entrega")+"|"+(normCod(p.cod)||norm(p.oficial||""))+"|"+norm(p.sugerida||"");
+}
+function votarProposta({cod,oficial,sugerida,score,origem,orgao,unidade,justificativa,nivel}){
+  const lista=lerPropostas();
+  const nova={id:"p"+Date.now().toString(36), criadaEm:new Date().toISOString(),
+    cod:normCod(cod), nivel:nivel||"entrega", oficial:oficial||"", sugerida:sugerida||"", score:+(score||0).toFixed(3),
+    origem:origem||"", orgao:orgao||"", unidade:unidade||"", justificativa:justificativa||"", votos:1};
+  const i=lista.findIndex(p=>chaveProposta(p)===chaveProposta(nova));
+  if(i>=0){ lista[i].votos=(lista[i].votos||1)+1; lista[i].em=nova.criadaEm; }
+  else lista.unshift(nova);
+  gravarPropostas(lista);
+  return i>=0 ? lista[i].votos : 1;
+}
+function jaVotou(cod,sugerida,nivel,oficial){
+  const alvo=chaveProposta({cod,sugerida,nivel,oficial});
+  return lerPropostas().some(p=>chaveProposta(p)===alvo);
+}
+
 function candidatasTxt(list){ return list.map(e=>`${e.codigo} | ${e.entrega}${e.servico?" | serviço: "+e.servico:""} | ${e.macro} > ${e.categoria}`).join("\n"); }
 
 // endpoints: em produção, a Netlify Function protege a chave; no preview do Claude,
@@ -620,7 +785,7 @@ export default function PortalEntregas(){
                   trilha={{macro:macroF,processo:catF,servico:servF}}
                   descer={descerNivel} irNivel={irNivel} limparTrilha={limparTrilha}
                   onGoNova={()=>setMode("nova")} orgao={orgao} unidade={unidade}/>}
-              {mode==="assistente" && <Assistente onAdd={add}/>}
+              {mode==="assistente" && <Assistente onAdd={add} orgao={orgao} unidade={unidade} flash={flash}/>}
               {mode==="pgd" && <ImportarPGD onConversor={()=>setMode("marcos")}/>}
               {mode==="revisao" && <CentralRevisao embutido flags={flags} onClose={()=>setMode("lista")}/>}
               {/* A Descrição da Área deixou de ter botão próprio na barra: vive no
@@ -662,13 +827,13 @@ export default function PortalEntregas(){
       {descView==="cadeia" && <CadeiaValor sel={sel} rem={rem} objUnidade={objUnidade} setObjUnidade={setObjUnidade} objOrgao={objOrgao} setObjOrgao={setObjOrgao} onClose={()=>setDescView("lista")}/>}
 
       {compareOpen && <CompareModal items={compare} onClose={()=>setCompareOpen(false)} onAdd={add} selSet={selSet} onDrop={c=>setCompare(x=>x.filter(e=>e.codigo!==c))} onClear={()=>{setCompare([]);setCompareOpen(false);}}/>}
-      {preview && <PreviewDFT sel={sel} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={async()=>{
+      {preview && <PreviewDFT sel={soEntregas(sel)} notes={notes} orgao={orgao} unidade={unidade} onClose={()=>setPreview(false)} onConfirm={async()=>{
         const resp=await fetch(`${API_BASE}/api/mentoria/submissoes`,{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({
             orgao, unidade,
-            conteudo:{entregas:sel.map(e=>({codigo:e.codigo,entrega:e.entrega,macro:e.macro,categoria:e.categoria,servico:e.servico})),notes},
+            conteudo:{entregas:soEntregas(sel).map(e=>({codigo:e.codigo,entrega:e.entrega,macro:e.macro,categoria:e.categoria,servico:e.servico})),notes},
           }),
         });
         const dados=await resp.json().catch(()=>({}));
@@ -1134,26 +1299,307 @@ function sugerirDoTexto(texto){
   }).filter(a=>a.achados.length);
 }
 
+/* ============================================================================
+   A IA NOMEIA, O BANCO CONFRONTA, A UNIDADE VOTA
+
+   A metodologia do DFT pede que a área escreva seus próprios macroprocessos,
+   categorias de serviço, serviços e entregas. Seguir isso ao pé da letra faria
+   a IA inventar uma estrutura paralela, solta do catálogo oficial — e o
+   catálogo é justamente o que dá comparabilidade entre 74 órgãos.
+
+   O caminho aqui é outro: a busca continua sendo no banco, e é o nome do banco
+   que vale. A IA entra depois, dizendo como ELA escreveria aquele mesmo item
+   com as palavras desta unidade. Quando as duas redações dizem a mesma coisa
+   de jeitos diferentes, as duas aparecem lado a lado e quem está usando vota.
+   Nada muda no catálogo por causa do voto — a proposta vai para o banco à
+   parte e a curadoria decide.
+============================================================================ */
+async function nomearNiveis(texto,alvos){
+  const lista=(alvos||[]).slice(0,40);
+  if(!lista.length) return new Map();
+  const contexto=String(texto||"").slice(0,2500);
+  const sys="Você escreve nomes de itens do catálogo de entregas do SISDIP (setor público federal), seguindo a "
+    +"metodologia do DFT. Para MACROPROCESSO, CATEGORIA DE SERVIÇO e SERVIÇO use sintagma nominal "
+    +"(\"Gestão de pessoas\", \"Recrutamento e seleção\"). Para ENTREGA use o resultado no particípio "
+    +"(\"Edital publicado\", \"Contratos formalizados\"). Você recebe o nome OFICIAL de cada item e a descrição "
+    +"do que a unidade faz. Para cada item, escreva como ESTA unidade nomearia o MESMO item, com as palavras "
+    +"dela. Não invente item novo, não mude o escopo: é o mesmo item, outra redação. Se o nome oficial já for "
+    +"a melhor redação para esta unidade, repita-o igual. Máximo de 90 caracteres por nome. Responda APENAS um "
+    +"array JSON de strings, na mesma ordem e com o mesmo tamanho da entrada.";
+  const user="O que a unidade faz:\n"+contexto+"\n\nItens (nível | nome oficial):\n"
+    +lista.map((a,i)=>i+": "+(NIVEL_ROT[a.nivel]||"Entrega")+" | "+a.oficial).join("\n");
+  try{
+    const d=await chamarIA({model:"claude-haiku-4-5-20251001",max_tokens:2000,system:sys,
+      messages:[{role:"user",content:user}]});
+    const tx=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim();
+    const arr=JSON.parse(tx.replace(/```json|```/g,"").trim());
+    if(!Array.isArray(arr)) return new Map();
+    const saida=new Map();
+    lista.forEach((a,i)=>{
+      const s=typeof arr[i]==="string"?arr[i].trim():"";
+      if(!s) return;
+      const {score,veredito}=classificarEquivalencia(s,a.oficial,a.nivel);
+      // só interessa o que diz o mesmo com outras palavras: igual não é proposta,
+      // distante não é a mesma coisa e viraria ruído na tela de quem revisa
+      if(veredito==="equivalente") saida.set(a.chave,{sugerida:s,score,nivel:a.nivel,oficial:a.oficial,cod:a.cod||""});
+    });
+    return saida;
+  }catch{ return new Map(); }
+}
+
+/* faixa de confronto: nome do banco × nome da IA, com o voto */
+function ConfrontoRedacao({item,origem,orgao,unidade,flash}){
+  const [votado,setVotado]=useState(()=>jaVotou(item.cod,item.sugerida,item.nivel,item.oficial));
+  function votar(){
+    if(votado) return;
+    votarProposta({cod:item.cod,oficial:item.oficial,sugerida:item.sugerida,score:item.score,
+      nivel:item.nivel,origem,orgao,unidade,justificativa:""});
+    setVotado(true);
+    flash&&flash("Voto registrado — vai para a curadoria. O catálogo não muda agora.");
+  }
+  return (
+    <div className="mu-conf">
+      <div className="mu-conf-par">
+        <span className="mu-conf-of" title="Redação que está hoje no catálogo oficial">banco: {item.oficial}</span>
+        <span className="mu-conf-ia" title="Como a IA escreveria o mesmo item com as palavras desta unidade">IA: {item.sugerida}</span>
+      </div>
+      <button className={`mu-conf-bt ${votado?"votado":""}`} onClick={votar} disabled={votado}
+        title={votado?"Você já votou nesta troca":"Votar que a redação da IA diz melhor — vai para a curadoria"}>
+        {votado ? <><Check size={10}/> votado</> : <><ThumbsUp size={10}/> a da IA diz melhor</>}
+      </button>
+    </div>
+  );
+}
+
+
+/* ============================================================================
+   SUGESTÕES SEGMENTADAS POR NÍVEL
+
+   A leitura do documento devolve entregas. Mas descrever a unidade não começa
+   pela entrega: começa por "a gente faz gestão de pessoas". Este painel quebra
+   o mesmo achado nos quatro níveis do catálogo e deixa a pessoa entrar por
+   onde quiser — marcar só o macroprocesso, descer até o serviço, ou puxar a
+   cadeia inteira de uma vez. O que ela marca vai formando a Descrição da Área.
+============================================================================ */
+const CHAVE_COMPARAR="portal:comparar-redacoes";
+function SugestoesPorNivel({atribs,selSet,add,rem,flash,texto,orgao,unidade}){
+  const [nivel,setNivel]=useState("macro");
+  const [aberto,setAberto]=useState(null);   // chave da linha expandida
+  // o confronto de redações fica ligado por padrão, mas quem só quer marcar o
+  // que a unidade faz pode desligar — e a escolha vale para as próximas leituras
+  const [comparar,setComparar]=useState(()=>{ try{ return localStorage.getItem(CHAVE_COMPARAR)!=="0"; }catch{ return true; } });
+  const [nomesIA,setNomesIA]=useState(new Map());
+  const [nomeando,setNomeando]=useState(false);
+
+  // quantas entregas o catálogo inteiro tem sob cada nó — dá a noção do que
+  // ainda existe abaixo do que a leitura sugeriu
+  const totaisCatalogo=useMemo(()=>{
+    const m=new Map(), p=new Map(), s=new Map();
+    ENTREGAS.forEach(e=>{
+      const km=e.macro||"", kp=km+"|"+(e.categoria||""), ks=kp+"|"+(e.servico||"");
+      m.set(km,(m.get(km)||0)+1); p.set(kp,(p.get(kp)||0)+1); s.set(ks,(s.get(ks)||0)+1);
+    });
+    return {macro:m,processo:p,servico:s};
+  },[ENTREGAS.length]);
+
+  const grupos=useMemo(()=>{
+    const achados=[...new Map(atribs.flatMap(a=>a.achados).map(e=>[e.codigo,e])).values()];
+    const mk=(mapa,chave,dados)=>{
+      if(!mapa.has(chave)) mapa.set(chave,{...dados,entregas:[]});
+      return mapa.get(chave);
+    };
+    const M=new Map(), P=new Map(), S=new Map();
+    achados.forEach(e=>{
+      const macro=e.macro||"", cat=e.categoria||"", serv=e.servico||"";
+      if(macro) mk(M,macro,{nivel:"macro",nome:macro,macro,natureza:e.natureza,
+        total:totaisCatalogo.macro.get(macro)||0}).entregas.push(e);
+      if(macro&&cat) mk(P,macro+"|"+cat,{nivel:"processo",nome:cat,macro,categoria:cat,natureza:e.natureza,
+        total:totaisCatalogo.processo.get(macro+"|"+cat)||0}).entregas.push(e);
+      if(macro&&serv) mk(S,macro+"|"+cat+"|"+serv,{nivel:"servico",nome:serv,macro,categoria:cat,servico:serv,natureza:e.natureza,
+        total:totaisCatalogo.servico.get(macro+"|"+cat+"|"+serv)||0}).entregas.push(e);
+    });
+    const ord=m=>[...m.values()].sort((a,b)=>b.entregas.length-a.entregas.length);
+    return {macro:ord(M), processo:ord(P), servico:ord(S), entrega:achados};
+  },[atribs,totaisCatalogo]);
+
+  const ABAS=[["macro","Macroprocesso",Layers],["processo","Processo",PieChart],
+              ["servico","Serviço",Sparkles],["entrega","Entrega",LayoutGrid]];
+  const lista=grupos[nivel]||[];
+
+  /* Pede à IA a redação dela para os mesmos itens que o banco devolveu. Roda uma
+     vez por leitura, com os 4 níveis na mesma chamada. Se falhar, simplesmente
+     não aparece confronto nenhum — o cardápio continua servindo. */
+  useEffect(()=>{
+    if(!comparar||!atribs.length){ return; }
+    let vivo=true;
+    const alvos=[
+      ...grupos.macro.slice(0,10).map(g=>({chave:chaveNo("macro",g),nivel:"macro",oficial:g.nome})),
+      ...grupos.processo.slice(0,10).map(g=>({chave:chaveNo("processo",g),nivel:"processo",oficial:g.nome})),
+      ...grupos.servico.slice(0,10).map(g=>({chave:chaveNo("servico",g),nivel:"servico",oficial:g.nome})),
+      ...grupos.entrega.slice(0,10).map(e=>({chave:e.codigo,nivel:"entrega",oficial:e.entrega,cod:e.codigo})),
+    ];
+    if(!alvos.length) return;
+    setNomeando(true);
+    nomearNiveis(texto,alvos).then(m=>{ if(vivo){ setNomesIA(m); setNomeando(false); } })
+                             .catch(()=>{ if(vivo) setNomeando(false); });
+    return ()=>{ vivo=false; };
+  },[atribs,comparar]);
+
+  function alternarComparar(){
+    setComparar(v=>{ const n=!v; try{ localStorage.setItem(CHAVE_COMPARAR,n?"1":"0"); }catch{} return n; });
+  }
+  const nConfrontos=nomesIA.size;
+
+  /* põe no mapa o nó e tudo o que a leitura sugeriu abaixo dele — é o
+     "quero a cadeia inteira deste macroprocesso" */
+  function porCadeia(g){
+    let n=0;
+    const meter=item=>{ if(!selSet.has(item.codigo)){ add(item); n++; } };
+    meter(fazerNo(g.nivel,{...g,qtd:g.total}));
+    if(g.nivel==="macro"){
+      const cats=new Set(g.entregas.map(e=>e.categoria||""));
+      cats.forEach(c=>{ if(c) meter(fazerNo("processo",{macro:g.macro,categoria:c,natureza:g.natureza,
+        qtd:totaisCatalogo.processo.get(g.macro+"|"+c)||0})); });
+    }
+    if(g.nivel==="macro"||g.nivel==="processo"){
+      const servs=new Set(g.entregas.map(e=>(e.categoria||"")+"|"+(e.servico||"")));
+      servs.forEach(k=>{ const [c,s]=k.split("|"); if(s) meter(fazerNo("servico",{macro:g.macro,categoria:c,servico:s,
+        natureza:g.natureza, qtd:totaisCatalogo.servico.get(g.macro+"|"+c+"|"+s)||0})); });
+    }
+    g.entregas.forEach(meter);
+    flash&&flash(n?n+" item(ns) posto(s) na descrição — o nível e o que a leitura achou abaixo dele.":"Esta cadeia já estava toda na descrição.");
+  }
+
+  function alternarNo(g){
+    const no=fazerNo(g.nivel,{...g,qtd:g.total});
+    if(selSet.has(no.codigo)) rem(no.codigo); else add(no);
+  }
+
+  if(!atribs.length) return null;
+  const totalAchados=grupos.entrega.length;
+
+  return (
+    <div className="mu-sug">
+      <div className="mu-sug-h">
+        <Sparkles size={14}/> <b>O que a leitura encontrou no catálogo</b>
+        <span className="mu-sug-n">{totalAchados} entregas · {grupos.macro.length} macroprocessos</span>
+        <button className={`mu-comp-bt ${comparar?"on":""}`} onClick={alternarComparar}
+          title={comparar?"Esconder a comparação entre a redação do banco e a da IA"
+                         :"Mostrar, em cada item, como a IA escreveria com as palavras desta unidade"}>
+          {comparar?<Eye size={12}/>:<EyeOff size={12}/>} comparar redações
+          {comparar && (nomeando ? <em>…</em> : nConfrontos>0 ? <em>{nConfrontos}</em> : null)}
+        </button>
+      </div>
+      <div className="mu-niv-abas">
+        {ABAS.map(([id,rot,Ic])=>(
+          <button key={id} className={nivel===id?"on":""} onClick={()=>{setNivel(id);setAberto(null);}}>
+            <Ic size={12}/> {rot} <em>{(grupos[id]||[]).length}</em>
+          </button>
+        ))}
+      </div>
+      <div className="mu-sug-dica">
+        {nivel==="entrega"
+          ? "Marque as entregas que a unidade executa — é o que o DFT dimensiona."
+          : `Marque o ${NIVEL_ROT[nivel].toLowerCase()} para desenhar a estrutura da unidade, ou abra para escolher o que vem abaixo. O DFT só dimensiona entregas.`}
+      </div>
+      <div className="mu-sug-body">
+        {nivel==="entrega"
+          ? grupos.entrega.map(e=>{
+              const dentro=selSet.has(e.codigo);
+              const conf=comparar?nomesIA.get(e.codigo):null;
+              return (
+                <div key={e.codigo}>
+                  <button className={`mu-sug-i ${dentro?"on":""}`}
+                    onClick={()=>dentro?rem(e.codigo):add(e)} title={dentro?"Tirar da descrição":"Pôr na descrição"}>
+                    <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
+                    <span className="mu-sug-tx"><b>{e.entrega}</b><span>{e.macro} › {e.categoria}</span></span>
+                  </button>
+                  {conf && <ConfrontoRedacao item={conf} origem="mapa" orgao={orgao} unidade={unidade} flash={flash}/>}
+                </div>
+              );
+            })
+          : lista.map(g=>{
+              const no=fazerNo(g.nivel,{...g,qtd:g.total});
+              const dentro=selSet.has(no.codigo);
+              const chave=no.codigo;
+              const exp=aberto===chave;
+              return (
+                <div className={`mu-niv ${dentro?"on":""}`} key={chave}>
+                  <div className="mu-niv-l">
+                    <button className="mu-niv-cx" onClick={()=>alternarNo(g)}
+                      title={dentro?"Tirar da descrição":`Pôr este ${NIVEL_ROT[g.nivel].toLowerCase()} na descrição`}>
+                      {dentro?<Check size={11}/>:<Plus size={11}/>}
+                    </button>
+                    <div className="mu-niv-tx">
+                      <b>{g.nome}</b>
+                      <span>{g.nivel!=="macro"&&<>{g.macro}{g.nivel==="servico"&&` › ${g.categoria}`} · </>}
+                        {g.entregas.length} sugerida{g.entregas.length===1?"":"s"} · {g.total.toLocaleString("pt-BR")} no catálogo</span>
+                    </div>
+                    <button className="mu-niv-cadeia" onClick={()=>porCadeia(g)}
+                      title="Põe este nível e tudo o que a leitura achou abaixo dele">cadeia</button>
+                    <button className="mu-niv-exp" onClick={()=>setAberto(exp?null:chave)}
+                      title={exp?"Fechar":"Ver o que a leitura achou aqui dentro"}>
+                      <ChevronDown size={13} style={{transform:exp?"rotate(180deg)":"none",transition:"transform .15s"}}/>
+                    </button>
+                  </div>
+                  {comparar && nomesIA.get(chave) &&
+                    <ConfrontoRedacao item={nomesIA.get(chave)} origem="mapa" orgao={orgao} unidade={unidade} flash={flash}/>}
+                  {exp && (
+                    <div className="mu-niv-filhos">
+                      {g.entregas.map(e=>{
+                        const d=selSet.has(e.codigo);
+                        return (
+                          <button key={e.codigo} className={`mu-sug-i ${d?"on":""}`}
+                            onClick={()=>d?rem(e.codigo):add(e)}>
+                            <span className="mu-sug-cx">{d?<Check size={10}/>:<Plus size={10}/>}</span>
+                            <span className="mu-sug-tx"><b>{e.entrega}</b><span>{e.categoria}{e.servico?` › ${e.servico}`:""}</span></span>
+                          </button>
+                        );
+                      })}
+                      {g.total>g.entregas.length && (
+                        <div className="mu-niv-resto">
+                          A leitura achou {g.entregas.length} de {g.total.toLocaleString("pt-BR")} entregas deste {NIVEL_ROT[g.nivel].toLowerCase()}.
+                          Para ver o resto, marque o nível e desça pelas colunas abaixo.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+      </div>
+    </div>
+  );
+}
+
+
 function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,respons,setRespons,
                         arqs,setArqs,texto,setTexto,atribs,setAtribs,sugeridos,setSugeridos,
                         trilha,descer,onGoNova,flash,bancoN}){
   const [lendo,setLendo]=useState(false);
+  const [lendoDocs,setLendoDocs]=useState(false);
   const [aberto,setAberto]=useState(true);      // a leitura recolhe depois de rodar
   const [busca,setBusca]=useState({macro:"",processo:"",servico:"",entrega:""});
   const [criar,setCriar]=useState(null);
   const anexos=[["cadeia","Cadeia de Valor"],["estrutura","Estrutura Organizacional"],
                 ["rgi","Relatório de Gestão Integrado"],["regimento","Regimento Interno"]];
+  // além dos 4 sugeridos, a unidade anexa quantos outros quiser (PGD,
+  // planejamento estratégico, ata, manual) — cada um com rótulo livre
+  const extras=Object.keys(arqs).filter(k=>k.startsWith("extra")&&arqs[k]);
+  const anexados=Object.values(arqs).filter(Boolean);
+  const pdfsPendentes=anexados.filter(a=>a.tipo==="pdf"&&!a.lido).length;
 
-  async function ler(){
-    if(!String(texto||"").trim()){ flash&&flash("Cole as atribuições ou a lista de atividades primeiro."); return; }
+  async function ler(txtIn){
+    const base=String(txtIn!=null?txtIn:texto||"");
+    if(!base.trim()){ flash&&flash("Cole as atribuições, ou anexe um documento e clique em Ler documentos."); return; }
     setLendo(true);
     // roda fora do clique para a tela não travar com 31 mil entregas
     setTimeout(async ()=>{
-      const linhas=linhasDeTexto(texto);
+      const linhas=linhasDeTexto(base);
       // tenta traduzir para o vocabulário do catálogo; sem IA, segue no léxico
       let expandidas=null, comIA=false;
       try{ expandidas=await expandirConsulta(linhas); comIA=Array.isArray(expandidas)&&expandidas.some((v,i)=>v!==linhas[i]); }catch{}
-      const achados=linhas.length?sugerirDeLinhas(linhas,expandidas):sugerirDoTexto(texto);
+      const achados=linhas.length?sugerirDeLinhas(linhas,expandidas):sugerirDoTexto(base);
       setAtribs(achados);
       setSugeridos(new Set(achados.flatMap(a=>a.achados.map(e=>e.codigo))));
       setLendo(false); setAberto(false);
@@ -1163,16 +1609,73 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
     },30);
   }
 
+  /* O PDF é o caso comum aqui (regimento, RGI) e é justamente o que o navegador
+     não sabe abrir sozinho: antes, anexar um PDF punha o chip na tela e mais
+     nada — o campo ao lado continuava vazio e a leitura recusava. Este botão é
+     o passo que faltava: manda os PDFs para a IA ler, joga o que ela achou no
+     campo e já emenda a busca no catálogo. */
+  async function lerDocumentos(){
+    if(lendoDocs||lendo) return;
+    const pend=anexados.filter(a=>a.tipo==="pdf"&&!a.lido);
+    const semTexto=anexados.filter(a=>a.tipo!=="pdf"&&!a.texto);
+    if(!anexados.length){ flash&&flash("Anexe um documento primeiro."); return; }
+    if(!pend.length){
+      // os que não são PDF já entraram no campo na hora do anexo
+      if(String(texto||"").trim()) ler();
+      else flash&&flash("Estes documentos já foram lidos — o texto está no campo ao lado.");
+      return;
+    }
+    setLendoDocs(true);
+    try{
+      const {texto:lido,grandes,enviou}=await lerPdfsComIA(pend);
+      if(grandes.length) flash&&flash("Grande demais para a IA: "+grandes.join(", ")+". Exporte só o trecho de atribuições, ou cole o texto no campo.");
+      if(!lido){
+        flash&&flash(enviou?"A IA não devolveu nada para estes PDFs. Cole as atribuições no campo ao lado."
+                          :"Não consegui enviar estes PDFs. Cole as atribuições no campo ao lado.");
+        return;
+      }
+      // marca como lido para não pagar a mesma leitura duas vezes
+      const nomes=new Set(pend.map(a=>a.nome));
+      setArqs(s=>{ const n={...s}; Object.keys(n).forEach(k=>{ if(n[k]&&nomes.has(n[k].nome)) n[k]={...n[k],lido:true}; }); return n; });
+      const novoTexto=(String(texto||"").trim()?texto.trim()+String.fromCharCode(10):"")+lido;
+      setTexto(novoTexto);
+      flash&&flash("Li "+enviou+" documento(s) — o texto entrou no campo ao lado.");
+      ler(novoTexto);
+    }catch(err){
+      flash&&flash("Não consegui ler os PDFs pela IA. Cole as atribuições no campo ao lado.");
+    }finally{ setLendoDocs(false); }
+  }
+
   async function anexar(chave,ev){
     const f=ev.target.files?.[0]; if(!f) return;
     try{
       const a=await lerArquivo(f);
-      setArqs(s=>({...s,[chave]:a}));
+      setArqs(s=>({...s,[chave]:{...a,rotulo:s[chave]?.rotulo||""}}));
       // o texto do documento entra no campo de leitura, que é o que é lido
-      if(a.texto) setTexto(t=>(t?t+"\n":"")+a.texto.slice(0,4000));
-      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado.":"Anexado.");
+      if(a.texto) setTexto(t=>(t?t+String.fromCharCode(10):"")+a.texto.slice(0,4000));
+      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado."
+                          :"Anexado. Clique em Ler documentos para a IA abrir o PDF.");
     }catch(err){ flash&&flash(err.message||"Não consegui ler o arquivo."); }
     finally{ ev.target.value=""; }
+  }
+
+  async function anexarExtra(ev){
+    const f=ev.target.files?.[0]; if(!f) return;
+    try{
+      const a=await lerArquivo(f);
+      const chave="extra"+Date.now().toString(36);
+      setArqs(s=>({...s,[chave]:{...a,rotulo:"Outro documento"}}));
+      if(a.texto) setTexto(t=>(t?t+String.fromCharCode(10):"")+a.texto.slice(0,4000));
+      flash&&flash(a.texto?"Anexado — o texto entrou no campo ao lado."
+                          :"Anexado. Clique em Ler documentos para a IA abrir o PDF.");
+    }catch(err){ flash&&flash(err.message||"Não consegui ler o arquivo."); }
+    finally{ ev.target.value=""; }
+  }
+
+  function removerAnexo(chave){
+    // extras somem de vez; os 4 sugeridos voltam a ser espaço vazio
+    if(chave.startsWith("extra")) setArqs(s=>{ const n={...s}; delete n[chave]; return n; });
+    else setArqs(s=>({...s,[chave]:null}));
   }
 
   const totalSug=atribs.reduce((s,a)=>s+a.achados.length,0);
@@ -1249,11 +1752,36 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
                 <Paperclip size={11}/>
                 <span>{arqs[k]?arqs[k].nome:rot}</span>
                 {arqs[k]
-                  ? <button onClick={ev=>{ev.preventDefault();setArqs(s=>({...s,[k]:null}));}}><X size={10}/></button>
+                  ? <button onClick={ev=>{ev.preventDefault();removerAnexo(k);}} title="Remover"><X size={10}/></button>
                   : <input type="file" accept=".pdf,.docx,.xlsx,.csv" style={{display:"none"}} onChange={ev=>anexar(k,ev)}/>}
               </label>
             ))}
+            {extras.map(k=>(
+              <span key={k} className="mu-anexo tem" title={arqs[k].nome}>
+                <Paperclip size={11}/>
+                <input className="mu-rotulo" value={arqs[k].rotulo||""} placeholder="Que documento é este?" maxLength={40}
+                  onChange={e=>setArqs(s=>({...s,[k]:{...s[k],rotulo:e.target.value}}))}/>
+                <span className="mu-arq">{arqs[k].nome}</span>
+                <button onClick={()=>removerAnexo(k)} title="Remover"><X size={10}/></button>
+              </span>
+            ))}
+            <label className="mu-anexo mu-mais" title="Anexar outro documento que ajude a descrever a área">
+              <Plus size={11}/><span>outro documento</span>
+              <input type="file" accept=".pdf,.docx,.xlsx,.csv" style={{display:"none"}} onChange={anexarExtra}/>
+            </label>
           </div>
+          {anexados.length>0 && (
+            <div className="mu-acoes">
+              <button className="mu-btn p" onClick={lerDocumentos} disabled={lendoDocs||lendo}>
+                <Sparkles size={14}/> {lendoDocs?"Lendo os documentos…":"Ler documentos"}
+              </button>
+              <span className="mu-nota">
+                {pdfsPendentes
+                  ? pdfsPendentes+" PDF"+(pdfsPendentes>1?"s":"")+" à espera — a IA abre e traz o texto para o campo ao lado."
+                  : "Os anexos já foram lidos; o texto está no campo ao lado."}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="mu-card">
@@ -1265,7 +1793,7 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
             <textarea className="mu-ta" value={texto} onChange={e=>setTexto(e.target.value)}
               placeholder={"I - planejar, coordenar e supervisionar…\nAnalisar solicitações de concurso público\nElaborar edital"}/>
             <div className="mu-acoes">
-              <button className="mu-btn p" onClick={ler} disabled={lendo}>
+              <button className="mu-btn p" onClick={()=>ler()} disabled={lendo}>
                 <Sparkles size={14}/> {lendo?"Lendo…":"Ler e sugerir"}
               </button>
               <button className="mu-btn g" onClick={()=>{setTexto("");setAtribs([]);setSugeridos(new Set());}}>Limpar</button>
@@ -1280,41 +1808,7 @@ function MapaDaUnidade({sel,selSet,add,rem,orgao,unidade,setOrgao,setUnidade,res
         </div>
       </div>
 
-      {atribs.length>0 && (
-        <div className="mu-sug">
-          <div className="mu-sug-h">
-            <Sparkles size={14}/> <b>O que encontramos no catálogo</b>
-            <span className="mu-sug-n">{totalSug} sugestões</span>
-            <button className="mu-btn v" onClick={()=>{
-              let n=0; atribs.forEach(a=>a.achados.forEach(e=>{ if(!selSet.has(e.codigo)){ add(e); n++; } }));
-              flash&&flash(n?n+" entregas postas no mapa.":"Todas já estavam no mapa.");
-            }}><Plus size={13}/> Pôr todas no mapa</button>
-          </div>
-          <div className="mu-sug-body">
-            {atribs.map((a,i)=>(
-              <div className="mu-atrib" key={i}>
-                <div className="mu-atrib-t">{a.texto.length>150?a.texto.slice(0,148)+"…":a.texto}</div>
-                <div className="mu-atrib-l">
-                  {a.achados.map(e=>{
-                    const dentro=selSet.has(e.codigo);
-                    return (
-                      <button key={e.codigo} className={`mu-sug-i ${dentro?"on":""}`}
-                        onClick={()=>dentro?rem(e.codigo):add(e)}
-                        title={dentro?"Tirar do mapa":"Pôr no mapa"}>
-                        <span className="mu-sug-cx">{dentro?<Check size={10}/>:<Plus size={10}/>}</span>
-                        <span className="mu-sug-tx">
-                          <b>{e.entrega}</b>
-                          <span>{e.macro} › {e.categoria}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <SugestoesPorNivel atribs={atribs} selSet={selSet} add={add} rem={rem} flash={flash} texto={texto} orgao={orgao} unidade={unidade}/>
 
       <div className="mu-cols">
         {NIVEL_INFO.map((niv,idx)=>{
@@ -2799,6 +3293,8 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
   const novas=sel.filter(e=>e.nova);
   if(novas.length) groups.push({nat:"__novas__",itens:novas});
   const dist=NAT_ORDER.map(nat=>({nat,n:sel.filter(e=>!e.nova&&e.natureza===nat).length}));
+  // o desenho pode conter níveis ainda sem entrega detalhada; só entrega vai ao DFT
+  const nEntregas=soEntregas(sel).length, nNos=soNos(sel).length;
   let idx=0;
   return (<>
     <div className="px-doc-list">
@@ -2815,10 +3311,14 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
           <div className="px-doc-group" key={g.nat}>
             <div className="px-doc-gh">{ehNova?<><Sparkles size={11} color={C.primary}/> Entregas novas (aguardam curadoria)</>:<><span className="px-doc-dot" style={{background:n.cor}}/>{n.rot}</>}<span className="px-doc-gc">{g.itens.length}</span></div>
             {g.itens.map(e=>{ idx++; const has=notes[e.codigo]!==undefined; return (
-              <div className={`px-doc-item ${e.nova?"nova":""}`} key={e.codigo}>
+              <div className={`px-doc-item ${e.nova?"nova":""} ${e.no?"no":""}`} key={e.codigo}>
                 <span className="px-doc-n">{String(idx).padStart(2,"0")}</span>
                 <div className="px-doc-body">
-                  <div className="px-doc-row"><code>{e.nova?"nova":e.codigo}</code>{e.nova && <span className="px-doc-novatag" title="Entrega proposta — passará pela curadoria do banco antes de entrar no catálogo"><Sparkles size={9}/> nova · aguarda curadoria</span>}</div>
+                  <div className="px-doc-row">
+                    {e.no
+                      ? <span className="px-doc-niveltag" title="Nível do catálogo marcado — o desenho da unidade passa por aqui. Detalhe as entregas quando quiser dimensionar."><Layers size={9}/> {NIVEL_ROT[e.nivel]}{e.qtd?` · ${e.qtd.toLocaleString("pt-BR")} entregas abaixo`:""}</span>
+                      : <><code>{e.nova?"nova":e.codigo}</code>{e.nova && <span className="px-doc-novatag" title="Entrega proposta — passará pela curadoria do banco antes de entrar no catálogo"><Sparkles size={9}/> nova · aguarda curadoria</span>}</>}
+                  </div>
                   <div className="px-doc-name">{e.entrega}</div>
                   {has
                     ? <div className="px-doc-notebox"><textarea value={notes[e.codigo]} placeholder="Observação que vai para o DFT…" onChange={ev=>setNote(e.codigo,ev.target.value)}/></div>
@@ -2830,14 +3330,17 @@ function DescPanel({sel,notes,setNote,rem,onInject,orgao,unidade}){
     </div>
     <div className="px-doc-foot">
       {sel.length>0 && <div className="px-doc-dist">
-        <span className="px-doc-dist-tot"><b>{sel.length}</b> entrega{sel.length===1?"":"s"}</span>
+        <span className="px-doc-dist-tot"><b>{nEntregas}</b> entrega{nEntregas===1?"":"s"}
+          {nNos>0 && <em className="px-doc-dist-nos" title="Níveis do catálogo marcados sem entrega detalhada — desenham a estrutura, mas ainda não dimensionam"> · {nNos===1?"1 nível":nNos+" níveis"} sem detalhar</em>}</span>
         <span className="px-doc-dist-sep"/>
         {dist.map(d=>{ const n=NAT[d.nat]; return (
           <span key={d.nat} className={`px-doc-dist-n ${d.n===0?"zero":""}`} title={n.rot}><i style={{background:n.cor}}/>{d.n} {n.rot.toLowerCase()}</span>
         ); })}
       </div>}
-      <button className="px-inject" disabled={!sel.length} onClick={onInject}>
-        <ShieldCheck size={16}/> Registrar no DFT {sel.length>0 && <em>({sel.length})</em>}
+      {/* o DFT dimensiona entrega; nível marcado é desenho, e por isso não conta aqui */}
+      <button className="px-inject" disabled={!nEntregas} onClick={onInject}
+        title={nEntregas?undefined:"Marque ao menos uma entrega — o DFT dimensiona entregas, não níveis."}>
+        <ShieldCheck size={16}/> Registrar no DFT {nEntregas>0 && <em>({nEntregas})</em>}
       </button>
       <button className="px-export" disabled={!sel.length} onClick={()=>exportarDescricaoXLSX(sel,notes,orgao,unidade)}>
         <Download size={15}/> Baixar planilha (.xlsx)
@@ -3772,12 +4275,60 @@ function PreviewDFT({sel,notes,orgao,unidade,onClose,onConfirm}){
 }
 
 /* ---------- assistente (encaixe por IA) ---------- */
-function Assistente({onAdd}){
+/* No chat não há o pareamento linha-a-linha do Conversor: a mensagem do usuário
+   costuma ser uma descrição inteira, não a redação de uma entrega. Por isso aqui
+   a redação proposta é editável, e a semelhança com a oficial é recalculada
+   enquanto se digita. */
+function ProporTrocaChat({cod,oficial,sugestaoInicial,orgao,unidade,flash,onFechar}){
+  const [texto,setTexto]=useState(String(sugestaoInicial||"").slice(0,160));
+  const [just,setJust]=useState("");
+  const {score,veredito}=useMemo(()=>classificarEquivalencia(texto,oficial),[texto,oficial]);
+  const vazio=!texto.trim();
+  const semNada=!vazio && score===0;
+
+  function registrar(){
+    if(vazio||semNada) return;
+    votarProposta({cod,oficial,sugerida:texto.trim(),score,origem:"assistente",orgao,unidade,justificativa:just});
+    flash&&flash("Proposta registrada — vai para a curadoria, o catálogo não muda agora.");
+    onFechar&&onFechar();
+  }
+
+  return (
+    <div className="px-troca-corpo" style={{marginTop:8}}>
+      <div className="px-troca-par">
+        <div><span>hoje no catálogo</span><b>{oficial}</b></div>
+        <div><span>sua redação</span>
+          <textarea className="px-troca-ta" value={texto} maxLength={160} rows={2}
+            onChange={e=>setTexto(e.target.value)}
+            placeholder="Como a sua área chama esta entrega?"/>
+        </div>
+      </div>
+      <div className={`px-troca-verd ${veredito}`}>
+        {vazio ? "Escreva como a sua área chama esta entrega."
+         : semNada ? "Não há nada em comum com a redação oficial — isso parece outra entrega, não outro nome para a mesma. Considere propor entrega nova."
+         : veredito==="igual" ? "É a mesma redação que já está no catálogo."
+         : veredito==="equivalente" ? `Diz o mesmo com outras palavras (${Math.round(score*100)}% em comum) — é o caso de propor troca.`
+         : `Pouca coisa em comum (${Math.round(score*100)}%). Dá para registrar, mas a curadoria vai ver essa distância.`}
+      </div>
+      <input value={just} onChange={e=>setJust(e.target.value)} maxLength={180}
+        placeholder="Por que a sua diz melhor? (opcional, ajuda a curadoria)"/>
+      <div className="px-troca-acoes">
+        <button className="g" onClick={onFechar}>Cancelar</button>
+        <button className="p" disabled={vazio||semNada||veredito==="igual"} onClick={registrar}>Registrar proposta</button>
+      </div>
+      <div className="px-troca-nota">O catálogo não muda com isto. A proposta fica num banco à parte,
+        com quantos apoiaram, e sai em planilha para a curadoria decidir.</div>
+    </div>
+  );
+}
+
+function Assistente({onAdd,orgao,unidade,flash}){
   // inline: renderiza como visualização do .px-main (mesma área da Lista/Árvore/
   // Explosão solar). Padrão (flutuante): FAB + janela, controlados por open/setOpen.
   const [msgs,setMsgs]=useState([{role:"assistant",content:"Sou o Assistente de Entregas. Descreva o que sua área faz, cole trechos do PGD/planejamento, ou anexe uma planilha (.xlsx/.csv), PDF ou Word com a descrição de área — eu enquadro no catálogo (com o código), aviso se já existe algo parecido e proponho novas quando preciso. Os códigos viram botões de adicionar."}]);
   const [input,setInput]=useState(""); const [load,setLoad]=useState(false); const endRef=useRef(null);
   const [anexo,setAnexo]=useState(null);      // {tipo,nome,texto?,pdfB64?}
+  const [trocaAberta,setTrocaAberta]=useState(null);   // código com o formulário de troca aberto
   const [anexoErro,setAnexoErro]=useState("");
   const fileRef=useRef(null);
   const codMap=useMemo(()=>{const m=new Map();ENTREGAS.forEach(e=>m.set(e.codigo,e));return m;},[]);
@@ -3824,11 +4375,25 @@ function Assistente({onAdd}){
       setMsgs(m=>[...m,{role:"assistant",content:"⚠️ Não consegui falar com o serviço de IA agora. Se o portal está publicado, verifique se a função de IA (backend) está configurada. O arquivo foi lido normalmente e você pode montar a descrição de área manualmente pelo catálogo."}]);
     } finally{ setLoad(false); }
   }
-  const render=content=>{ const cs=[...new Set((content.match(CODIGO_RX)||[]).map(normCod))].filter(c=>codMap.has(c));
-    return (<><div className="px-msg-tx">{content}</div>{cs.length>0&&<div className="px-chips">{cs.map(c=><button key={c} className="px-chip2" onClick={()=>onAdd(codMap.get(c))}><Plus size={11}/> {c}</button>)}</div>}</>); };
+  /* o que o usuário escreveu logo antes desta resposta é a melhor semente para a
+     redação proposta — é ali que ele descreveu o trabalho com as palavras da área */
+  const sementeAntes=idx=>{ for(let i=idx-1;i>=0;i--) if(msgs[i].role==="user") return msgs[i].content; return ""; };
+  const render=(content,idx)=>{ const cs=[...new Set((content.match(CODIGO_RX)||[]).map(normCod))].filter(c=>codMap.has(c));
+    const chave=c=>idx+":"+c, abertaAqui=cs.find(c=>chave(c)===trocaAberta);
+    return (<><div className="px-msg-tx">{content}</div>
+      {cs.length>0&&<div className="px-chips">{cs.map(c=>(
+        <span key={c} className="px-chip-par">
+          <button className="px-chip2" onClick={()=>onAdd(codMap.get(c))}><Plus size={11}/> {c}</button>
+          <button className={`px-chip-troca ${trocaAberta===chave(c)?"on":""}`} title="Propor outra redação para esta entrega oficial"
+            onClick={()=>setTrocaAberta(t=>t===chave(c)?null:chave(c))}><GitMerge size={11}/></button>
+        </span>))}</div>}
+      {abertaAqui && <ProporTrocaChat cod={abertaAqui} oficial={codMap.get(abertaAqui)?.entrega}
+        sugestaoInicial={sementeAntes(idx)} orgao={orgao} unidade={unidade} flash={flash}
+        onFechar={()=>setTrocaAberta(null)}/>}
+    </>); };
   const corpo = (<>
       <div className="px-chat-b">
-        {msgs.map((m,i)=><div key={i} className={`px-msg ${m.role}`}>{m.role==="assistant"?render(m.content):<div className="px-msg-tx">{m.content}</div>}</div>)}
+        {msgs.map((m,i)=><div key={i} className={`px-msg ${m.role}`}>{m.role==="assistant"?render(m.content,i):<div className="px-msg-tx">{m.content}</div>}</div>)}
         {load&&<div className="px-msg assistant"><div className="px-typing"><span/><span/><span/></div></div>}
         <div ref={endRef}/>
       </div>
@@ -4444,7 +5009,7 @@ function ConversorUnificado({add,selSet,sel,notes,orgao,unidade,flash,onAbrirAss
       // consulta já traduzida cobre bem mais sem inchar o pedido.
       const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(expandidas[idx]||ln,24)}));
       const catalogoPorLinha=bloco.map(b=>`LINHA ${b.idx}: "${b.ln}"\ncandidatas:\n${candidatasTxt(b.cands)}`).join("\n\n");
-      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
+      const sys=`Você enquadra o trabalho de uma área no catálogo oficial de entregas do SISDIP/DFT. No DFT o encadeamento é Macroprocesso > Categoria de Serviço > Macroentrega/Serviço > Atividade > Entrega, e vale a regra 1 Atividade = 1 Entrega: cada linha recebida é UMA atividade e deve casar com UMA entrega. Entrega é o resultado concreto e quantificável da atividade, escrito no particípio ("Portaria emitida"), nunca o verbo da ação. Escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Marque conf "alta" só quando a entrega oficial cobre o mesmo resultado da linha; se cobre parcialmente, "media"; se é vizinha mas não a mesma coisa, "baixa". Não invente correspondência para não deixar a linha vazia: sem entrega equivalente, devolva "opcoes":[] — o portal trata como proposta de entrega nova. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
       let userContent;
       if(anexo?.tipo==="pdf" && !linhas.length){
         userContent=[{type:"document",source:{type:"base64",media_type:"application/pdf",data:anexo.pdfB64}},{type:"text",text:"Extraia as entregas deste PDF (uma por linha, idx sequencial) e enquadre com até 5 opções cada. Responda só o array JSON."}];
@@ -4559,11 +5124,56 @@ function ConversorUnificado({add,selSet,sel,notes,orgao,unidade,flash,onAbrirAss
                     onClick={()=>setItem(i,{escolhido:o.cod,incluir:o.conf==="alta"?true:it.incluir})}>{codMap.get(o.cod)?.entrega.slice(0,34)}{codMap.get(o.cod)?.entrega.length>34?"…":""}</button>))}
                   <button className="nv" onClick={()=>setItem(i,{novaProposta:true,escolhido:null})}>propor nova</button>
                 </div>}
+                {ent && <ProporTroca sugerida={it.pgd} oficial={ent.entrega} cod={ent.codigo}
+                  origem="conversor" orgao={orgao} unidade={unidade} flash={flash}/>}
               </>}
           </div>
         </div>);
       })}
       <div className="px-cu-rodape">A triagem é sua: alta confiança já vem marcada; revise as demais, troque a opção ou proponha uma nova entrega. Nada entra na descrição sem o seu clique.</div>
+    </div>
+  );
+}
+
+/* Aparece só quando a redação sugerida diz o mesmo que a oficial com outras
+   palavras. Se for igual, não há o que propor; se for distante, propor troca
+   seria forçar duas coisas diferentes na mesma linha. */
+function ProporTroca({sugerida,oficial,cod,origem,orgao,unidade,flash}){
+  const {score,veredito}=useMemo(()=>classificarEquivalencia(sugerida,oficial),[sugerida,oficial]);
+  const [aberto,setAberto]=useState(false);
+  const [just,setJust]=useState("");
+  const [votos,setVotos]=useState(()=>jaVotou(cod,sugerida)?1:0);
+  if(veredito!=="equivalente") return null;
+
+  function votar(){
+    const n=votarProposta({cod,oficial,sugerida,score,origem,orgao,unidade,justificativa:just});
+    setVotos(n); setAberto(false);
+    flash&&flash("Proposta registrada — vai para a curadoria, o catálogo não muda agora.");
+  }
+
+  return (
+    <div className="px-troca">
+      <div className="px-troca-h">
+        <GitMerge size={12}/>
+        <span>Sua redação diz o mesmo com outras palavras <b>({Math.round(score*100)}% em comum)</b></span>
+        {votos>0
+          ? <span className="px-troca-ok"><Check size={11}/> proposta registrada</span>
+          : <button onClick={()=>setAberto(v=>!v)}>propor troca da oficial</button>}
+      </div>
+      {aberto && <div className="px-troca-corpo">
+        <div className="px-troca-par">
+          <div><span>hoje no catálogo</span><b>{oficial}</b></div>
+          <div><span>sua redação</span><b>{sugerida}</b></div>
+        </div>
+        <input value={just} onChange={e=>setJust(e.target.value)} maxLength={180}
+          placeholder="Por que a sua diz melhor? (opcional, ajuda a curadoria)"/>
+        <div className="px-troca-acoes">
+          <button className="g" onClick={()=>setAberto(false)}>Cancelar</button>
+          <button className="p" onClick={votar}>Registrar proposta</button>
+        </div>
+        <div className="px-troca-nota">O catálogo não muda com isto. A proposta fica num banco à parte,
+          com quantos apoiaram, e sai em planilha para a curadoria decidir.</div>
+      </div>}
     </div>
   );
 }
@@ -4610,7 +5220,7 @@ function ConversorPGD({onClose,add,selSet,sel,notes,orgao,unidade,flash,inline})
       // consulta já traduzida cobre bem mais sem inchar o pedido.
       const bloco=linhas.map((ln,idx)=>({idx,ln,cands:buscarCandidatas(expandidas[idx]||ln,24)}));
       const catalogoPorLinha=bloco.map(b=>`LINHA ${b.idx}: "${b.ln}"\ncandidatas:\n${candidatasTxt(b.cands)}`).join("\n\n");
-      const sys=`Você enquadra entregas de uma área no catálogo do SISDIP. Para CADA linha, escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
+      const sys=`Você enquadra o trabalho de uma área no catálogo oficial de entregas do SISDIP/DFT. No DFT o encadeamento é Macroprocesso > Categoria de Serviço > Macroentrega/Serviço > Atividade > Entrega, e vale a regra 1 Atividade = 1 Entrega: cada linha recebida é UMA atividade e deve casar com UMA entrega. Entrega é o resultado concreto e quantificável da atividade, escrito no particípio ("Portaria emitida"), nunca o verbo da ação. Escolha entre as candidatas fornecidas as 5 MAIS pertinentes, ranqueadas da melhor para a pior. Marque conf "alta" só quando a entrega oficial cobre o mesmo resultado da linha; se cobre parcialmente, "media"; se é vizinha mas não a mesma coisa, "baixa". Não invente correspondência para não deixar a linha vazia: sem entrega equivalente, devolva "opcoes":[] — o portal trata como proposta de entrega nova. Responda APENAS um array JSON válido (sem markdown, sem texto fora). Formato: [{"idx":0,"opcoes":[{"cod":"06050016","conf":"alta|media|baixa","motivo":"3-6 palavras"}]}]. O código tem 8 dígitos e vai SEM ponto — copie exatamente como aparece na lista de candidatas. Use somente códigos presentes nas candidatas daquela linha. Traga até 5 opções por linha. Se realmente nenhuma servir, devolva "opcoes":[].`;
       let userContent;
       if(anexo?.tipo==="pdf" && !linhas.length){
         userContent=[{type:"document",source:{type:"base64",media_type:"application/pdf",data:anexo.pdfB64}},{type:"text",text:"Extraia as entregas deste PDF (uma por linha, idx sequencial) e enquadre com até 5 opções cada. Responda só o array JSON."}];
@@ -4879,6 +5489,68 @@ const css=`
   color:${C.faint};font-size:9px;font-weight:800;}
 .px-nova-cand-niv span.hit{background:${C.primary};color:#fff;}
 /* ---- trilha dos 4 níveis do catálogo ---- */
+/* ---- propor troca da redação oficial (dentro do Conversor) ---- */
+.px-troca{margin-top:9px;border-top:1px dashed ${C.line};padding-top:8px;}
+.px-troca-h{display:flex;align-items:center;gap:7px;font-size:11px;color:${C.sub};flex-wrap:wrap;}
+.px-troca-h b{color:${C.navy};}
+.px-troca-h button{margin-left:auto;background:${C.primarySoft};border:1px solid #C7D7F0;border-radius:7px;
+  padding:4px 10px;font-family:inherit;font-size:10.5px;font-weight:800;color:${C.primaryDark};cursor:pointer;}
+.px-troca-h button:hover{background:${C.primary};border-color:${C.primary};color:#fff;}
+.px-troca-ok{margin-left:auto;display:inline-flex;align-items:center;gap:4px;background:${C.greenSoft};
+  color:${C.green};border-radius:20px;padding:3px 9px;font-size:10px;font-weight:800;}
+.px-troca-corpo{margin-top:9px;background:${C.bg};border-radius:9px;padding:11px;}
+.px-troca-par{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;}
+@media(max-width:700px){.px-troca-par{grid-template-columns:1fr;}}
+.px-troca-par>div{background:#fff;border:1px solid ${C.line};border-radius:8px;padding:8px 10px;}
+.px-troca-par span{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${C.faint};margin-bottom:3px;}
+.px-troca-par b{font-size:11.5px;font-weight:600;color:${C.ink};line-height:1.4;}
+.px-troca-corpo input{width:100%;border:1px solid ${C.line};border-radius:8px;padding:8px 10px;
+  font-family:inherit;font-size:11.5px;background:#fff;}
+.px-troca-corpo input:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.px-troca-acoes{display:flex;justify-content:flex-end;gap:7px;margin-top:9px;}
+.px-troca-acoes button{border:none;border-radius:7px;padding:7px 13px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;}
+.px-troca-acoes .g{background:none;border:1px solid ${C.line};color:${C.sub};}
+.px-troca-acoes .p{background:${C.primary};color:#fff;}
+.px-troca-nota{margin-top:8px;font-size:10.5px;color:${C.faint};line-height:1.5;}
+/* ---- propor troca a partir do chat ---- */
+.px-chip-par{display:inline-flex;align-items:stretch;}
+.px-chip-par .px-chip2{border-top-right-radius:0;border-bottom-right-radius:0;}
+.px-chip-troca{border:1px solid ${C.line};border-left:none;border-top-right-radius:7px;border-bottom-right-radius:7px;
+  background:#fff;color:${C.faint};cursor:pointer;padding:0 7px;display:grid;place-items:center;transition:all .14s;}
+.px-chip-troca:hover{color:${C.primaryDark};border-color:${C.primary};background:${C.primarySoft};}
+.px-chip-troca.on{background:${C.primary};border-color:${C.primary};color:#fff;}
+.px-troca-ta{width:100%;border:1px solid ${C.line};border-radius:7px;padding:6px 8px;font-family:inherit;
+  font-size:11.5px;line-height:1.4;background:#fff;resize:vertical;margin-top:2px;}
+.px-troca-ta:focus{outline:2px solid ${C.primarySoft};border-color:${C.primary};}
+.px-troca-verd{font-size:11px;line-height:1.5;border-radius:8px;padding:8px 10px;margin-bottom:9px;font-weight:600;}
+.px-troca-verd.equivalente{background:${C.greenSoft};color:${C.green};}
+.px-troca-verd.distante{background:#FBF3DC;color:#9A6A00;}
+.px-troca-verd.igual{background:${C.bg};color:${C.sub};}
+/* ---- aba de propostas na Central de Revisão ---- */
+.cr-prop{max-width:920px;margin:0 auto;}
+.cr-prop-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.cr-prop-h b{font-size:14px;color:${C.navy};display:block;}
+.cr-prop-h span{font-size:11.5px;color:${C.sub};}
+.cr-prop-acoes{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.cr-prop-acoes select{border:1px solid ${C.line};border-radius:8px;padding:7px 10px;font-family:inherit;font-size:11.5px;background:#fff;}
+.cr-prop-i{background:#fff;border:1px solid ${C.line};border-radius:11px;padding:12px 14px;margin-bottom:9px;}
+.cr-prop-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;}
+.cr-prop-top code{font-family:ui-monospace,monospace;font-size:10.5px;background:${C.bg};border-radius:5px;padding:2px 7px;color:${C.sub};}
+.cr-prop-sim{font-size:10px;font-weight:800;background:${C.primarySoft};color:${C.primary};border-radius:20px;padding:2px 8px;}
+/* proposta sobre um nível não tem código — o nível ocupa esse lugar */
+.cr-prop-niv{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  background:${C.bg};color:${C.sub};border:1px solid ${C.line};border-radius:5px;padding:2px 7px;}
+.cr-prop-votos{font-size:10px;font-weight:800;background:${C.greenSoft};color:${C.green};border-radius:20px;padding:2px 8px;}
+.cr-prop-org{font-size:10.5px;color:${C.faint};font-weight:700;}
+.cr-prop-x{margin-left:auto;background:none;border:none;color:${C.faint};cursor:pointer;display:grid;place-items:center;}
+.cr-prop-x:hover{color:#C2410C;}
+.cr-prop-par{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:700px){.cr-prop-par{grid-template-columns:1fr;}}
+.cr-prop-par>div{background:${C.bg};border-radius:8px;padding:9px 11px;}
+.cr-prop-par>div.nova{background:${C.primarySoft};}
+.cr-prop-par span{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${C.faint};margin-bottom:3px;}
+.cr-prop-par b{font-size:12px;font-weight:600;color:${C.ink};line-height:1.45;}
+.cr-prop-just{margin-top:9px;font-size:11.5px;color:${C.sub};font-style:italic;line-height:1.5;}
 /* ---- Mapa da Unidade ---- */
 .mu{padding:18px 20px 30px;min-width:0;max-width:100%;}
 .mu-topo{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;margin-bottom:14px;}
@@ -4903,6 +5575,14 @@ const css=`
 .mu-anexo.tem{border-style:solid;border-color:#BEE0C4;background:${C.greenSoft};color:${C.green};}
 .mu-anexo button{background:none;border:none;color:inherit;cursor:pointer;padding:0;display:grid;place-items:center;opacity:.7;}
 .mu-anexo button:hover{opacity:1;}
+.mu-anexo.mu-mais{border-style:dashed;color:${C.primaryDark};border-color:${C.primary};background:${C.primarySoft};}
+.mu-anexo.mu-mais:hover{filter:brightness(.97);}
+.mu-rotulo{border:none;background:transparent;font-family:inherit;font-size:10.5px;font-weight:800;
+  color:inherit;width:9.5em;padding:0;border-bottom:1px dashed currentColor;}
+.mu-rotulo:focus{outline:none;border-bottom-style:solid;}
+.mu-rotulo::placeholder{color:inherit;opacity:.55;font-weight:700;}
+.mu-arq{opacity:.7;font-weight:600;max-width:120px;}
+.mu-nota{align-self:center;font-size:10.5px;line-height:1.4;color:${C.faint};}
 .mu-d{font-size:12px;line-height:1.55;color:${C.sub};margin:0 0 10px;}
 .mu-ta{width:100%;min-height:118px;border:1px solid ${C.line};border-radius:9px;padding:10px 12px;
   font-family:inherit;font-size:12.5px;line-height:1.55;background:#fbfcfd;resize:vertical;}
@@ -4924,6 +5604,56 @@ const css=`
 .mu-sug-n{background:#fff;border-radius:20px;padding:2px 9px;font-size:10.5px;font-weight:800;}
 .mu-sug-h .mu-btn{margin-left:auto;padding:7px 12px;font-size:11.5px;}
 .mu-sug-body{max-height:290px;overflow-y:auto;padding:10px 12px;}
+/* ---- sugestão segmentada por nível ---- */
+.mu-niv-abas{display:flex;gap:0;border-bottom:1px solid ${C.line};padding:0 12px;background:#FBFCFE;overflow-x:auto;}
+.mu-niv-abas button{display:inline-flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;
+  padding:9px 12px;font-family:inherit;font-size:11.5px;font-weight:700;color:${C.sub};white-space:nowrap;
+  border-bottom:2px solid transparent;margin-bottom:-1px;}
+.mu-niv-abas button:hover{color:${C.primaryDark};}
+.mu-niv-abas button.on{color:${C.primaryDark};border-bottom-color:${C.primary};}
+.mu-niv-abas em{font-style:normal;background:${C.line};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:800;}
+.mu-niv-abas button.on em{background:${C.primary};color:#fff;}
+.mu-sug-dica{padding:8px 14px 0;font-size:10.5px;line-height:1.5;color:${C.faint};}
+.mu-niv{border:1px solid ${C.line};border-radius:9px;margin-bottom:6px;background:#fff;overflow:hidden;}
+.mu-niv.on{border-color:#BEE0C4;background:${C.greenSoft};}
+.mu-niv-l{display:flex;align-items:center;gap:9px;padding:8px 10px;}
+.mu-niv-cx{flex:0 0 auto;width:20px;height:20px;border-radius:6px;border:1px solid ${C.line};background:#fff;
+  color:${C.faint};cursor:pointer;display:grid;place-items:center;transition:all .13s;}
+.mu-niv-cx:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-niv.on .mu-niv-cx{background:${C.green};border-color:${C.green};color:#fff;}
+.mu-niv-tx{flex:1 1 auto;min-width:0;}
+.mu-niv-tx b{display:block;font-size:12px;font-weight:700;color:${C.ink};line-height:1.35;}
+.mu-niv-tx span{display:block;font-size:10px;color:${C.faint};margin-top:2px;}
+.mu-niv-cadeia{flex:0 0 auto;border:1px solid ${C.line};background:#fff;border-radius:7px;padding:4px 9px;
+  font-family:inherit;font-size:10px;font-weight:800;color:${C.sub};cursor:pointer;text-transform:uppercase;letter-spacing:.04em;}
+.mu-niv-cadeia:hover{border-color:${C.primary};color:${C.primaryDark};background:${C.primarySoft};}
+.mu-niv-exp{flex:0 0 auto;border:none;background:none;color:${C.faint};cursor:pointer;display:grid;place-items:center;padding:2px;}
+.mu-niv-exp:hover{color:${C.primaryDark};}
+.mu-niv-filhos{border-top:1px solid ${C.line};padding:8px 10px;background:#FBFCFE;}
+.mu-niv-resto{font-size:10px;line-height:1.5;color:${C.faint};padding:6px 2px 0;}
+/* ---- confronto: redação do banco × redação da IA ---- */
+.mu-comp-bt{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid ${C.line};
+  background:#fff;border-radius:7px;padding:5px 9px;font-family:inherit;font-size:10.5px;font-weight:700;
+  color:${C.faint};cursor:pointer;white-space:nowrap;}
+.mu-comp-bt:hover{border-color:${C.primary};color:${C.primaryDark};}
+.mu-comp-bt.on{color:${C.primaryDark};border-color:#C7D7F0;background:${C.primarySoft};}
+.mu-comp-bt em{font-style:normal;background:${C.primary};color:#fff;border-radius:20px;padding:0 6px;font-size:9.5px;font-weight:800;}
+.mu-conf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px 30px;padding:6px 9px;
+  background:#FBF8EE;border:1px solid #EDE3C8;border-radius:8px;}
+.mu-conf-par{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.mu-conf-of,.mu-conf-ia{font-size:10px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mu-conf-of{color:${C.faint};}
+.mu-conf-of::first-line{font-weight:700;}
+.mu-conf-ia{color:#8A6100;font-weight:700;}
+.mu-conf-bt{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border:1px solid #E0CE9E;
+  background:#fff;border-radius:7px;padding:5px 10px;font-family:inherit;font-size:10px;font-weight:800;
+  color:#8A6100;cursor:pointer;text-transform:uppercase;letter-spacing:.03em;}
+.mu-conf-bt:hover{background:#FDF6E3;}
+.mu-conf-bt.votado{border-color:#BEE0C4;background:${C.greenSoft};color:${C.green};cursor:default;}
+.px-doc-item.no{background:${C.primarySoft}33;}
+.px-doc-niveltag{display:inline-flex;align-items:center;gap:4px;background:${C.primarySoft};color:${C.primaryDark};
+  border-radius:5px;padding:2px 7px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;}
+.px-doc-dist-nos{font-style:normal;color:${C.faint};font-weight:600;}
 .mu-atrib{padding:8px 0;border-bottom:1px solid #F2F4F7;}
 .mu-atrib:last-child{border-bottom:none;}
 .mu-atrib-t{font-size:11.5px;color:${C.sub};line-height:1.5;margin-bottom:7px;font-style:italic;}
@@ -6397,10 +7127,12 @@ function CentralRevisao({ onClose, embutido, flags }){
   const paresF=useMemo(()=>pares.filter(p=>(!filtro.mac||p.macro===filtro.mac)&&(!filtro.cat||p.cat===filtro.cat)),[pares,filtro]);
   const semServicoF=useMemo(()=>semServico.filter(x=>(!filtro.mac||x.mac===filtro.mac)&&(!filtro.cat||x.cat===filtro.cat)),[semServico,filtro]);
   const sinalizacoes=flags||[];
+  const propostas=lerPropostas();
   const abas=[
     ["similares","Similares",GitMerge, paresF.length],
     ["servicos","Serviços",Sparkles, semServicoF.length],
     ["sinalizacoes","Sinalizações",Flag, sinalizacoes.length],
+    ["propostas","Propostas de troca",FilePlus2, propostas.length],
   ];
 
   return (
@@ -6446,6 +7178,7 @@ function CentralRevisao({ onClose, embutido, flags }){
           {aba==="similares" && <AbaSimilares pares={paresF} revisor={revisor} onDecidir={registrar} flash={flash}/>}
           {aba==="servicos"  && <AbaServicos itens={semServicoF} revisor={revisor} onAprovar={registrar} flash={flash}/>}
           {aba==="sinalizacoes" && <QualidadePanel embutido flags={sinalizacoes} onClose={onClose}/>}
+          {aba==="propostas" && <AbaPropostas flash={flash}/>}
         </main>
       </div>
 
@@ -6654,6 +7387,93 @@ function Badge({st}){ const c=st==="Ativa"?"ativa":st==="Inativa"?"inativa":"nao
 /* ============================================================
    ABA 2 — SERVIÇOS (sugestão IA + aprovação humana)
    ============================================================ */
+/* ---------- Propostas de troca da redação oficial ----------
+   O que o uso do portal acumulou: onde a redação do catálogo destoa de como as
+   unidades falam. Nada aqui mudou o catálogo — é insumo de decisão. */
+function AbaPropostas({flash}){
+  const [lista,setLista]=useState(()=>lerPropostas());
+  const [ordem,setOrdem]=useState("votos");
+  const ordenada=useMemo(()=>{
+    const l=[...lista];
+    if(ordem==="votos") l.sort((a,b)=>(b.votos||1)-(a.votos||1)||b.criadaEm.localeCompare(a.criadaEm));
+    else if(ordem==="semelhanca") l.sort((a,b)=>(b.score||0)-(a.score||0));
+    else l.sort((a,b)=>b.criadaEm.localeCompare(a.criadaEm));
+    return l;
+  },[lista,ordem]);
+
+  function descartar(id){
+    const nova=lista.filter(p=>p.id!==id);
+    setLista(nova); gravarPropostas(nova);
+    flash&&flash("Proposta descartada.");
+  }
+  function exportar(){
+    if(!lista.length) return;
+    const cab=[["Propostas de troca da redação oficial"],
+               ["Gerado em",new Date().toLocaleString("pt-BR")],
+               ["Propostas",String(lista.length)],
+               ["Observação","Nenhuma alterou o catálogo. É insumo para a curadoria."],[]];
+    const cols=[["Nível","Código","Redação oficial hoje","Redação proposta","Semelhança","Apoios","Origem","Órgão","Unidade","Justificativa","Registrada em"]];
+    const linhas=ordenada.map(p=>[NIVEL_ROT[p.nivel]||"Entrega",p.cod||"—",p.oficial,p.sugerida,Math.round((p.score||0)*100)+"%",
+      p.votos||1,p.origem||"",p.orgao||"",p.unidade||"",p.justificativa||"",
+      new Date(p.criadaEm).toLocaleString("pt-BR")]);
+    const csv=[...cab,...cols,...linhas].map(l=>l.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(";")).join("\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+    a.download="propostas-troca-catalogo.csv"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+    flash&&flash(lista.length+" propostas exportadas.");
+  }
+
+  if(!lista.length) return (
+    <div className="cr-vazio" style={{padding:"46px 24px",textAlign:"center"}}>
+      <FilePlus2 size={22} style={{opacity:.4}}/>
+      <div style={{marginTop:10,fontSize:13.5,fontWeight:700,color:C.navy}}>Nenhuma proposta ainda</div>
+      <div style={{marginTop:6,fontSize:12.5,color:C.sub,lineHeight:1.6,maxWidth:470,margin:"6px auto 0"}}>
+        Quando o Conversor encontra uma entrega oficial que diz o mesmo que a redação da unidade,
+        mas com outras palavras, ele oferece <b>propor troca da oficial</b>. O que for proposto
+        aparece aqui, com quantos apoiaram.
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="cr-prop">
+      <div className="cr-prop-h">
+        <div>
+          <b>{lista.length} proposta{lista.length===1?"":"s"} de troca</b>
+          <span>vindas do uso do portal · nenhuma alterou o catálogo</span>
+        </div>
+        <div className="cr-prop-acoes">
+          <select value={ordem} onChange={e=>setOrdem(e.target.value)}>
+            <option value="votos">mais apoiadas</option>
+            <option value="semelhanca">mais parecidas</option>
+            <option value="data">mais recentes</option>
+          </select>
+          <button className="cr-primary" onClick={exportar}><Download size={13}/> Exportar</button>
+        </div>
+      </div>
+      {ordenada.map(p=>(
+        <div className="cr-prop-i" key={p.id}>
+          <div className="cr-prop-top">
+            {p.cod ? <code>{p.cod}</code> : <span className="cr-prop-niv">{NIVEL_ROT[p.nivel]||"Entrega"}</span>}
+            <span className="cr-prop-sim">{Math.round((p.score||0)*100)}% em comum</span>
+            <span className="cr-prop-votos">{p.votos||1} apoio{(p.votos||1)===1?"":"s"}</span>
+            {(p.orgao||p.unidade) && <span className="cr-prop-org">{p.unidade||p.orgao}</span>}
+            <button className="cr-prop-x" onClick={()=>descartar(p.id)} title="Descartar">
+              <X size={13}/>
+            </button>
+          </div>
+          <div className="cr-prop-par">
+            <div><span>hoje no catálogo</span><b>{p.oficial}</b></div>
+            <div className="nova"><span>proposta</span><b>{p.sugerida}</b></div>
+          </div>
+          {p.justificativa && <div className="cr-prop-just">“{p.justificativa}”</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AbaServicos({ itens, revisor, onAprovar, flash }){
   const [estado,setEstado]=useState({});   // cod -> {sug,just,val,load,err,aprovado}
   const [q,setQ]=useState("");

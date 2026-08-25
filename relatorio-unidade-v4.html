@@ -74,6 +74,15 @@ svg text{font-family:var(--num)}
 .section-kick .t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700}
 .exh{padding:22px 0 26px;border-top:1px solid var(--hair)}
 .exh:first-of-type{border-top:0}
+/* exemplo ilustrativo: precisa ser impossível confundir com dado real, então
+   ganha moldura tracejada, fundo próprio e uma tarja permanente no topo */
+.ex-demo{border:1px dashed #D8C79A;border-top:1px dashed #D8C79A;border-radius:10px;
+  background:#FDFBF4;padding:0 20px 22px;margin:18px 0 4px;position:relative}
+.ex-demo-tag{display:inline-block;margin:0 0 4px -20px;padding:5px 14px 5px 20px;
+  background:#EFE2BE;color:#6B4E00;font-size:8.5px;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;border-radius:10px 10px 10px 0}
+.ex-demo .exh-head{margin-top:12px}
+.ex-demo .exh-src{color:#8A6100}
 .exh-head{max-width:760px;margin-bottom:18px}
 .exh-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-2);font-weight:700}
 .exh-title{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--ink);line-height:1.3;margin-top:5px}
@@ -187,6 +196,16 @@ table.heat th:first-child{text-align:left}
 table.heat td.hc{text-align:center;font-family:var(--num);font-weight:600;font-size:10.5px;padding:6px 4px}
 table.heat td.hc span{display:inline-block;min-width:42px;padding:4px 6px;border-radius:6px}
 table.heat td.cat{font-size:10.5px;font-weight:600;color:var(--sub);max-width:210px}
+/* rodapé com o total de cada carreira: é o que impede ler 100% de uma carreira
+   pequena como se pesasse o mesmo que 100% de uma grande */
+table.heat tr.heat-tot td{border-top:2px solid var(--hair);padding-top:9px}
+table.heat tr.heat-tot td.cat{color:var(--faint);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em}
+table.heat tr.heat-tot span.tot{background:none;color:var(--sub);font-weight:700;font-size:10.5px;min-width:0;padding:0}
+table.heat tr.heat-tot span.tot small{display:block;font-size:8px;color:var(--faint);font-weight:600;letter-spacing:.04em}
+table.heat tr.heat-tot span.tot small.corte{color:var(--coral);margin-top:2px}
+.seg-mat{margin-bottom:2px}
+.heat-exp{font-size:10px;line-height:1.55;color:var(--faint);max-width:760px;margin:6px 0 12px}
+.heat-exp b{color:var(--sub)}
 
 .empty-state{text-align:center;padding:44px 20px;color:var(--faint)}
 .empty-state p{font-size:12px;max-width:420px;margin:8px auto 0;line-height:1.6}
@@ -784,7 +803,10 @@ function render(){
   $("hSt").className="status-line"+(u.semDFT?" off":"");
   $("hSt").innerHTML=`<i></i><span>${u.semDFT?"Sem DFT concluído":u.status+" · "+u.periodo}</span>`;
   $("hMeta").innerHTML=`<span>${u.nivel}</span>`+
-    (k.entregas?`<span><b>${k.entregas}</b> entregas</span><span><b>${k.macros}</b> macroprocessos</span>`:"")+
+    (k.entregas?`<span><b>${k.entregas}</b> entregas</span>`:"")+
+    // macros vem null no caminho de dado real (a rota agregada não devolve essa
+    // contagem) — sem esta guarda o cabeçalho escrevia "null macroprocessos"
+    (k.macros!=null?`<span><b>${k.macros}</b> macroprocessos</span>`:"")+
     (k.adequacao!=null?`<span>adequação <b>${k.adequacao}%</b></span>`:"");
   if(u.semDFT){
     $("gapHero").innerHTML=`<div class="gap-stats">
@@ -825,6 +847,142 @@ function strat(u){
 }
 function emptyExh(t,d){return `<div class="exh"><div class="empty-state"><div style="font-family:var(--num);font-size:30px;font-weight:700;color:var(--hair)">—</div><p><b>${t}</b><br>${d}</p></div></div>`}
 
+/* ============================================================================
+   EXEMPLOS ILUSTRATIVOS PARA AS ANÁLISES QUE AINDA NASCEM VAZIAS
+
+   Quatro lugares deste relatório podem aparecer em branco para uma unidade
+   real: o Pareto de esforço, a demanda reprimida, a matriz impacto × esforço e
+   a aba inteira de Carreiras. Cada um tem um motivo diferente e honesto — falta
+   detalhamento no pipeline, a unidade não registrou demanda, o modelo de
+   pontuação não existe ainda, a alocação não foi processada.
+
+   Em branco, porém, ninguém entende o que aquilo vai ser nem por que vale a
+   pena preencher. Estes exemplos mostram o formato com números fictícios de uma
+   coordenação de exemplo, usando OS MESMOS gráficos do caminho real — o que
+   aparece aqui é exatamente o que a unidade verá quando o dado chegar.
+
+   Regra que não pode ser quebrada: exemplo nunca se confunde com dado real.
+   Todo bloco daqui sai marcado como exemplo, com moldura e aviso próprios, e a
+   explicação de por que o dado real ainda não está lá continua acima dele.
+============================================================================ */
+const EX_UNIDADE="CGFOR — Coordenação-Geral de Formação (unidade fictícia)";
+
+/* moldura do exemplo: distinta o bastante para ninguém ler como número real */
+function exExemplo(titulo,sub,corpo,nota){
+  return `<div class="exh ex-demo">
+    <div class="ex-demo-tag">Exemplo ilustrativo · dados fictícios · ${EX_UNIDADE}</div>
+    <div class="exh-head">
+      <div class="exh-title">${titulo}</div>
+      <div class="exh-sub">${sub}</div>
+    </div>
+    ${corpo}
+    <div class="exh-src">${nota}</div>
+  </div>`;
+}
+
+const EX_ESFORCO=[
+  ["Educação superior",34.2],
+  ["Gestão de pessoas",22.8],
+  ["Gestão estratégica e governança",16.5],
+  ["Gestão da logística pública",12.1],
+  ["Gestão de tecnologias da informação e comunicação",8.9],
+  ["Relações institucionais e federativas",5.5],
+];
+
+const EX_DEMANDA=[
+  ["Curso de formação inicial ofertado","Educação superior",128,"un.",4.8],
+  ["Turma de capacitação continuada realizada","Educação superior",96,"un.",3.1],
+  ["Material didático desenvolvido","Educação superior",74,"un.",2.6],
+  ["Certificado de conclusão emitido","Educação superior",310,"un.",1.9],
+  ["Avaliação de aprendizagem aplicada","Educação superior",142,"un.",1.4],
+  ["Termo de cooperação técnica celebrado","Relações institucionais e federativas",18,"un.",0.9],
+];
+
+/* Cardápio de soluções: cada entrega vira um ponto em impacto × esforço, e o
+   quadrante sugere o tipo de ação. É a análise que hoje diz "em desenvolvimento";
+   o exemplo mostra a leitura que ela vai permitir. */
+const EX_MATRIZ=[
+  {nome:"Certificado de conclusão emitido",     impacto:82, esforco:18, acao:"automatizar"},
+  {nome:"Avaliação de aprendizagem aplicada",   impacto:74, esforco:31, acao:"automatizar"},
+  {nome:"Curso de formação inicial ofertado",   impacto:91, esforco:78, acao:"contratar"},
+  {nome:"Turma de capacitação continuada",      impacto:68, esforco:71, acao:"contratar"},
+  {nome:"Material didático desenvolvido",       impacto:57, esforco:64, acao:"realocar"},
+  {nome:"Relatório mensal de execução",         impacto:24, esforco:57, acao:"simplificar"},
+  {nome:"Planilha de controle paralela",        impacto:11, esforco:44, acao:"eliminar"},
+  {nome:"Termo de cooperação celebrado",        impacto:46, esforco:22, acao:"realocar"},
+];
+const EX_ACAO_COR={automatizar:"#0E7490",contratar:"#12305B",realocar:"#1B7F3A",simplificar:"#9A6A00",eliminar:"#7F1D3A"};
+
+function exMatrizChart(){
+  const W=680,H=300,padL=52,padR=16,padT=18,padB=44;
+  const px=v=>padL+(v/100)*(W-padL-padR);
+  const py=v=>H-padB-(v/100)*(H-padT-padB);
+  const meioX=px(50), meioY=py(50);
+  const pontos=EX_MATRIZ.map(p=>`
+    <circle cx="${px(p.esforco).toFixed(1)}" cy="${py(p.impacto).toFixed(1)}" r="7"
+      fill="${EX_ACAO_COR[p.acao]}" fill-opacity=".85" stroke="#fff" stroke-width="1.5"><title>${p.nome} · ${p.acao}</title></circle>`).join("");
+  const rotulos=EX_MATRIZ.map(p=>{
+    const x=px(p.esforco), y=py(p.impacto);
+    const dir = x>W*0.62 ? -1 : 1;
+    return `<text x="${(x+dir*11).toFixed(1)}" y="${(y+3.5).toFixed(1)}" font-size="8.5" fill="var(--sub)"
+      text-anchor="${dir>0?"start":"end"}">${p.nome.length>30?p.nome.slice(0,29)+"…":p.nome}</text>`;
+  }).join("");
+  const quad=(x,y,t,a)=>`<text x="${x}" y="${y}" font-size="8" font-weight="700" fill="var(--faint)" text-anchor="${a}" letter-spacing=".08em">${t}</text>`;
+  const leg=Object.entries(EX_ACAO_COR).map(([k,c])=>
+    `<span class="li"><i style="background:${c}"></i>${k}</span>`).join("");
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;display:block">
+    <line x1="${meioX}" y1="${padT}" x2="${meioX}" y2="${H-padB}" stroke="var(--hair)" stroke-dasharray="3 3"/>
+    <line x1="${padL}" y1="${meioY}" x2="${W-padR}" y2="${meioY}" stroke="var(--hair)" stroke-dasharray="3 3"/>
+    <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--hair)"/>
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="var(--hair)"/>
+    ${quad(padL+8,padT+12,"MUITO IMPACTO, POUCO ESFORÇO — AUTOMATIZAR","start")}
+    ${quad(W-padR-8,padT+12,"MUITO IMPACTO, MUITO ESFORÇO — CONTRATAR","end")}
+    ${quad(padL+8,H-padB-8,"POUCO IMPACTO, POUCO ESFORÇO — MANTER","start")}
+    ${quad(W-padR-8,H-padB-8,"POUCO IMPACTO, MUITO ESFORÇO — SIMPLIFICAR OU ELIMINAR","end")}
+    ${pontos}${rotulos}
+    <text x="${(padL+(W-padR-padL)/2).toFixed(0)}" y="${H-10}" font-size="9" fill="var(--faint)" text-anchor="middle" font-weight="600">esforço da unidade (horas/mês) →</text>
+    <text x="14" y="${(padT+(H-padB-padT)/2).toFixed(0)}" font-size="9" fill="var(--faint)" text-anchor="middle" font-weight="600" transform="rotate(-90 14 ${(padT+(H-padB-padT)/2).toFixed(0)})">impacto na entrega →</text>
+  </svg></div><div class="leg" style="margin-top:8px">${leg}</div>`;
+}
+
+/* Carreiras: as três visões do relatório real (fila, por carreira, matriz)
+   pedem um objeto com fila/mixCarreira/matriz — este é o de exemplo. */
+const EX_CARREIRAS={
+  unidades:1, totalVagas:9,
+  mixCarreira:[
+    {carreira:"Carreira Específica do Órgão",vagas:4,horas:612},
+    {carreira:"EPPGG",vagas:2,horas:298},
+    {carreira:"ATA",vagas:2,horas:264},
+    {carreira:"ATI",vagas:1,horas:143},
+    {carreira:"ACE",vagas:0,horas:47},
+  ],
+  fila:[
+    {posicao:1,carreira:"Carreira Específica do Órgão",categoria:"Oferta de cursos de formação",natureza:"Finalístico",horasGap:188.4},
+    {posicao:2,carreira:"Carreira Específica do Órgão",categoria:"Desenvolvimento de material didático",natureza:"Finalístico",horasGap:161.2},
+    {posicao:3,carreira:"EPPGG",categoria:"Planejamento da oferta formativa",natureza:"Finalístico",horasGap:154.7},
+    {posicao:4,carreira:"ATA",categoria:"Gestão administrativa da coordenação",natureza:"Suporte",horasGap:139.5},
+    {posicao:5,carreira:"Carreira Específica do Órgão",categoria:"Avaliação de aprendizagem",natureza:"Finalístico",horasGap:132.1},
+    {posicao:6,carreira:"ATI",categoria:"Plataforma de ensino a distância",natureza:"Suporte",horasGap:118.9},
+    {posicao:7,carreira:"EPPGG",categoria:"Articulação com escolas de governo",natureza:"Finalístico",horasGap:104.3},
+    {posicao:8,carreira:"ATA",categoria:"Emissão de certificados",natureza:"Suporte",horasGap:96.8},
+    {posicao:9,carreira:"Carreira Específica do Órgão",categoria:"Oferta de cursos de formação",natureza:"Finalístico",horasGap:88.2},
+  ],
+  matriz:[
+    {categoria:"Oferta de cursos de formação",carreira:"Carreira Específica do Órgão",horas:276},
+    {categoria:"Oferta de cursos de formação",carreira:"EPPGG",horas:88},
+    {categoria:"Desenvolvimento de material didático",carreira:"Carreira Específica do Órgão",horas:194},
+    {categoria:"Desenvolvimento de material didático",carreira:"ATI",horas:52},
+    {categoria:"Planejamento da oferta formativa",carreira:"EPPGG",horas:167},
+    {categoria:"Avaliação de aprendizagem",carreira:"Carreira Específica do Órgão",horas:142},
+    {categoria:"Avaliação de aprendizagem",carreira:"ACE",horas:47},
+    {categoria:"Gestão administrativa da coordenação",carreira:"ATA",horas:158},
+    {categoria:"Plataforma de ensino a distância",carreira:"ATI",horas:91},
+    {categoria:"Emissão de certificados",carreira:"ATA",horas:106},
+    {categoria:"Articulação com escolas de governo",carreira:"EPPGG",horas:43},
+  ],
+};
+
+
 /* ---------- 01 · DIAGNÓSTICO — apenas os dois gráficos prontos ----------
    Página 1 concentra os dois exhibits já validados com dado real:
    (1) Pareto de esforço por macroprocesso; (2) gap efetivo × estimado.
@@ -842,7 +1000,12 @@ function tabDiag(u){
       pareto(u.esforcoMacro),
       "Fonte: SISDIP · esforços por entrega, agregados por macroprocesso (dado real)");
   } else {
-    exPareto = emptyExh("Sem esforços por macroprocesso ainda", "Esta unidade tem DFT, mas o detalhamento por macroprocesso não retornou dados — pode ser uma unidade recém-integrada ao pipeline.");
+    exPareto = emptyExh("Sem esforços por macroprocesso ainda", "Esta unidade tem DFT, mas o detalhamento por macroprocesso não retornou dados — pode ser uma unidade recém-integrada ao pipeline.")
+      + exExemplo(
+        "Educação superior consome <em>34,2%</em> do tempo da equipe — dois macroprocessos explicam 57%",
+        "Pareto de esforço · % das horas mensais registradas no SISDIP · linha = acumulado",
+        pareto(EX_ESFORCO),
+        "Assim que o detalhamento por entrega desta unidade entrar no pipeline, este gráfico passa a mostrar os macroprocessos reais dela, no mesmo formato.");
   }
 
   const gap=(u.kpis.estim||0)-(u.kpis.efet||0);
@@ -854,7 +1017,12 @@ function tabDiag(u){
       bridge({kpis:u.kpis, mix:[], autoEq:0}),
       "Fonte: GET /api/organograma-agregado/:codigo (dado real)");
   } else {
-    exGap = emptyExh("Balanço de capacidade após o DFT", "O gráfico de gap (efetivo × necessidade estimada) aparece aqui quando o dimensionamento desta unidade for publicado no SISDIP.");
+    exGap = emptyExh("Balanço de capacidade após o DFT", "O gráfico de gap (efetivo × necessidade estimada) aparece aqui quando o dimensionamento desta unidade for publicado no SISDIP.")
+      + exExemplo(
+        "O gap oficial desta unidade seria de <em>9 FTE</em>",
+        "efetivo atual até a necessidade estimada · dado direto do DFT, sem alocação de carreiras",
+        bridge({kpis:{efet:14,estim:23},mix:[],autoEq:0}),
+        "É a leitura mais direta do DFT: quantas pessoas a unidade tem hoje e quantas o dimensionamento diz que precisa. Aparece assim que o dimensionamento desta unidade for publicado.");
   }
 
   return kick("01","Diagnóstico")+exPareto+exGap;
@@ -876,7 +1044,15 @@ function tabAlav(u){
         <td class="num"><b style="color:var(--coral)">${fmt(v)}</b> <span style="color:var(--faint);font-size:9px">${un}</span></td>
         <td class="num">${nec!=null?fmt1(nec):"—"}</td></tr>`).join("")}</tbody></table>`,
       "Fonte: GET /api/esforco-demanda/demanda-reprimida-por-entrega (dado real)")
-    : emptyExh("Sem demanda reprimida registrada", "Esta unidade não tem entregas com demanda reprimida > 0 na visão atual, ou a tabela ainda não foi migrada para esta unidade.");
+    : emptyExh("Sem demanda reprimida registrada", "Esta unidade não tem entregas com demanda reprimida > 0 na visão atual, ou a tabela ainda não foi migrada para esta unidade.")
+      + exExemplo(
+        "A fila que sustentaria o déficit desta unidade",
+        "demanda reprimida registrada no DFT, com a necessidade de pessoal já rateada por entrega",
+        `<table><thead><tr><th>Entrega</th><th>Macroprocesso</th><th class="num">Qtd. demanda reprimida</th><th class="num">Necessidade rateada</th></tr></thead>
+        <tbody>${EX_DEMANDA.map(([l,c,v,un,nec])=>`<tr><td>${l}</td><td style="color:var(--sub);font-size:10.5px">${c}</td>
+          <td class="num"><b style="color:var(--coral)">${fmt(v)}</b> <span style="color:var(--faint);font-size:9px">${un}</span></td>
+          <td class="num">${fmt1(nec)}</td></tr>`).join("")}</tbody></table>`,
+        "Demanda reprimida é o que a unidade deixou de entregar por falta de gente. Se a sua tem fila e ela não aparece acima, o registro no SISDIP é o que está faltando — é ele que vira necessidade rateada.");
 
   const exSel=`<div style="margin:18px 0 4px">
     <div style="font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:8px">Protótipo Frente 4 · unidade de exemplo (dados fictícios)</div>
@@ -910,6 +1086,11 @@ function tabAlav(u){
     `<div class="exh-sub" style="margin:2px 0 8px">Análises com dado real do SISDIP, seguidas de quatro exemplos do protótipo da Frente 4 — mostram o formato que a versão com dado real desta unidade vai ter.</div>`+
     exDemanda+
     emptyExh("Matriz impacto × esforço — em desenvolvimento", "O cardápio de soluções priorizadas (contratar/realocar/automatizar/simplificar/eliminar) depende de um modelo de pontuação que ainda não está integrado ao pipeline real.")+
+    exExemplo(
+      "Nem toda lacuna se resolve contratando",
+      "cada entrega da unidade posicionada por impacto × esforço · o quadrante sugere o tipo de ação, e só um deles é contratação",
+      exMatrizChart(),
+      "Fonte prevista: esforço real por entrega (já existe no SISDIP) × pontuação de impacto, que ainda não existe. A leitura que a matriz permite: o que dá muito impacto com pouco esforço tende a automatizar; o que dá pouco impacto com muito esforço é candidato a simplificar ou eliminar antes de pedir gente.")+
     exSel+exBench+exDemog+exAuto+exPlano;
 }
 
@@ -981,7 +1162,42 @@ function carrDist(c){
   }).join("");
 }
 
-/* visão 3 — matriz carreira × categoria: de onde vem a necessidade */
+/* visão 3 — matriz carreira × categoria: de onde vem a necessidade.
+
+   Duas leituras da mesma matriz, e elas respondem a perguntas diferentes.
+
+   "Horas por mês" mostra o tamanho absoluto: a Específica pesa mais que a ACE
+   em qualquer categoria, simplesmente porque a Específica é maior. Serve para
+   dimensionar.
+
+   "% dentro da carreira" normaliza cada COLUNA em 100. Aí a pergunta vira outra:
+   dado o trabalho de uma carreira, quanto dele vai para cada categoria? É assim
+   que se compara o perfil de uma carreira pequena com o de uma grande sem que o
+   tamanho atropele a leitura.
+
+   Cuidado obrigatório na visão normalizada: 100% da ACE são 47 h/mês e 100% da
+   Específica são 612 — treze vezes mais. Equiparar sem dizer isso convida a ler
+   uma carreira minúscula como se pesasse igual. Por isso a linha de rodapé com
+   o total real de cada carreira aparece SEMPRE, e o realce fica na própria
+   coluna. */
+let carrMatMode=0;   // 0 = horas por mês · 1 = % dentro da carreira
+function setCarrMatMode(i){carrMatMode=i;render();}
+
+/* Arredondar cada célula por conta própria faz a coluna fechar em 99 ou 101, e
+   aí a promessa "cada carreira soma 100" vira mentira na tela. Maior resto
+   resolve: distribui os pontos inteiros e devolve as sobras a quem tem a maior
+   fração pendente, garantindo que a soma dê exatamente o alvo. */
+function repartirPontos(valores,alvo){
+  const soma=valores.reduce((s,v)=>s+v,0);
+  if(soma<=0||alvo<=0) return valores.map(()=>0);
+  const exatos=valores.map(v=>alvo*v/soma);
+  const base=exatos.map(Math.floor);
+  const sobra=alvo-base.reduce((s,v)=>s+v,0);
+  const ordem=exatos.map((v,i)=>[v-Math.floor(v),i]).sort((a,b)=>b[0]-a[0]);
+  for(let k=0;k<sobra&&ordem.length;k++) base[ordem[k%ordem.length][1]]++;
+  return base;
+}
+
 function carrMatriz(c){
   const porCat={},porCarr={};
   c.matriz.forEach(m=>{
@@ -993,30 +1209,98 @@ function carrMatriz(c){
   const cel={};
   c.matriz.forEach(m=>{cel[m.categoria+"|"+m.carreira]=m.horas});
   const maxCel=Math.max(...cats.flatMap(ct=>carrs.map(cr=>cel[ct+"|"+cr]||0)),1);
-  const head=`<tr><th>Categoria de serviço</th>${carrs.map(cr=>`<th>${cnome(cr)}</th>`).join("")}<th class="num">Total</th></tr>`;
+  const pct=carrMatMode===1;
+
+  /* A tabela mostra só as 8 maiores categorias. Se uma carreira tem trabalho
+     fora dessas 8, a coluna dela NÃO deve fechar em 100 — e forçar seria
+     esconder o que ficou de fora. Por isso o alvo de cada coluna é a fatia que
+     as linhas visíveis representam do total da carreira. */
+  const visivel={}, alvoCol={}, pontos={};
+  carrs.forEach(cr=>{
+    const horas=cats.map(ct=>cel[ct+"|"+cr]||0);
+    visivel[cr]=horas.reduce((s,v)=>s+v,0);
+    alvoCol[cr]=porCarr[cr]>0?Math.round(100*visivel[cr]/porCarr[cr]):0;
+    const dist=repartirPontos(horas,alvoCol[cr]);
+    cats.forEach((ct,i)=>{ pontos[ct+"|"+cr]=dist[i]; });
+  });
+
+  const head=`<tr><th>Categoria de serviço</th>${carrs.map(cr=>`<th>${cnome(cr)}</th>`).join("")}<th class="num">Total h/mês</th></tr>`;
   const body=cats.map(ct=>{
     const cells=carrs.map(cr=>{
       const v=cel[ct+"|"+cr]||0;
       if(v<=0) return `<td class="hc"><span style="color:var(--hair)">·</span></td>`;
+      if(pct){
+        // o denominador é a carreira inteira: a coluna é o perfil dela
+        const p=pontos[ct+"|"+cr]||0;
+        const share=v/(porCarr[cr]||1);
+        const a=(0.08+0.72*share).toFixed(2);
+        const escuro=share>0.55;
+        return `<td class="hc"><span style="background:rgba(19,81,180,${a});color:${escuro?"#fff":"var(--navy)"}"
+          title="${fmt(Math.round(v))} h/mês de ${fmt(Math.round(porCarr[cr]))} h/mês da carreira ${cnome(cr)}">${p}%</span></td>`;
+      }
       const a=(0.08+0.55*v/maxCel).toFixed(2);
       const escuro=v/maxCel>0.62;
       return `<td class="hc"><span style="background:rgba(19,81,180,${a});color:${escuro?"#fff":"var(--navy)"}">${fmt(Math.round(v))}</span></td>`;
     }).join("");
     return `<tr><td class="cat">${ct}</td>${cells}<td class="num">${fmt(Math.round(porCat[ct]))}</td></tr>`;
   }).join("");
+
+  /* o rodapé é o antídoto da visão normalizada: mostra de que tamanho é o 100%
+     de cada carreira, para ninguém equiparar carreira pequena com grande */
+  const totalGeral=carrs.reduce((s,cr)=>s+(porCarr[cr]||0),0);
+  const cortou=carrs.some(cr=>alvoCol[cr]<100);
+  const rodape=`<tr class="heat-tot">
+    <td class="cat">${pct?"100% de cada carreira equivale a":"Total da carreira"}</td>
+    ${carrs.map(cr=>{
+      const falta=pct&&alvoCol[cr]<100;
+      return `<td class="hc"><span class="tot">${fmt(Math.round(porCarr[cr]||0))}<small>h/mês</small>${
+        falta?`<small class="corte" title="O restante está em categorias fora das 8 listadas">${alvoCol[cr]}% acima</small>`:""}</span></td>`;
+    }).join("")}
+    <td class="num">${fmt(Math.round(totalGeral))}</td></tr>`;
+
+  const seg=`<div class="seg seg-mat">
+    <button class="${!pct?'on':''}" onclick="setCarrMatMode(0)">Horas por mês</button>
+    <button class="${pct?'on':''}" onclick="setCarrMatMode(1)">% dentro da carreira</button>
+  </div>`;
+  const explica=`<div class="heat-exp">${pct
+    ? "Cada coluna é a distribuição do trabalho <b>daquela carreira</b>, com o tamanho dela neutralizado — serve para comparar em que uma carreira pequena se concentra com aquilo em que uma grande se concentra."
+      +(cortou
+        ? " Onde a coluna não fecha em 100%, o restante está em categorias fora das 8 listadas; o rodapé diz quanto as linhas acima cobrem."
+        : " Aqui todas as colunas fecham em 100%.")
+      +" O rodapé lembra de que tamanho é esse 100%: equiparar sem olhar isso faz uma carreira de 47 h/mês parecer do mesmo peso que uma de 612."
+    : "Horas-alvo mensais por categoria × carreira. Os tons mais fortes são as maiores concentrações da unidade inteira — carreira grande domina o mapa. Para comparar o <b>perfil</b> de cada carreira, troque para % dentro da carreira."}</div>`;
+
   const nota=Object.keys(porCat).length>8?`<div style="font-size:9.5px;color:var(--faint);font-weight:500;margin-top:10px">Mostrando as 8 categorias com maior necessidade, de ${Object.keys(porCat).length} no total.</div>`:"";
-  return `<div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>${nota}`;
+  return seg+explica+`<div style="overflow-x:auto"><table class="heat">${head}${body}${rodape}</table></div>${nota}`;
 }
 
+
+/* As três visões de Carreiras (fila, por carreira, matriz) só existem depois que
+   o pipeline de alocação roda. Como isso ainda não vale para toda unidade, a aba
+   nasce vazia em três situações diferentes. Em cada uma, a explicação real fica
+   e o exemplo entra abaixo, para a unidade ver o que vai receber. */
+function exemploCarreiras(){
+  const c=EX_CARREIRAS, lider=c.mixCarreira[0];
+  const pct=Math.round(100*lider.vagas/c.totalVagas);
+  const views=[["Fila de contratação",carrFila],["Por carreira",carrDist],["Carreira × categoria",carrMatriz]];
+  const segBtns=views.map((v,i)=>`<button class="${i===carrView?'on':''}" onclick="setCarrView(${i})">${v[0]}</button>`).join("");
+  return exExemplo(
+    `${cnome(lider.carreira)} receberia <em>${lider.vagas} das ${c.totalVagas} vagas</em> (${pct}%) recomendadas`,
+    "mix recomendado para fechar o gap · derivado da matriz de aderência categoria × carreira aplicada às horas da unidade",
+    compBar(c.mixCarreira,c.totalVagas)
+      +`<div class="seg" style="margin-top:18px">${segBtns}</div>`
+      +`<div style="margin-top:14px">${views[carrView][1](c)}</div>`,
+    "As três visões acima já funcionam — o que falta é o cálculo da alocação desta unidade. A sugestão é apoio à decisão: parte de uma matriz de aderência revisável e do algoritmo de maior lacuna, e não substitui o julgamento do gestor.");
+}
 function tabCarr(u){
   const k=kick("03","Carreiras");
   if(!u.dadosReais) return k+emptyExh("Sem dados carregados","Não foi possível preparar a sugestão de carreiras desta unidade.");
-  if(u.semDFT) return k+emptyExh("Sugestão de carreiras depende do DFT","Esta unidade ainda não tem dimensionamento concluído — quando o DFT for publicado, o perfil de carreiras recomendado aparece aqui.");
+  if(u.semDFT) return k+emptyExh("Sugestão de carreiras depende do DFT","Esta unidade ainda não tem dimensionamento concluído — quando o DFT for publicado, o perfil de carreiras recomendado aparece aqui.")+exemploCarreiras();
   const c=u.carreiras;
   if(!c||!c.fila||!c.fila.length){
     const gap=(u.kpis.estim||0)-(u.kpis.efet||0);
-    if(gap<=0) return k+emptyExh("Sem necessidade a alocar","Esta unidade não tem gap de pessoal na visão atual do DFT — não há vagas para sugerir distribuição de carreiras.");
-    return k+emptyExh("Sugestão de carreiras ainda não calculada","A matriz de aderência e a alocação desta unidade ainda não foram processadas pelo pipeline (calcular_sugestao_alocacao.py). Rode o pipeline e recarregue.");
+    if(gap<=0) return k+emptyExh("Sem necessidade a alocar","Esta unidade não tem gap de pessoal na visão atual do DFT — não há vagas para sugerir distribuição de carreiras.")+exemploCarreiras();
+    return k+emptyExh("Sugestão de carreiras ainda não calculada","A matriz de aderência e a alocação desta unidade ainda não foram processadas pelo pipeline (calcular_sugestao_alocacao.py). Rode o pipeline e recarregue.")+exemploCarreiras();
   }
   const lider=c.mixCarreira[0];
   const pctLider=Math.round(100*lider.vagas/c.totalVagas);
