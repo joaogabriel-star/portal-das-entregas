@@ -3277,35 +3277,30 @@ function DashboardOrgaos({token}){
 /* ---------- Credenciamento — trâmite entre o convite e a liberação para
    vincular o mentor a um órgão (documentos → assinatura SEI → DICAP →
    orçamentária). Ver rotas-credenciamento.js / migrations/007. ---------- */
-const TIPOS_DOCUMENTO_BASE=[
-  ["convite_chefia","Convite e autorização da chefia"],
-  ["pdp","PDP"],
-  ["cdo","CDO — disponibilidade orçamentária"],
-  ["curriculo","Currículo"],
-  ["diploma","Diploma"],
-  ["ferias","Extrato de férias"],
-];
-const TIPOS_DOCUMENTO_VIA={
-  mgi:[["projeto_mgi","Projeto"],["declaracao_mgi","Declaração"]],
-  associacao:[["projeto_ass","Projeto"],["declaracao_ass","Declaração"]],
-};
-const VIA_LABEL={mgi:"MGI",associacao:"Associação"};
-function tiposDocumentoDoProcesso(via){
-  return [...TIPOS_DOCUMENTO_BASE, ...(TIPOS_DOCUMENTO_VIA[via]||[])];
-}
-// Documentos de retorno das etapas 2-4 -- vêm do SEI/DICAP/GABIN, só o
-// admin anexa (sem fluxo de aprovar/rejeitar, ver rotas-credenciamento.js).
-const TIPOS_DOCUMENTO_ETAPA={
-  assinatura_sei:[["termo_assinado","Termo assinado (mentor e chefia)"]],
-  cadastro_dicap:[["comprovacao_dicap","Comprovação de cadastro no sistema"],["nota_tecnica_dicap","Nota técnica"]],
-  orcamentaria:[["nota_tecnica_orcamentaria","Nota técnica"],["programacao_orcamentaria","Programação orçamentária"],["descentralizacao_orcamentaria","Descentralização orçamentária"]],
-};
 const ETAPAS_CRED=[
   ["documentos","Documentos"],
   ["assinatura_sei","Assinatura SEI"],
   ["cadastro_dicap","Cadastro DICAP"],
   ["orcamentaria","Orçamentária"],
 ];
+// Documentos de cada etapa. Na etapa 1 é o mentor quem envia (aprovação do
+// admin); nas etapas 2-4 são documentos de retorno do SEI/DICAP/GABIN, só
+// o admin anexa (sem fluxo de aprovar/rejeitar, ver rotas-credenciamento.js).
+const TIPOS_DOCUMENTO_POR_ETAPA={
+  documentos:[
+    ["convite_chefia","Convite e autorização da chefia"],
+    ["pdp","PDP"],
+    ["cdo","CDO — disponibilidade orçamentária"],
+    ["curriculo","Currículo"],
+    ["diploma","Diploma"],
+    ["ferias","Extrato de férias"],
+    ["projeto","Projeto"],
+    ["declaracao","Declaração"],
+  ],
+  assinatura_sei:[["termo_assinado","Termo assinado (mentor e chefia)"]],
+  cadastro_dicap:[["comprovacao_dicap","Comprovação de cadastro no sistema"],["nota_tecnica_dicap","Nota técnica"]],
+  orcamentaria:[["nota_tecnica_orcamentaria","Nota técnica"],["programacao_orcamentaria","Programação orçamentária"],["descentralizacao_orcamentaria","Descentralização orçamentária"]],
+};
 const STATUS_GERAL_LABEL={em_andamento:"Em andamento",indeferido:"Indeferido",concluido:"Concluído"};
 const STATUS_GERAL_COR={em_andamento:"#e0a400",indeferido:"#d64545",concluido:"#1a9c5c"};
 
@@ -3314,7 +3309,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
   const [selId,setSelId]=useState(null);
-  const [novo,setNovo]=useState({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:"",via:""});
+  const [novo,setNovo]=useState({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:""});
   const [abrindo,setAbrindo]=useState(false);
 
   async function carregar(){
@@ -3337,11 +3332,11 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
     try{
       const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento`,{
         method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
-        body:JSON.stringify({mentorId:Number(novo.mentorId),numeroSeiProcesso:novo.numeroSeiProcesso||null,numeroSeiDocumento:novo.numeroSeiDocumento||null,via:novo.via||null}),
+        body:JSON.stringify({mentorId:Number(novo.mentorId),numeroSeiProcesso:novo.numeroSeiProcesso||null,numeroSeiDocumento:novo.numeroSeiDocumento||null}),
       });
       const dados=await resp.json();
       if(!resp.ok) throw new Error(dados.erro||"Erro ao abrir processo.");
-      setNovo({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:"",via:""});
+      setNovo({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:""});
       carregar();
     }catch(err){ setErro(err.message||"Erro ao abrir processo."); }
     finally{ setAbrindo(false); }
@@ -3374,15 +3369,6 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
           <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Nº SEI documento (opcional)</label>
           <input value={novo.numeroSeiDocumento} onChange={e=>setNovo(s=>({...s,numeroSeiDocumento:e.target.value}))}
             style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-          <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Via (opcional, dá pra definir depois)</label>
-          <select value={novo.via} onChange={e=>setNovo(s=>({...s,via:e.target.value}))}
-            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}>
-            <option value="">Ainda não definida</option>
-            <option value="mgi">MGI</option>
-            <option value="associacao">Associação</option>
-          </select>
         </div>
         <button className="px-mode" type="submit" disabled={abrindo}><Plus size={12}/> <span className="px-mode-lbl">{abrindo?"Abrindo…":"Abrir processo"}</span></button>
       </form>}
@@ -3421,15 +3407,26 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
   const [desfazendoEtapa,setDesfazendoEtapa]=useState(null); // etapa perguntando se desfaz
   const [preview,setPreview]=useState(null); // {url,tipoMime,nomeArquivo,docId} do documento aberto pra visualizar
   const [carregandoPreview,setCarregandoPreview]=useState(null); // id do doc cujo preview está carregando
+  const [etapaAtiva,setEtapaAtiva]=useState("documentos"); // qual etapa a lateral está mostrando
 
-  async function carregarDetalhe(){
+  async function carregarDetalhe(definirEtapaInicial){
     try{
       const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/mentor/${processo.mentor_id}`,{headers:mentoriaAuthHeader(token)});
       const dados=await resp.json();
-      if(resp.ok) setDetalhe(dados.find(p=>p.id===processo.id)||null);
+      if(!resp.ok) return;
+      const p=dados.find(x=>x.id===processo.id)||null;
+      setDetalhe(p);
+      if(definirEtapaInicial && p){
+        const chaves=ETAPAS_CRED.map(([c])=>c);
+        const atual=chaves.find(c=>{
+          const et=(p.etapas||[]).find(e=>e.etapa===c);
+          return et?.status!=="concluida";
+        });
+        setEtapaAtiva(atual||chaves[chaves.length-1]);
+      }
     }catch{}
   }
-  useEffect(()=>{ carregarDetalhe(); },[processo.id]); // eslint-disable-line
+  useEffect(()=>{ carregarDetalhe(true); },[processo.id]); // eslint-disable-line
 
   async function enviarDocumento(tipo,arquivo){
     setEnviando(tipo); setErro("");
@@ -3496,17 +3493,6 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
     }catch{ setErro("Não consegui atualizar o status."); }
   }
 
-  async function mudarVia(via){
-    try{
-      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/${processo.id}`,{
-        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
-        body:JSON.stringify({via:via||null}),
-      });
-      if(!resp.ok) throw new Error();
-      carregarDetalhe();
-    }catch{ setErro("Não consegui atualizar a via."); }
-  }
-
   async function baixarDoc(doc){
     try{
       const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/documentos/${doc.id}/download`,{headers:mentoriaAuthHeader(token)});
@@ -3538,27 +3524,34 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
   if(!detalhe) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
 
   const CORES_DOC={enviado:C.amber||"#e0a400",aprovado:"#1a9c5c",rejeitado:"#d64545"};
-  function linhaDocumento(tipo,rot,{somenteAdminEnvia}={}){
+  const STATUS_DOC_LABEL={enviado:"aguardando análise",aprovado:"aprovado",rejeitado:"rejeitado"};
+  function linhaDocumento(tipo,rot,etapa){
     const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
-    const podeEnviar = somenteAdminEnvia ? isAdmin : !isAdmin;
+    const podeEnviar = etapa==="documentos" ? !isAdmin : isAdmin;
+    const faltando = !doc || doc.status==="rejeitado";
     return (
-      <div key={tipo} style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px"}}>
+      <div key={tipo} style={{
+        border:`1px solid ${faltando?"#f0b3b3":C.line}`,
+        background:faltando?"#fdf3f3":"#fff",
+        borderRadius:"9px",padding:"9px 11px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-          <div style={{fontSize:"12px"}}>
-            <b>{rot}</b>
-            {doc && <span style={{marginLeft:"8px",fontSize:"10px",fontWeight:700,color:"#fff",background:CORES_DOC[doc.status],borderRadius:"999px",padding:"2px 7px"}}>{doc.status}</span>}
-            {doc?.status==="rejeitado"&&doc.observacao_admin && <div style={{fontSize:"11px",color:"#d64545",marginTop:"2px"}}>Motivo: {doc.observacao_admin}</div>}
+          <div style={{fontSize:"12.5px"}}>
+            <b style={{color:faltando?"#a33":C.navy}}>{rot}</b>
+            {doc
+              ? <span style={{marginLeft:"8px",fontSize:"10px",fontWeight:700,color:"#fff",background:CORES_DOC[doc.status],borderRadius:"999px",padding:"2px 7px"}}>{STATUS_DOC_LABEL[doc.status]}</span>
+              : <span style={{marginLeft:"8px",fontSize:"10px",fontWeight:700,color:"#a33",background:"#fbe0e0",borderRadius:"999px",padding:"2px 7px"}}>não enviado</span>}
+            {doc?.status==="rejeitado"&&doc.observacao_admin && <div style={{fontSize:"11px",color:"#a33",marginTop:"2px"}}>Motivo: {doc.observacao_admin}</div>}
           </div>
           <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
             {doc && <button onClick={()=>visualizarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer"}} title="Visualizar" disabled={carregandoPreview===doc.id}>
               <FileText size={11}/> {carregandoPreview===doc.id?"Abrindo…":doc.nome_arquivo}
             </button>}
             {doc && <button onClick={()=>baixarDoc(doc)} title="Baixar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer",color:C.sub}}><Download size={12}/></button>}
-            {podeEnviar && (!doc||doc.status==="rejeitado") && <label className="px-mode" style={{cursor:"pointer",padding:"4px 8px"}}>
+            {podeEnviar && faltando && <label className="px-mode" style={{cursor:"pointer",padding:"4px 8px"}}>
               <UploadCloud size={12}/> <span className="px-mode-lbl">{enviando===tipo?"Enviando…":"Enviar"}</span>
               <input type="file" style={{display:"none"}} disabled={enviando===tipo} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarDocumento(tipo,f); e.target.value="";}}/>
             </label>}
-            {!somenteAdminEnvia && isAdmin && doc?.status==="enviado" && rejeitandoDoc?.id!==doc.id && <>
+            {etapa==="documentos" && isAdmin && doc?.status==="enviado" && rejeitandoDoc?.id!==doc.id && <>
               <button onClick={()=>revisarDocumento(doc.id,"aprovado")} title="Aprovar" style={{border:`1px solid #1a9c5c`,color:"#1a9c5c",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><Check size={12}/></button>
               <button onClick={()=>{setRejeitandoDoc({id:doc.id,tipo}); setMotivoRejeicao("");}} title="Rejeitar" style={{border:`1px solid #d64545`,color:"#d64545",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><X size={12}/></button>
             </>}
@@ -3576,80 +3569,94 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
     );
   }
 
+  const docsDaEtapaAtiva=TIPOS_DOCUMENTO_POR_ETAPA[etapaAtiva]||[];
+  const faltantesEtapaAtiva=docsDaEtapaAtiva.filter(([tipo])=>{
+    const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
+    return !doc || doc.status==="rejeitado";
+  }).length;
+
   return (
-    <div>
-      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+    <div style={{border:`1px solid ${C.line}`,borderRadius:"14px",overflow:"hidden",background:"#fbfbfd"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.line}`,background:"#fff",flexWrap:"wrap",gap:"8px"}}>
+        <div style={{fontSize:"12px",fontWeight:700,color:C.navy}}>Progresso do credenciamento</div>
+        {isAdmin && <select value={detalhe.status_geral} onChange={e=>mudarStatusGeral(e.target.value)}
+          style={{padding:"4px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"11.5px"}}>
+          {Object.entries(STATUS_GERAL_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+        </select>}
+      </div>
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px",flexWrap:"wrap",gap:"8px"}}>
-        <div style={{fontSize:"11px",fontWeight:700,opacity:.7}}>Progresso</div>
-        <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-          {isAdmin ? <select value={detalhe.via||""} onChange={e=>mudarVia(e.target.value)}
-            style={{padding:"4px 8px",border:`1px solid ${detalhe.via?C.line:"#e0a400"}`,borderRadius:"7px",fontSize:"11.5px"}}>
-            <option value="">Via: não definida</option>
-            <option value="mgi">Via: MGI</option>
-            <option value="associacao">Via: Associação</option>
-          </select> : (detalhe.via && <span style={{fontSize:"11px",color:C.sub}}>Via: {VIA_LABEL[detalhe.via]}</span>)}
-          {isAdmin && <select value={detalhe.status_geral} onChange={e=>mudarStatusGeral(e.target.value)}
-            style={{padding:"4px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"11.5px"}}>
-            {Object.entries(STATUS_GERAL_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-          </select>}
+      {erro && <div className="px-anexo-erro" style={{margin:"10px 16px 0"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <div style={{display:"flex",flexWrap:"wrap"}}>
+        {/* ---- lateral: todos os passos, estilo dashboard ---- */}
+        <div style={{flex:"0 0 172px",minWidth:"150px",background:"#f3f5f8",borderRight:`1px solid ${C.line}`,padding:"10px"}}>
+          {ETAPAS_CRED.map(([chave,rot],i)=>{
+            const et=(detalhe.etapas||[]).find(e=>e.etapa===chave);
+            const feita=et?.status==="concluida";
+            const ativa=etapaAtiva===chave;
+            const faltam=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).filter(([tipo])=>{
+              const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
+              return !doc || doc.status==="rejeitado";
+            }).length;
+            return (
+              <button key={chave} onClick={()=>setEtapaAtiva(chave)}
+                style={{display:"flex",alignItems:"center",gap:"8px",width:"100%",textAlign:"left",
+                  padding:"9px 8px",borderRadius:"9px",border:"none",cursor:"pointer",marginBottom:"4px",
+                  background:ativa?"#fff":"transparent",boxShadow:ativa?"0 1px 4px rgba(20,30,60,.10)":"none"}}>
+                <div style={{width:"22px",height:"22px",flexShrink:0,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                  background:feita?"#1a9c5c":(faltam?"#d64545":"#fff"),
+                  border:`2px solid ${feita?"#1a9c5c":(faltam?"#d64545":C.line)}`,color:feita||faltam?"#fff":C.faint}}>
+                  {feita?<Check size={12}/>:<span style={{fontSize:"9.5px",fontWeight:700}}>{i+1}</span>}
+                </div>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:"11.5px",fontWeight:ativa?700:600,color:ativa?C.navy:C.sub,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{rot}</div>
+                  <div style={{fontSize:"9.5px",color:feita?"#1a9c5c":(faltam?"#d64545":C.faint)}}>
+                    {feita?(et.data_conclusao?new Date(et.data_conclusao).toLocaleDateString("pt-BR"):"concluída"):(faltam?`${faltam} pendente${faltam>1?"s":""}`:"em dia")}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      </div>
-      {isAdmin && !detalhe.via && <div style={{fontSize:"11px",color:"#9a6b00",background:"#fff8e6",border:"1px solid #f0d896",borderRadius:"7px",padding:"6px 9px",marginBottom:"14px"}}>
-        Defina a via (MGI ou Associação) acima pra liberar os documentos de Projeto e Declaração pro mentor enviar.
-      </div>}
 
-      <div style={{display:"flex",alignItems:"center",marginBottom:"10px"}}>
-        {ETAPAS_CRED.map(([chave,rot],i)=>{
-          const et=(detalhe.etapas||[]).find(e=>e.etapa===chave);
-          const feita=et?.status==="concluida";
-          return (<React.Fragment key={chave}>
-            <div title={feita&&et.data_conclusao?new Date(et.data_conclusao).toLocaleDateString("pt-BR"):rot}
-              onClick={()=>cliqueEtapa(chave,et?.status)}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"4px",cursor:isAdmin?"pointer":"default",minWidth:"70px"}}>
-              <div style={{width:"26px",height:"26px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
-                background:feita?"#1a9c5c":"#fff",border:`2px solid ${feita?"#1a9c5c":C.line}`,color:feita?"#fff":C.faint}}>
-                {feita?<Check size={13}/>:<span style={{fontSize:"10px",fontWeight:700}}>{i+1}</span>}
+        {/* ---- conteúdo: só os documentos da etapa selecionada ---- */}
+        <div style={{flex:"1 1 320px",minWidth:"260px",padding:"14px 16px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px",flexWrap:"wrap",gap:"8px"}}>
+            <div>
+              <div style={{fontSize:"13.5px",fontWeight:700,color:C.navy}}>{ETAPAS_CRED.find(([c])=>c===etapaAtiva)?.[1]}</div>
+              <div style={{fontSize:"11px",color:faltantesEtapaAtiva?"#d64545":"#1a9c5c",fontWeight:600}}>
+                {faltantesEtapaAtiva ? `${faltantesEtapaAtiva} documento${faltantesEtapaAtiva>1?"s":""} faltando` : "Tudo enviado"}
               </div>
-              <span style={{fontSize:"10px",textAlign:"center",color:feita?C.navy:C.faint,fontWeight:feita?700:500}}>{rot}</span>
-              {feita&&et.data_conclusao && <span style={{fontSize:"9px",color:C.faint}}>{new Date(et.data_conclusao).toLocaleDateString("pt-BR")}</span>}
             </div>
-            {i<ETAPAS_CRED.length-1 && <div style={{flex:1,height:"2px",background:feita?"#1a9c5c":C.line,minWidth:"6px",marginBottom:"18px"}}/>}
-          </React.Fragment>);
-        })}
-      </div>
+            {isAdmin && (()=>{
+              const et=(detalhe.etapas||[]).find(e=>e.etapa===etapaAtiva);
+              const feita=et?.status==="concluida";
+              return (
+                <button className={feita?"px-btn-ghost":"px-btn-primary"} style={{padding:"6px 12px",fontSize:"12px"}}
+                  onClick={()=>cliqueEtapa(etapaAtiva,et?.status)}>
+                  {feita?"Desfazer conclusão":"Marcar etapa concluída"}
+                </button>
+              );
+            })()}
+          </div>
 
-      {marcandoEtapa && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:`1px solid ${C.primary}`,background:C.primarySoft,borderRadius:"8px",padding:"9px 11px",marginBottom:"16px"}}>
-        <span style={{fontSize:"12px"}}>Marcar <b>{ETAPAS_CRED.find(([c])=>c===marcandoEtapa)?.[1]}</b> como concluída em:</span>
-        <input type="date" value={dataEtapa} onChange={e=>setDataEtapa(e.target.value)}
-          style={{padding:"5px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
-        <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>confirmarMarcarEtapa(marcandoEtapa)}>Confirmar</button>
-        <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setMarcandoEtapa(null)}>Cancelar</button>
-      </div>}
-      {desfazendoEtapa && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:"1px solid #d64545",background:"#fdecec",borderRadius:"8px",padding:"9px 11px",marginBottom:"16px"}}>
-        <span style={{fontSize:"12px"}}>Desfazer conclusão de <b>{ETAPAS_CRED.find(([c])=>c===desfazendoEtapa)?.[1]}</b>, voltando pra pendente?</span>
-        <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px",background:"#d64545"}} onClick={()=>confirmarDesfazerEtapa(desfazendoEtapa)}>Desfazer</button>
-        <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setDesfazendoEtapa(null)}>Cancelar</button>
-      </div>}
+          {marcandoEtapa===etapaAtiva && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:`1px solid ${C.primary}`,background:C.primarySoft,borderRadius:"8px",padding:"9px 11px",marginBottom:"14px"}}>
+            <span style={{fontSize:"12px"}}>Concluída em:</span>
+            <input type="date" value={dataEtapa} onChange={e=>setDataEtapa(e.target.value)}
+              style={{padding:"5px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+            <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>confirmarMarcarEtapa(marcandoEtapa)}>Confirmar</button>
+            <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setMarcandoEtapa(null)}>Cancelar</button>
+          </div>}
+          {desfazendoEtapa===etapaAtiva && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:"1px solid #d64545",background:"#fdecec",borderRadius:"8px",padding:"9px 11px",marginBottom:"14px"}}>
+            <span style={{fontSize:"12px"}}>Voltar essa etapa pra pendente?</span>
+            <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px",background:"#d64545"}} onClick={()=>confirmarDesfazerEtapa(desfazendoEtapa)}>Desfazer</button>
+            <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setDesfazendoEtapa(null)}>Cancelar</button>
+          </div>}
 
-      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — convite (etapa 1)</div>
-      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"18px"}}>
-        {tiposDocumentoDoProcesso(detalhe.via).map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:false}))}
-      </div>
-
-      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — assinatura SEI (etapa 2)</div>
-      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"18px"}}>
-        {TIPOS_DOCUMENTO_ETAPA.assinatura_sei.map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:true}))}
-      </div>
-
-      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — cadastro DICAP (etapa 3)</div>
-      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"18px"}}>
-        {TIPOS_DOCUMENTO_ETAPA.cadastro_dicap.map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:true}))}
-      </div>
-
-      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — orçamentária (etapa 4)</div>
-      <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-        {TIPOS_DOCUMENTO_ETAPA.orcamentaria.map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:true}))}
+          <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+            {docsDaEtapaAtiva.map(([tipo,rot])=>linhaDocumento(tipo,rot,etapaAtiva))}
+          </div>
+        </div>
       </div>
 
       {preview && (()=>{
