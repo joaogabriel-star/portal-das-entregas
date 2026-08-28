@@ -2308,7 +2308,7 @@ function PainelMentoria(){
   const MOTIVOS_AFASTAMENTO=["Não","Licença médica","Licença maternidade/paternidade","Viagem","Curso ou capacitação","Outra"];
   const [cad,setCad]=useState({
     nome:"",email:"",senha:"",
-    interesseMentor:"",disponivelPeriodo:"",
+    interesseMentor:"",disponivelPeriodo:"",foiConvidado:"",
     estaraDeFerias:"",feriasInicio:"",feriasFim:"",
     motivoAfastamento:"Não",afastamentoInicio:"",afastamentoFim:"",
   });
@@ -2340,7 +2340,7 @@ function PainelMentoria(){
     if(cadastrando) return;
     setCadastrando(true); setErroCadastro("");
     try{
-      if(cad.interesseMentor===""||cad.disponivelPeriodo===""||cad.estaraDeFerias===""){
+      if(cad.interesseMentor===""||cad.disponivelPeriodo===""||cad.estaraDeFerias===""||cad.foiConvidado===""){
         throw new Error("Responda todas as perguntas obrigatórias.");
       }
       const resp=await fetch(`${API_BASE}/api/mentoria/mentores`,{
@@ -2348,6 +2348,7 @@ function PainelMentoria(){
         body:JSON.stringify({
           nome:cad.nome, email:cad.email, senha:cad.senha,
           interesseMentor:cad.interesseMentor==="sim", disponivelPeriodo:cad.disponivelPeriodo==="sim",
+          foiConvidado:cad.foiConvidado==="sim",
           feriasInicio:cad.estaraDeFerias==="sim"?(cad.feriasInicio||null):null,
           feriasFim:cad.estaraDeFerias==="sim"?(cad.feriasFim||null):null,
           motivoAfastamento:cad.motivoAfastamento!=="Não"?cad.motivoAfastamento:null,
@@ -2523,6 +2524,13 @@ function PainelMentoria(){
             <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Tem disponibilidade de atuar no período? *</div>
             <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="disponivelPeriodo" checked={cad.disponivelPeriodo==="sim"} onChange={r("disponivelPeriodo","sim")} required/> Sim</label>
             <label style={{fontSize:"12.5px"}}><input type="radio" name="disponivelPeriodo" checked={cad.disponivelPeriodo==="nao"} onChange={r("disponivelPeriodo","nao")}/> Não</label>
+          </div>
+
+          <div>
+            <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Você foi convidado(a) para ser mentor(a)? *</div>
+            <div style={{fontSize:"11.5px",color:C.sub,marginBottom:"4px"}}>Se sim, depois do cadastro você vai ver a aba "Credenciamento" pra enviar os documentos exigidos (PDP, CDO, currículo etc.).</div>
+            <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="foiConvidado" checked={cad.foiConvidado==="sim"} onChange={r("foiConvidado","sim")} required/> Sim</label>
+            <label style={{fontSize:"12.5px"}}><input type="radio" name="foiConvidado" checked={cad.foiConvidado==="nao"} onChange={r("foiConvidado","nao")}/> Não</label>
           </div>
 
           <div style={{borderTop:`1px solid ${C.line}`,paddingTop:"10px",marginTop:"4px"}}>
