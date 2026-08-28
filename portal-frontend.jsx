@@ -3412,6 +3412,8 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
   const [marcandoEtapa,setMarcandoEtapa]=useState(null); // etapa em conclusão
   const [dataEtapa,setDataEtapa]=useState(()=>new Date().toISOString().slice(0,10));
   const [desfazendoEtapa,setDesfazendoEtapa]=useState(null); // etapa perguntando se desfaz
+  const [preview,setPreview]=useState(null); // {url,tipoMime,nomeArquivo,docId} do documento aberto pra visualizar
+  const [carregandoPreview,setCarregandoPreview]=useState(null); // id do doc cujo preview está carregando
 
   async function carregarDetalhe(){
     try{
@@ -3510,6 +3512,22 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
     }catch{ setErro("Não consegui baixar o documento."); }
   }
 
+  async function visualizarDoc(doc){
+    setCarregandoPreview(doc.id); setErro("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/documentos/${doc.id}/download`,{headers:mentoriaAuthHeader(token)});
+      if(!resp.ok) throw new Error();
+      const blob=await resp.blob();
+      const url=URL.createObjectURL(blob);
+      setPreview({url,tipoMime:doc.tipo_mime||blob.type,nomeArquivo:doc.nome_arquivo,docId:doc.id});
+    }catch{ setErro("Não consegui abrir o documento."); }
+    finally{ setCarregandoPreview(null); }
+  }
+  function fecharPreview(){
+    if(preview?.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  }
+
   if(!detalhe) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
 
   return (
@@ -3582,7 +3600,10 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
                   {doc?.status==="rejeitado"&&doc.observacao_admin && <div style={{fontSize:"11px",color:"#d64545",marginTop:"2px"}}>Motivo: {doc.observacao_admin}</div>}
                 </div>
                 <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
-                  {doc && <button onClick={()=>baixarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer"}}><FileText size={11}/> {doc.nome_arquivo}</button>}
+                  {doc && <button onClick={()=>visualizarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer"}} title="Visualizar" disabled={carregandoPreview===doc.id}>
+                    <FileText size={11}/> {carregandoPreview===doc.id?"Abrindo…":doc.nome_arquivo}
+                  </button>}
+                  {doc && <button onClick={()=>baixarDoc(doc)} title="Baixar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer",color:C.sub}}><Download size={12}/></button>}
                   {!isAdmin && (!doc||doc.status==="rejeitado") && <label className="px-mode" style={{cursor:"pointer",padding:"4px 8px"}}>
                     <UploadCloud size={12}/> <span className="px-mode-lbl">{enviando===tipo?"Enviando…":"Enviar"}</span>
                     <input type="file" style={{display:"none"}} disabled={enviando===tipo} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarDocumento(tipo,f); e.target.value="";}}/>
@@ -3605,6 +3626,33 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
           );
         })}
       </div>
+
+      {preview && (()=>{
+        const doc=(detalhe.documentos||[]).find(d=>d.id===preview.docId);
+        const ehPdf=(preview.tipoMime||"").includes("pdf");
+        const ehImagem=(preview.tipoMime||"").startsWith("image/");
+        return (
+          <div className="px-modal-bg" onClick={fecharPreview}>
+            <div className="px-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:"760px",width:"92vw"}}>
+              <div className="px-modal-h">
+                <div><FileText size={17} color={C.primary}/> <b>{preview.nomeArquivo}</b></div>
+                <button onClick={fecharPreview}><X size={18}/></button>
+              </div>
+              <div style={{padding:"8px 0"}}>
+                {ehPdf && <iframe src={preview.url} title={preview.nomeArquivo} style={{width:"100%",height:"70vh",border:`1px solid ${C.line}`,borderRadius:"8px"}}/>}
+                {ehImagem && <img src={preview.url} alt={preview.nomeArquivo} style={{maxWidth:"100%",maxHeight:"70vh",display:"block",margin:"0 auto",borderRadius:"8px"}}/>}
+                {!ehPdf && !ehImagem && <div style={{fontSize:"12.5px",color:C.sub,textAlign:"center",padding:"30px 10px"}}>
+                  Não dá pra pré-visualizar esse tipo de arquivo aqui. <button onClick={()=>baixarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer",marginLeft:"6px"}}><Download size={11}/> Baixar pra abrir</button>
+                </div>}
+              </div>
+              {isAdmin && doc?.status==="enviado" && <div className="px-modal-acts">
+                <button type="button" className="px-btn-ghost" onClick={()=>{fecharPreview(); setRejeitandoDoc({id:doc.id,tipo:doc.tipo}); setMotivoRejeicao("");}} style={{color:"#d64545"}}><X size={14}/> Rejeitar</button>
+                <button type="button" className="px-btn-primary" onClick={async()=>{await revisarDocumento(doc.id,"aprovado"); fecharPreview();}}><Check size={14}/> Aprovar</button>
+              </div>}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
