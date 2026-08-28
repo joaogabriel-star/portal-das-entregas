@@ -3379,11 +3379,11 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
       {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
       {!carregando && !processos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo de credenciamento ainda.</div>}
 
-      <div style={{display:"flex",gap:"18px",flexWrap:"wrap"}}>
-        <div style={{flex:"1 1 260px",minWidth:"240px",display:"flex",flexDirection:"column",gap:"8px"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
           {processos.map(p=>(
             <button key={p.id} onClick={()=>setSelId(p.id)}
-              style={{textAlign:"left",padding:"10px 12px",border:`1px solid ${selId===p.id?C.primary:C.line}`,borderRadius:"9px",background:selId===p.id?C.primarySoft:"#fff",cursor:"pointer"}}>
+              style={{textAlign:"left",padding:"9px 12px",flex:"0 1 220px",minWidth:"170px",border:`1px solid ${selId===p.id?C.primary:C.line}`,borderRadius:"9px",background:selId===p.id?C.primarySoft:"#fff",cursor:"pointer"}}>
               {isAdmin && <b style={{fontSize:"12.5px"}}>{p.mentor_nome}</b>}
               <div style={{fontSize:"11px",color:C.sub,marginTop:isAdmin?"2px":0}}>{new Date(p.criado_em).toLocaleDateString("pt-BR")}{p.numero_sei_processo?` · ${p.numero_sei_processo}`:""}</div>
               <span style={{display:"inline-block",marginTop:"4px",fontSize:"10.5px",fontWeight:700,color:"#fff",background:STATUS_GERAL_COR[p.status_geral],borderRadius:"999px",padding:"2px 8px"}}>{STATUS_GERAL_LABEL[p.status_geral]}</span>
@@ -3391,7 +3391,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
           ))}
         </div>
 
-        {selecionado && <div style={{flex:"2 1 420px",minWidth:"320px"}}>
+        {selecionado && <div>
           <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar} onFechar={()=>setSelId(null)}/>
         </div>}
       </div>
