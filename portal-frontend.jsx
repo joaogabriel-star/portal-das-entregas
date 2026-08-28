@@ -2597,12 +2597,16 @@ function PainelMentoria(){
         {mentor?.isAdmin && <button className={`px-mode ${subaba==="dashboard"?"on":""}`} onClick={()=>setSubaba("dashboard")}>
           <BarChart2 size={13}/> <span className="px-mode-lbl">Dashboard</span>
         </button>}
+        <button className={`px-mode ${subaba==="credenciamento"?"on":""}`} onClick={()=>setSubaba("credenciamento")}>
+          <ShieldCheck size={13}/> <span className="px-mode-lbl">Credenciamento</span>
+        </button>
       </div>
 
       {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
       {subaba==="documentos" && <BibliotecaDocumentos token={token} isAdmin={!!mentor?.isAdmin} eventosDoMentor={!mentor?.isAdmin}/>}
       {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
       {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token}/>}
+      {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores}/>}
 
       {subaba==="vinculos" && <>
       {mentor?.isAdmin && <div style={{display:"flex",flexWrap:"wrap",gap:"16px",marginBottom:"22px"}}>
@@ -3257,6 +3261,265 @@ function DashboardOrgaos({token}){
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Credenciamento — trâmite entre o convite e a liberação para
+   vincular o mentor a um órgão (documentos → assinatura SEI → DICAP →
+   orçamentária). Ver rotas-credenciamento.js / migrations/007. ---------- */
+const TIPOS_DOCUMENTO_CRED=[
+  ["convite_chefia","Convite e autorização da chefia"],
+  ["pdp","PDP"],
+  ["cdo","CDO — disponibilidade orçamentária"],
+  ["curriculo","Currículo"],
+  ["diploma","Diploma"],
+  ["ferias","Extrato de férias"],
+  ["projeto_mgi","Projeto — via MGI"],
+  ["projeto_ass","Projeto — via associação"],
+  ["declaracao_mgi","Declaração — via MGI"],
+  ["declaracao_ass","Declaração — via associação"],
+];
+const ETAPAS_CRED=[
+  ["documentos","Documentos"],
+  ["assinatura_sei","Assinatura SEI"],
+  ["cadastro_dicap","Cadastro DICAP"],
+  ["orcamentaria","Orçamentária"],
+];
+const STATUS_GERAL_LABEL={em_andamento:"Em andamento",indeferido:"Indeferido",concluido:"Concluído"};
+const STATUS_GERAL_COR={em_andamento:"#e0a400",indeferido:"#d64545",concluido:"#1a9c5c"};
+
+function Credenciamento({token,isAdmin,mentorId,mentores}){
+  const [processos,setProcessos]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+  const [selId,setSelId]=useState(null);
+  const [novo,setNovo]=useState({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:""});
+  const [abrindo,setAbrindo]=useState(false);
+
+  async function carregar(){
+    setCarregando(true); setErro("");
+    try{
+      const url=isAdmin?`${API_BASE}/api/mentoria/credenciamento`:`${API_BASE}/api/mentoria/credenciamento/mentor/${mentorId}`;
+      const resp=await fetch(url,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao carregar credenciamento.");
+      setProcessos(dados);
+    }catch(err){ setErro(err.message||"Erro ao carregar credenciamento."); }
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregar(); },[token,isAdmin,mentorId]); // eslint-disable-line
+
+  async function abrirProcesso(ev){
+    ev.preventDefault();
+    if(abrindo||!novo.mentorId) return;
+    setAbrindo(true); setErro("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento`,{
+        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({mentorId:Number(novo.mentorId),numeroSeiProcesso:novo.numeroSeiProcesso||null,numeroSeiDocumento:novo.numeroSeiDocumento||null}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao abrir processo.");
+      setNovo({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:""});
+      carregar();
+    }catch(err){ setErro(err.message||"Erro ao abrir processo."); }
+    finally{ setAbrindo(false); }
+  }
+
+  const selecionado=processos.find(p=>p.id===selId)||null;
+
+  return (
+    <div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
+        Trâmite entre o convite e a liberação para vincular o mentor a um órgão: documentos, assinatura no SEI, cadastro na DICAP e orçamentária.
+      </p>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      {isAdmin && <form onSubmit={abrirProcesso} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",marginBottom:"18px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"flex-end"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+          <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Mentor</label>
+          <select required value={novo.mentorId} onChange={e=>setNovo(s=>({...s,mentorId:e.target.value}))}
+            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",minWidth:"180px"}}>
+            <option value="">Selecione…</option>
+            {(mentores||[]).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+          <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Nº SEI processo (opcional)</label>
+          <input value={novo.numeroSeiProcesso} onChange={e=>setNovo(s=>({...s,numeroSeiProcesso:e.target.value}))}
+            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+          <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Nº SEI documento (opcional)</label>
+          <input value={novo.numeroSeiDocumento} onChange={e=>setNovo(s=>({...s,numeroSeiDocumento:e.target.value}))}
+            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+        </div>
+        <button className="px-mode" type="submit" disabled={abrindo}><Plus size={12}/> <span className="px-mode-lbl">{abrindo?"Abrindo…":"Abrir processo"}</span></button>
+      </form>}
+
+      {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+      {!carregando && !processos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo de credenciamento ainda.</div>}
+
+      <div style={{display:"flex",gap:"18px",flexWrap:"wrap"}}>
+        <div style={{flex:"1 1 260px",minWidth:"240px",display:"flex",flexDirection:"column",gap:"8px"}}>
+          {processos.map(p=>(
+            <button key={p.id} onClick={()=>setSelId(p.id)}
+              style={{textAlign:"left",padding:"10px 12px",border:`1px solid ${selId===p.id?C.primary:C.line}`,borderRadius:"9px",background:selId===p.id?C.primarySoft:"#fff",cursor:"pointer"}}>
+              {isAdmin && <b style={{fontSize:"12.5px"}}>{p.mentor_nome}</b>}
+              <div style={{fontSize:"11px",color:C.sub,marginTop:isAdmin?"2px":0}}>{new Date(p.criado_em).toLocaleDateString("pt-BR")}{p.numero_sei_processo?` · ${p.numero_sei_processo}`:""}</div>
+              <span style={{display:"inline-block",marginTop:"4px",fontSize:"10.5px",fontWeight:700,color:"#fff",background:STATUS_GERAL_COR[p.status_geral],borderRadius:"999px",padding:"2px 8px"}}>{STATUS_GERAL_LABEL[p.status_geral]}</span>
+            </button>
+          ))}
+        </div>
+
+        {selecionado && <div style={{flex:"2 1 420px",minWidth:"320px"}}>
+          <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar}/>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
+  const [detalhe,setDetalhe]=useState(processo.etapas?processo:null);
+  const [erro,setErro]=useState("");
+  const [enviando,setEnviando]=useState(null); // tipo em envio
+
+  async function carregarDetalhe(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/mentor/${processo.mentor_id}`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setDetalhe(dados.find(p=>p.id===processo.id)||null);
+    }catch{}
+  }
+  useEffect(()=>{ carregarDetalhe(); },[processo.id]); // eslint-disable-line
+
+  async function enviarDocumento(tipo,arquivo){
+    setEnviando(tipo); setErro("");
+    try{
+      const fd=new FormData(); fd.append("tipo",tipo); fd.append("arquivo",arquivo);
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/${processo.id}/documentos`,{method:"POST",headers:mentoriaAuthHeader(token),body:fd});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao enviar documento.");
+      carregarDetalhe();
+    }catch(err){ setErro(err.message||"Erro ao enviar documento."); }
+    finally{ setEnviando(null); }
+  }
+
+  async function revisarDocumento(docId,status){
+    const observacaoAdmin = status==="rejeitado" ? window.prompt("Motivo da rejeição (o mentor vai ver isso):")||"" : "";
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/documentos/${docId}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({status,observacaoAdmin}),
+      });
+      if(!resp.ok) throw new Error();
+      carregarDetalhe();
+    }catch{ setErro("Não consegui revisar o documento."); }
+  }
+
+  async function marcarEtapa(etapa,statusAtual){
+    const novoStatus = statusAtual==="concluida" ? "pendente" : "concluida";
+    let dataConclusao;
+    if(novoStatus==="concluida"){
+      dataConclusao=window.prompt("Data de conclusão (AAAA-MM-DD):", new Date().toISOString().slice(0,10));
+      if(!dataConclusao) return;
+    }
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/${processo.id}/etapas/${etapa}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({status:novoStatus,dataConclusao}),
+      });
+      if(!resp.ok) throw new Error();
+      carregarDetalhe(); onMudou&&onMudou();
+    }catch{ setErro("Não consegui atualizar a etapa."); }
+  }
+
+  async function mudarStatusGeral(statusGeral){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/${processo.id}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({statusGeral}),
+      });
+      if(!resp.ok) throw new Error();
+      carregarDetalhe(); onMudou&&onMudou();
+    }catch{ setErro("Não consegui atualizar o status."); }
+  }
+
+  async function baixarDoc(doc){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/documentos/${doc.id}/download`,{headers:mentoriaAuthHeader(token)});
+      if(!resp.ok) throw new Error();
+      const blob=await resp.blob();
+      const url=URL.createObjectURL(blob);
+      const lk=document.createElement("a"); lk.href=url; lk.download=doc.nome_arquivo;
+      document.body.appendChild(lk); lk.click(); lk.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),30000);
+    }catch{ setErro("Não consegui baixar o documento."); }
+  }
+
+  if(!detalhe) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
+
+  return (
+    <div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+        <div style={{fontSize:"11px",fontWeight:700,opacity:.7}}>Progresso</div>
+        {isAdmin && <select value={detalhe.status_geral} onChange={e=>mudarStatusGeral(e.target.value)}
+          style={{padding:"4px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"11.5px"}}>
+          {Object.entries(STATUS_GERAL_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+        </select>}
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",marginBottom:"20px"}}>
+        {ETAPAS_CRED.map(([chave,rot],i)=>{
+          const et=(detalhe.etapas||[]).find(e=>e.etapa===chave);
+          const feita=et?.status==="concluida";
+          return (<React.Fragment key={chave}>
+            <div title={feita&&et.data_conclusao?new Date(et.data_conclusao).toLocaleDateString("pt-BR"):rot}
+              onClick={()=>isAdmin&&marcarEtapa(chave,et?.status)}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"4px",cursor:isAdmin?"pointer":"default",minWidth:"70px"}}>
+              <div style={{width:"26px",height:"26px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                background:feita?"#1a9c5c":"#fff",border:`2px solid ${feita?"#1a9c5c":C.line}`,color:feita?"#fff":C.faint}}>
+                {feita?<Check size={13}/>:<span style={{fontSize:"10px",fontWeight:700}}>{i+1}</span>}
+              </div>
+              <span style={{fontSize:"10px",textAlign:"center",color:feita?C.navy:C.faint,fontWeight:feita?700:500}}>{rot}</span>
+              {feita&&et.data_conclusao && <span style={{fontSize:"9px",color:C.faint}}>{new Date(et.data_conclusao).toLocaleDateString("pt-BR")}</span>}
+            </div>
+            {i<ETAPAS_CRED.length-1 && <div style={{flex:1,height:"2px",background:feita?"#1a9c5c":C.line,minWidth:"6px",marginBottom:"18px"}}/>}
+          </React.Fragment>);
+        })}
+      </div>
+
+      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos</div>
+      <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+        {TIPOS_DOCUMENTO_CRED.map(([tipo,rot])=>{
+          const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
+          const CORES_DOC={enviado:C.amber||"#e0a400",aprovado:"#1a9c5c",rejeitado:"#d64545"};
+          return (
+            <div key={tipo} style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+              <div style={{fontSize:"12px"}}>
+                <b>{rot}</b>
+                {doc && <span style={{marginLeft:"8px",fontSize:"10px",fontWeight:700,color:"#fff",background:CORES_DOC[doc.status],borderRadius:"999px",padding:"2px 7px"}}>{doc.status}</span>}
+                {doc?.status==="rejeitado"&&doc.observacao_admin && <div style={{fontSize:"11px",color:"#d64545",marginTop:"2px"}}>Motivo: {doc.observacao_admin}</div>}
+              </div>
+              <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
+                {doc && <button onClick={()=>baixarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer"}}><FileText size={11}/> {doc.nome_arquivo}</button>}
+                {!isAdmin && (!doc||doc.status==="rejeitado") && <label className="px-mode" style={{cursor:"pointer",padding:"4px 8px"}}>
+                  <UploadCloud size={12}/> <span className="px-mode-lbl">{enviando===tipo?"Enviando…":"Enviar"}</span>
+                  <input type="file" style={{display:"none"}} disabled={enviando===tipo} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarDocumento(tipo,f); e.target.value="";}}/>
+                </label>}
+                {isAdmin && doc?.status==="enviado" && <>
+                  <button onClick={()=>revisarDocumento(doc.id,"aprovado")} title="Aprovar" style={{border:`1px solid #1a9c5c`,color:"#1a9c5c",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><Check size={12}/></button>
+                  <button onClick={()=>revisarDocumento(doc.id,"rejeitado")} title="Rejeitar" style={{border:`1px solid #d64545`,color:"#d64545",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><X size={12}/></button>
+                </>}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
