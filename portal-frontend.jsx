@@ -3293,6 +3293,13 @@ const VIA_LABEL={mgi:"MGI",associacao:"Associação"};
 function tiposDocumentoDoProcesso(via){
   return [...TIPOS_DOCUMENTO_BASE, ...(TIPOS_DOCUMENTO_VIA[via]||[])];
 }
+// Documentos de retorno das etapas 2-4 -- vêm do SEI/DICAP/GABIN, só o
+// admin anexa (sem fluxo de aprovar/rejeitar, ver rotas-credenciamento.js).
+const TIPOS_DOCUMENTO_ETAPA={
+  assinatura_sei:[["termo_assinado","Termo assinado (mentor e chefia)"]],
+  cadastro_dicap:[["comprovacao_dicap","Comprovação de cadastro no sistema"],["nota_tecnica_dicap","Nota técnica"]],
+  orcamentaria:[["nota_tecnica_orcamentaria","Nota técnica"],["programacao_orcamentaria","Programação orçamentária"],["descentralizacao_orcamentaria","Descentralização orçamentária"]],
+};
 const ETAPAS_CRED=[
   ["documentos","Documentos"],
   ["assinatura_sei","Assinatura SEI"],
@@ -3530,6 +3537,45 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
 
   if(!detalhe) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
 
+  const CORES_DOC={enviado:C.amber||"#e0a400",aprovado:"#1a9c5c",rejeitado:"#d64545"};
+  function linhaDocumento(tipo,rot,{somenteAdminEnvia}={}){
+    const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
+    const podeEnviar = somenteAdminEnvia ? isAdmin : !isAdmin;
+    return (
+      <div key={tipo} style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+          <div style={{fontSize:"12px"}}>
+            <b>{rot}</b>
+            {doc && <span style={{marginLeft:"8px",fontSize:"10px",fontWeight:700,color:"#fff",background:CORES_DOC[doc.status],borderRadius:"999px",padding:"2px 7px"}}>{doc.status}</span>}
+            {doc?.status==="rejeitado"&&doc.observacao_admin && <div style={{fontSize:"11px",color:"#d64545",marginTop:"2px"}}>Motivo: {doc.observacao_admin}</div>}
+          </div>
+          <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
+            {doc && <button onClick={()=>visualizarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer"}} title="Visualizar" disabled={carregandoPreview===doc.id}>
+              <FileText size={11}/> {carregandoPreview===doc.id?"Abrindo…":doc.nome_arquivo}
+            </button>}
+            {doc && <button onClick={()=>baixarDoc(doc)} title="Baixar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer",color:C.sub}}><Download size={12}/></button>}
+            {podeEnviar && (!doc||doc.status==="rejeitado") && <label className="px-mode" style={{cursor:"pointer",padding:"4px 8px"}}>
+              <UploadCloud size={12}/> <span className="px-mode-lbl">{enviando===tipo?"Enviando…":"Enviar"}</span>
+              <input type="file" style={{display:"none"}} disabled={enviando===tipo} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarDocumento(tipo,f); e.target.value="";}}/>
+            </label>}
+            {!somenteAdminEnvia && isAdmin && doc?.status==="enviado" && rejeitandoDoc?.id!==doc.id && <>
+              <button onClick={()=>revisarDocumento(doc.id,"aprovado")} title="Aprovar" style={{border:`1px solid #1a9c5c`,color:"#1a9c5c",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><Check size={12}/></button>
+              <button onClick={()=>{setRejeitandoDoc({id:doc.id,tipo}); setMotivoRejeicao("");}} title="Rejeitar" style={{border:`1px solid #d64545`,color:"#d64545",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><X size={12}/></button>
+            </>}
+          </div>
+        </div>
+        {doc && rejeitandoDoc?.id===doc.id && <div style={{marginTop:"8px",display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"flex-start"}}>
+          <textarea autoFocus rows={2} placeholder="Motivo da rejeição (o mentor vai ver isso)…" value={motivoRejeicao} onChange={e=>setMotivoRejeicao(e.target.value)}
+            style={{flex:"1 1 220px",padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",resize:"vertical"}}/>
+          <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
+            <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px",background:"#d64545"}} disabled={!motivoRejeicao.trim()} onClick={()=>revisarDocumento(doc.id,"rejeitado",motivoRejeicao)}>Confirmar rejeição</button>
+            <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>{setRejeitandoDoc(null);setMotivoRejeicao("");}}>Cancelar</button>
+          </div>
+        </div>}
+      </div>
+    );
+  }
+
   return (
     <div>
       {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
@@ -3586,45 +3632,24 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
         <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setDesfazendoEtapa(null)}>Cancelar</button>
       </div>}
 
-      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos</div>
+      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — convite (etapa 1)</div>
+      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"18px"}}>
+        {tiposDocumentoDoProcesso(detalhe.via).map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:false}))}
+      </div>
+
+      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — assinatura SEI (etapa 2)</div>
+      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"18px"}}>
+        {TIPOS_DOCUMENTO_ETAPA.assinatura_sei.map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:true}))}
+      </div>
+
+      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — cadastro DICAP (etapa 3)</div>
+      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"18px"}}>
+        {TIPOS_DOCUMENTO_ETAPA.cadastro_dicap.map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:true}))}
+      </div>
+
+      <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Documentos — orçamentária (etapa 4)</div>
       <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-        {tiposDocumentoDoProcesso(detalhe.via).map(([tipo,rot])=>{
-          const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
-          const CORES_DOC={enviado:C.amber||"#e0a400",aprovado:"#1a9c5c",rejeitado:"#d64545"};
-          return (
-            <div key={tipo} style={{border:`1px solid ${C.line}`,borderRadius:"8px",padding:"8px 10px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-                <div style={{fontSize:"12px"}}>
-                  <b>{rot}</b>
-                  {doc && <span style={{marginLeft:"8px",fontSize:"10px",fontWeight:700,color:"#fff",background:CORES_DOC[doc.status],borderRadius:"999px",padding:"2px 7px"}}>{doc.status}</span>}
-                  {doc?.status==="rejeitado"&&doc.observacao_admin && <div style={{fontSize:"11px",color:"#d64545",marginTop:"2px"}}>Motivo: {doc.observacao_admin}</div>}
-                </div>
-                <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
-                  {doc && <button onClick={()=>visualizarDoc(doc)} className="px-anexo-chip" style={{cursor:"pointer"}} title="Visualizar" disabled={carregandoPreview===doc.id}>
-                    <FileText size={11}/> {carregandoPreview===doc.id?"Abrindo…":doc.nome_arquivo}
-                  </button>}
-                  {doc && <button onClick={()=>baixarDoc(doc)} title="Baixar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer",color:C.sub}}><Download size={12}/></button>}
-                  {!isAdmin && (!doc||doc.status==="rejeitado") && <label className="px-mode" style={{cursor:"pointer",padding:"4px 8px"}}>
-                    <UploadCloud size={12}/> <span className="px-mode-lbl">{enviando===tipo?"Enviando…":"Enviar"}</span>
-                    <input type="file" style={{display:"none"}} disabled={enviando===tipo} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarDocumento(tipo,f); e.target.value="";}}/>
-                  </label>}
-                  {isAdmin && doc?.status==="enviado" && rejeitandoDoc?.id!==doc.id && <>
-                    <button onClick={()=>revisarDocumento(doc.id,"aprovado")} title="Aprovar" style={{border:`1px solid #1a9c5c`,color:"#1a9c5c",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><Check size={12}/></button>
-                    <button onClick={()=>{setRejeitandoDoc({id:doc.id,tipo}); setMotivoRejeicao("");}} title="Rejeitar" style={{border:`1px solid #d64545`,color:"#d64545",background:"#fff",borderRadius:"7px",padding:"4px 7px",cursor:"pointer"}}><X size={12}/></button>
-                  </>}
-                </div>
-              </div>
-              {doc && rejeitandoDoc?.id===doc.id && <div style={{marginTop:"8px",display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"flex-start"}}>
-                <textarea autoFocus rows={2} placeholder="Motivo da rejeição (o mentor vai ver isso)…" value={motivoRejeicao} onChange={e=>setMotivoRejeicao(e.target.value)}
-                  style={{flex:"1 1 220px",padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",resize:"vertical"}}/>
-                <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-                  <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px",background:"#d64545"}} disabled={!motivoRejeicao.trim()} onClick={()=>revisarDocumento(doc.id,"rejeitado",motivoRejeicao)}>Confirmar rejeição</button>
-                  <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>{setRejeitandoDoc(null);setMotivoRejeicao("");}}>Cancelar</button>
-                </div>
-              </div>}
-            </div>
-          );
-        })}
+        {TIPOS_DOCUMENTO_ETAPA.orcamentaria.map(([tipo,rot])=>linhaDocumento(tipo,rot,{somenteAdminEnvia:true}))}
       </div>
 
       {preview && (()=>{
