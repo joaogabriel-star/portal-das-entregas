@@ -3593,7 +3593,7 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
                   </>}
                 </div>
               </div>
-              {rejeitandoDoc?.id===doc?.id && <div style={{marginTop:"8px",display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"flex-start"}}>
+              {doc && rejeitandoDoc?.id===doc.id && <div style={{marginTop:"8px",display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"flex-start"}}>
                 <textarea autoFocus rows={2} placeholder="Motivo da rejeição (o mentor vai ver isso)…" value={motivoRejeicao} onChange={e=>setMotivoRejeicao(e.target.value)}
                   style={{flex:"1 1 220px",padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",resize:"vertical"}}/>
                 <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
