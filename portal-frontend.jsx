@@ -3308,7 +3308,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
   const [processos,setProcessos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
-  const [selId,setSelId]=useState(null);
+  const [selId,setSelId]=useState(undefined); // undefined = ainda não decidiu; null = fechado pelo usuário; número = selecionado
   const [novo,setNovo]=useState({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:""});
   const [abrindo,setAbrindo]=useState(false);
 
@@ -3324,6 +3324,9 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
     finally{ setCarregando(false); }
   }
   useEffect(()=>{ carregar(); },[token,isAdmin,mentorId]); // eslint-disable-line
+  // Já abre o processo mais recente sozinho (uma vez só) -- se o usuário
+  // fechar depois, não reabre na cara dele de novo a cada atualização.
+  useEffect(()=>{ if(selId===undefined && processos.length) setSelId(processos[0].id); },[processos]); // eslint-disable-line
 
   async function abrirProcesso(ev){
     ev.preventDefault();
@@ -3389,14 +3392,14 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
         </div>
 
         {selecionado && <div style={{flex:"2 1 420px",minWidth:"320px"}}>
-          <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar}/>
+          <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar} onFechar={()=>setSelId(null)}/>
         </div>}
       </div>
     </div>
   );
 }
 
-function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
+function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}){
   const [detalhe,setDetalhe]=useState(processo.etapas?processo:null);
   const [erro,setErro]=useState("");
   const [enviando,setEnviando]=useState(null); // tipo em envio
@@ -3578,11 +3581,21 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou}){
   return (
     <div style={{border:`1px solid ${C.line}`,borderRadius:"14px",overflow:"hidden",background:"#fbfbfd"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.line}`,background:"#fff",flexWrap:"wrap",gap:"8px"}}>
-        <div style={{fontSize:"12px",fontWeight:700,color:C.navy}}>Progresso do credenciamento</div>
-        {isAdmin && <select value={detalhe.status_geral} onChange={e=>mudarStatusGeral(e.target.value)}
-          style={{padding:"4px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"11.5px"}}>
-          {Object.entries(STATUS_GERAL_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-        </select>}
+        <div>
+          <div style={{fontSize:"14px",fontWeight:800,color:C.navy}}>Mentoria — Credenciamento</div>
+          <div style={{fontSize:"11.5px",color:C.sub,marginTop:"2px"}}>
+            {detalhe.numero_sei_processo?`Processo ${detalhe.numero_sei_processo}`:`Processo #${detalhe.id}`}
+            {" · "}Aberto em {new Date(detalhe.criado_em).toLocaleDateString("pt-BR")}
+            {" · "}Etapa atual: <b>{ETAPAS_CRED.find(([c])=>{const et=(detalhe.etapas||[]).find(e=>e.etapa===c); return et?.status!=="concluida";})?.[1] || "concluído"}</b>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+          {isAdmin ? <select value={detalhe.status_geral} onChange={e=>mudarStatusGeral(e.target.value)}
+            style={{padding:"4px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"11.5px",fontWeight:700,color:"#fff",background:STATUS_GERAL_COR[detalhe.status_geral]}}>
+            {Object.entries(STATUS_GERAL_LABEL).map(([k,v])=><option key={k} value={k} style={{color:"#000",background:"#fff"}}>{v}</option>)}
+          </select> : <span style={{fontSize:"10.5px",fontWeight:700,color:"#fff",background:STATUS_GERAL_COR[detalhe.status_geral],borderRadius:"999px",padding:"3px 10px"}}>{STATUS_GERAL_LABEL[detalhe.status_geral]}</span>}
+          {onFechar && <button onClick={onFechar} title="Fechar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"5px 7px",cursor:"pointer",color:C.sub}}><X size={14}/></button>}
+        </div>
       </div>
 
       {erro && <div className="px-anexo-erro" style={{margin:"10px 16px 0"}}><AlertTriangle size={12}/> {erro}</div>}
