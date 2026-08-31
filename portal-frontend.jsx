@@ -640,6 +640,8 @@ export default function PortalEntregas(){
             title="Organograma, dimensionamento e relatório por unidade"><Building2 size={14}/><span>Órgãos</span></button>
           <button className={`px-nav-item ${secao==="mentoria"?"on":""}`}
             onClick={()=>setSecao("mentoria")}><GraduationCap size={14}/><span>Mentoria</span></button>
+          <button className={`px-nav-item ${secao==="curso"?"on":""}`}
+            onClick={()=>setSecao("curso")}><Trophy size={14}/><span>Curso de Mentores</span></button>
         </nav>
         <div className="px-head-r">
           <button className="px-org" onClick={()=>setTrocarUnidade(true)}
@@ -810,6 +812,7 @@ export default function PortalEntregas(){
       </div>}
 
       {secao==="mentoria" && <div className="px-wrap"><PainelMentoria/></div>}
+      {secao==="curso" && <div className="px-wrap"><PainelMentoria abaInicial="curso"/></div>}
 
       {/* botões flutuantes (apenas na seção Catálogo) */}
       {secao==="catalogo" && navPanel && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
@@ -2279,10 +2282,10 @@ function decodificarJwt(token){
 
 const STATUS_OFICINA=[["pendente","Pendente"],["agendada","Agendada"],["realizada","Realizada"],["cancelada","Cancelada"]];
 
-function PainelMentoria(){
+function PainelMentoria({abaInicial}={}){
   const [token,setToken]=useState(()=>localStorage.getItem(MENTORIA_TOKEN_KEY));
   const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
-  const [subaba,setSubaba]=useState("vinculos"); // "vinculos" · "calendario" · "documentos"
+  const [subaba,setSubaba]=useState(abaInicial||"vinculos"); // "vinculos" · "calendario" · "documentos" · "curso"
 
   const [tela,setTela]=useState("login"); // "login" · "cadastro" · "admin"
   const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
@@ -2450,7 +2453,9 @@ function PainelMentoria(){
       <div style={{padding:"32px 24px",maxWidth:"360px"}}>
         <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
           <Users size={15}/>
-          <span>Acesso de mentor do DFT — acompanhe as unidades sob sua responsabilidade e as 14 oficinas de cada uma.</span>
+          <span>{abaInicial==="curso"
+            ? "Curso de Formação de Mentores em DFT — entre com sua conta de mentor pra acompanhar as 20 oficinas, ou cadastre-se se ainda não tem uma."
+            : "Acesso de mentor do DFT — acompanhe as unidades sob sua responsabilidade e as 14 oficinas de cada uma."}</span>
         </div>
         <form onSubmit={login} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
           <input type="email" required placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)}
