@@ -2624,7 +2624,7 @@ function PainelMentoria(){
             <select required value={novoVinculo.mentorId} onChange={e=>setNovoVinculo(s=>({...s,mentorId:e.target.value}))}
               style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}>
               <option value="">Selecione o mentor…</option>
-              {mentores.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+              {mentores.filter(m=>!m.is_admin).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
             <input required placeholder="Órgão" value={novoVinculo.orgao} onChange={e=>setNovoVinculo(s=>({...s,orgao:e.target.value}))}
               style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
@@ -3375,7 +3375,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
           <select required value={novo.mentorId} onChange={e=>setNovo(s=>({...s,mentorId:e.target.value}))}
             style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",minWidth:"180px"}}>
             <option value="">Selecione…</option>
-            {(mentores||[]).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+            {(mentores||[]).filter(m=>!m.is_admin).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
