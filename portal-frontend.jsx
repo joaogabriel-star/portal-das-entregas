@@ -3277,15 +3277,26 @@ function DashboardOrgaos({token}){
 /* ---------- Credenciamento — trâmite entre o convite e a liberação para
    vincular o mentor a um órgão (documentos → assinatura SEI → DICAP →
    orçamentária). Ver rotas-credenciamento.js / migrations/007. ---------- */
+// Fase 1 acontece antes de vincular o mentor a um órgão (trava o vínculo
+// até "orcamentaria" ficar concluída -- ver validação em rotas-mentoria.js).
+// Fase 2 só começa depois que o mentor já terminou de executar a mentoria
+// (as oficinas), bem mais tarde -- por isso não trava mais nada, é só
+// acompanhamento do encerramento/pagamento.
 const ETAPAS_CRED=[
-  ["documentos","Documentos"],
-  ["assinatura_sei","Assinatura SEI"],
-  ["cadastro_dicap","Cadastro DICAP"],
-  ["orcamentaria","Orçamentária"],
+  ["documentos","Documentos",1],
+  ["assinatura_sei","Assinatura SEI",1],
+  ["cadastro_dicap","Cadastro DICAP",1],
+  ["orcamentaria","Orçamentária",1],
+  ["relatorio_execucao","Relatório de execução",2],
+  ["pagamento","Pagamento",2],
+  ["despacho_dicap","Despacho da DICAP",2],
+  ["folha_pagamento","Folha de pagamento",2],
 ];
+const FASE_LABEL={1:"Fase 1 — Credenciamento",2:"Fase 2 — Encerramento e pagamento"};
 // Documentos de cada etapa. Na etapa 1 é o mentor quem envia (aprovação do
-// admin); nas etapas 2-4 são documentos de retorno do SEI/DICAP/GABIN, só
-// o admin anexa (sem fluxo de aprovar/rejeitar, ver rotas-credenciamento.js).
+// admin); nas demais são documentos de retorno do SEI/DICAP/GABIN, só o
+// admin anexa (sem fluxo de aprovar/rejeitar, ver rotas-credenciamento.js).
+// "pagamento" não tem documento -- é só uma etapa de acompanhamento manual.
 const TIPOS_DOCUMENTO_POR_ETAPA={
   documentos:[
     ["convite_chefia","Convite e autorização da chefia"],
@@ -3300,6 +3311,10 @@ const TIPOS_DOCUMENTO_POR_ETAPA={
   assinatura_sei:[["termo_assinado","Termo assinado (mentor e chefia)"]],
   cadastro_dicap:[["comprovacao_dicap","Comprovação de cadastro no sistema"],["nota_tecnica_dicap","Nota técnica"]],
   orcamentaria:[["nota_tecnica_orcamentaria","Nota técnica"],["programacao_orcamentaria","Programação orçamentária"],["descentralizacao_orcamentaria","Descentralização orçamentária"]],
+  relatorio_execucao:[["frequencia_mentor","Frequência do mentor"],["relatorio_mentor","Relatório do mentor"]],
+  pagamento:[],
+  despacho_dicap:[["nota_tecnica_despacho_dicap","Nota técnica"]],
+  folha_pagamento:[["cadastro_folha_pagamento","Cadastro"],["comprovacao_pagamento","Comprovação de pagamento"]],
 };
 const STATUS_GERAL_LABEL={em_andamento:"Em andamento",indeferido:"Indeferido",concluido:"Concluído"};
 const STATUS_GERAL_COR={em_andamento:"#e0a400",indeferido:"#d64545",concluido:"#1a9c5c"};
@@ -3603,32 +3618,35 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
       <div style={{display:"flex",flexWrap:"wrap"}}>
         {/* ---- lateral: todos os passos, estilo dashboard ---- */}
         <div style={{flex:"0 0 172px",minWidth:"150px",background:"#f3f5f8",borderRight:`1px solid ${C.line}`,padding:"10px"}}>
-          {ETAPAS_CRED.map(([chave,rot],i)=>{
+          {ETAPAS_CRED.map(([chave,rot,fase],i)=>{
             const et=(detalhe.etapas||[]).find(e=>e.etapa===chave);
             const feita=et?.status==="concluida";
             const ativa=etapaAtiva===chave;
+            const numDocs=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).length;
             const faltam=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).filter(([tipo])=>{
               const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
               return !doc || doc.status==="rejeitado";
             }).length;
-            return (
-              <button key={chave} onClick={()=>setEtapaAtiva(chave)}
+            const numeroNaFase=ETAPAS_CRED.filter(([,,f],j)=>f===fase&&j<=i).length;
+            return (<React.Fragment key={chave}>
+              {(i===0||ETAPAS_CRED[i-1][2]!==fase) && <div style={{fontSize:"9.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",padding:"10px 8px 4px"}}>{FASE_LABEL[fase]}</div>}
+              <button onClick={()=>setEtapaAtiva(chave)}
                 style={{display:"flex",alignItems:"center",gap:"8px",width:"100%",textAlign:"left",
                   padding:"9px 8px",borderRadius:"9px",border:"none",cursor:"pointer",marginBottom:"4px",
                   background:ativa?"#fff":"transparent",boxShadow:ativa?"0 1px 4px rgba(20,30,60,.10)":"none"}}>
                 <div style={{width:"22px",height:"22px",flexShrink:0,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
                   background:feita?"#1a9c5c":(faltam?"#d64545":"#fff"),
                   border:`2px solid ${feita?"#1a9c5c":(faltam?"#d64545":C.line)}`,color:feita||faltam?"#fff":C.faint}}>
-                  {feita?<Check size={12}/>:<span style={{fontSize:"9.5px",fontWeight:700}}>{i+1}</span>}
+                  {feita?<Check size={12}/>:<span style={{fontSize:"9.5px",fontWeight:700}}>{numeroNaFase}</span>}
                 </div>
                 <div style={{minWidth:0}}>
                   <div style={{fontSize:"11.5px",fontWeight:ativa?700:600,color:ativa?C.navy:C.sub,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{rot}</div>
                   <div style={{fontSize:"9.5px",color:feita?"#1a9c5c":(faltam?"#d64545":C.faint)}}>
-                    {feita?(et.data_conclusao?new Date(et.data_conclusao).toLocaleDateString("pt-BR"):"concluída"):(faltam?`${faltam} pendente${faltam>1?"s":""}`:"em dia")}
+                    {feita?(et.data_conclusao?new Date(et.data_conclusao).toLocaleDateString("pt-BR"):"concluída"):(faltam?`${faltam} pendente${faltam>1?"s":""}`:(numDocs?"em dia":"sem documento"))}
                   </div>
                 </div>
               </button>
-            );
+            </React.Fragment>);
           })}
         </div>
 
@@ -3638,7 +3656,9 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
             <div>
               <div style={{fontSize:"13.5px",fontWeight:700,color:C.navy}}>{ETAPAS_CRED.find(([c])=>c===etapaAtiva)?.[1]}</div>
               <div style={{fontSize:"11px",color:faltantesEtapaAtiva?"#d64545":"#1a9c5c",fontWeight:600}}>
-                {faltantesEtapaAtiva ? `${faltantesEtapaAtiva} documento${faltantesEtapaAtiva>1?"s":""} faltando` : "Tudo enviado"}
+                {faltantesEtapaAtiva
+                  ? `${faltantesEtapaAtiva} documento${faltantesEtapaAtiva>1?"s":""} faltando`
+                  : (docsDaEtapaAtiva.length?"Tudo enviado":"Sem documento — marque a conclusão quando o pagamento estiver em dia")}
               </div>
             </div>
             {isAdmin && (()=>{
@@ -3667,6 +3687,7 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
           </div>}
 
           <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+            {docsDaEtapaAtiva.length===0 && <div style={{fontSize:"12px",color:C.faint,fontStyle:"italic"}}>Essa etapa não tem documento — só a data de conclusão, marcada acima.</div>}
             {docsDaEtapaAtiva.map(([tipo,rot])=>linhaDocumento(tipo,rot,etapaAtiva))}
           </div>
         </div>
