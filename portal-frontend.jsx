@@ -2608,6 +2608,9 @@ function PainelMentoria(){
         <button className={`px-mode ${subaba==="credenciamento"?"on":""}`} onClick={()=>setSubaba("credenciamento")}>
           <ShieldCheck size={13}/> <span className="px-mode-lbl">Credenciamento</span>
         </button>
+        <button className={`px-mode ${subaba==="curso"?"on":""}`} onClick={()=>setSubaba("curso")}>
+          <GraduationCap size={13}/> <span className="px-mode-lbl">Curso de Mentores</span>
+        </button>
       </div>
 
       {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
@@ -2615,6 +2618,7 @@ function PainelMentoria(){
       {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
       {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token}/>}
       {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores}/>}
+      {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
       {subaba==="vinculos" && <>
       {mentor?.isAdmin && <div style={{display:"flex",flexWrap:"wrap",gap:"16px",marginBottom:"22px"}}>
@@ -3704,6 +3708,432 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+/* ---------- Curso de Formação de Mentores — 20 oficinas síncronas,
+   inscrição por turma, presença marcada pelo admin, avaliação final e
+   certificado. Ver rotas-curso.js / migrations/011. ---------- */
+const CURSO_EDUCADORES=["Isana Rezende","Fábia Souza","Patrícia Gomes","Lorena Ferreira","Diego Dórea","Adalberto Bleme","Pedro Baena","Noelle Costa","Denise Falcão","Fábia Fernanda","Cinthya Santos","Ana Isabel","Sandra Luna","Ieda Brasil"];
+const CURSO_SUPORTE=["Ieda Brasil","Rita Maria Ferreira","Manoel Sales","Sandra Luna"];
+const CURSO_TOTAL_OFICINAS=20;
+
+function CursoMentores({token,isAdmin,mentorId}){
+  const [aba,setAba]=useState(isAdmin?"inscritos":"curso");
+  const [oficinas,setOficinas]=useState([]);
+  const [inscricao,setInscricao]=useState(undefined); // undefined=carregando · null=nao inscrito
+  const [inscritos,setInscritos]=useState([]);
+  const [inscritoAberto,setInscritoAberto]=useState(null); // resumo do inscrito selecionado (admin)
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+  const [turmaEscolhida,setTurmaEscolhida]=useState("turma1");
+  const [inscrevendo,setInscrevendo]=useState(false);
+
+  async function carregarOficinas(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/oficinas`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setOficinas(dados);
+    }catch{}
+  }
+  async function carregarInscricao(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/inscricao`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setInscricao(dados);
+    }catch{}
+  }
+  async function carregarInscritos(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/inscritos`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setInscritos(dados);
+    }catch{}
+  }
+  useEffect(()=>{
+    setCarregando(true);
+    Promise.all([carregarOficinas(), isAdmin?carregarInscritos():carregarInscricao()]).finally(()=>setCarregando(false));
+  },[token,isAdmin]); // eslint-disable-line
+
+  async function inscrever(ev){
+    ev.preventDefault();
+    if(inscrevendo) return;
+    setInscrevendo(true); setErro("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/inscricao`,{
+        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({turma:turmaEscolhida}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao se inscrever.");
+      await carregarInscricao();
+    }catch(err){ setErro(err.message||"Erro ao se inscrever."); }
+    finally{ setInscrevendo(false); }
+  }
+
+  if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
+
+  const TURMA_LABEL={turma1:"Turma 1 — segunda, quarta e sexta",turma2:"Turma 2 — terça e quinta"};
+
+  return (
+    <div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"12px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <div style={{display:"flex",gap:"8px",marginBottom:"18px",flexWrap:"wrap"}}>
+        {!isAdmin && <>
+          <button className={`px-mode ${aba==="curso"?"on":""}`} onClick={()=>setAba("curso")}><GraduationCap size={13}/> <span className="px-mode-lbl">Curso</span></button>
+          <button className={`px-mode ${aba==="aulas"?"on":""}`} onClick={()=>setAba("aulas")}><ClipboardList size={13}/> <span className="px-mode-lbl">Aulas</span></button>
+          <button className={`px-mode ${aba==="avaliacao"?"on":""}`} onClick={()=>setAba("avaliacao")}><CheckCircle2 size={13}/> <span className="px-mode-lbl">Avaliação</span></button>
+          <button className={`px-mode ${aba==="certificado"?"on":""}`} onClick={()=>setAba("certificado")}><Trophy size={13}/> <span className="px-mode-lbl">Certificado</span></button>
+        </>}
+        {isAdmin && <>
+          <button className={`px-mode ${aba==="inscritos"?"on":""}`} onClick={()=>setAba("inscritos")}><Users size={13}/> <span className="px-mode-lbl">Inscritos</span></button>
+          <button className={`px-mode ${aba==="cronograma"?"on":""}`} onClick={()=>setAba("cronograma")}><CalendarDays size={13}/> <span className="px-mode-lbl">Cronograma</span></button>
+        </>}
+      </div>
+
+      {/* ---------------- MENTOR: sem inscrição ainda ---------------- */}
+      {!isAdmin && inscricao===null && (aba==="curso"||aba==="aulas") && <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px"}}>
+        <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Formação de Mentores em DFT</h3>
+        <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6,maxWidth:"56ch"}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. Escolha sua turma pra se inscrever.</p>
+        <form onSubmit={inscrever} style={{display:"flex",gap:"8px",alignItems:"center",marginTop:"14px",flexWrap:"wrap"}}>
+          <select value={turmaEscolhida} onChange={e=>setTurmaEscolhida(e.target.value)}
+            style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}>
+            <option value="turma1">{TURMA_LABEL.turma1}</option>
+            <option value="turma2">{TURMA_LABEL.turma2}</option>
+          </select>
+          <button className="px-btn-primary" type="submit" disabled={inscrevendo} style={{padding:"8px 16px",fontSize:"12.5px"}}>{inscrevendo?"Inscrevendo…":"Inscrever-se"}</button>
+        </form>
+      </div>}
+
+      {/* ---------------- MENTOR: visão geral do curso ---------------- */}
+      {!isAdmin && inscricao && aba==="curso" && (()=>{
+        const concluidas=inscricao.progresso.filter(p=>p.status==="concluida").length;
+        const pct=Math.round(concluidas/CURSO_TOTAL_OFICINAS*100);
+        const proxima=inscricao.progresso.find(p=>p.status!=="concluida");
+        return (
+          <div>
+            <div style={{background:`linear-gradient(135deg, ${C.navy}, ${C.primaryDark})`,borderRadius:"14px",padding:"22px 22px 24px",color:"#fff"}}>
+              <div style={{fontSize:"10.5px",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:"#a9c3f5"}}>{TURMA_LABEL[inscricao.turma]}</div>
+              <h3 style={{margin:"6px 0 4px",fontSize:"19px"}}>Formação de Mentores em DFT</h3>
+              <div style={{display:"flex",alignItems:"center",gap:"14px",marginTop:"16px"}}>
+                <div style={{width:"56px",height:"56px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",
+                  background:`conic-gradient(#fff ${pct}%, rgba(255,255,255,.25) 0)`}}>
+                  <div style={{width:"44px",height:"44px",borderRadius:"50%",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800}}>{concluidas}/{CURSO_TOTAL_OFICINAS}</div>
+                </div>
+                <div style={{fontSize:"12.5px"}}>
+                  {proxima
+                    ? <><b>Oficina {proxima.oficina_numero}</b> é a próxima<div style={{fontSize:"11px",color:"#c8d6f2",marginTop:"2px"}}>{proxima.tema}</div></>
+                    : <b>Todas as oficinas concluídas 🎉</b>}
+                </div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"10px",marginTop:"14px"}}>
+              <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px 14px"}}><b style={{fontSize:"18px",color:C.navy,display:"block"}}>{concluidas}/{CURSO_TOTAL_OFICINAS}</b><span style={{fontSize:"11px",color:C.sub}}>oficinas concluídas</span></div>
+              <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px 14px"}}><b style={{fontSize:"18px",color:C.navy,display:"block"}}>{inscricao.avaliacao?"Enviada":"Pendente"}</b><span style={{fontSize:"11px",color:C.sub}}>avaliação final</span></div>
+              <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px 14px"}}><b style={{fontSize:"18px",color:C.navy,display:"block"}}>{inscricao.certificado?"Emitido":"—"}</b><span style={{fontSize:"11px",color:C.sub}}>certificado</span></div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ---------------- MENTOR: aulas ---------------- */}
+      {!isAdmin && inscricao && aba==="aulas" && <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+        {inscricao.progresso.map(p=>{
+          const feita=p.status==="concluida";
+          return (
+            <div key={p.oficina_numero} style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:"9px"}}>
+              <div style={{width:"26px",height:"26px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10.5px",fontWeight:700,
+                background:feita?C.green:"#fff",border:`2px solid ${feita?C.green:C.line}`,color:feita?"#fff":C.faint}}>{feita?<Check size={13}/>:p.oficina_numero}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:"12.5px",fontWeight:700}}>Oficina {p.oficina_numero} — {p.tema}</div>
+                <div style={{fontSize:"10.5px",color:C.faint}}>{p.data?new Date(p.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
+              </div>
+              {p.link_teams && <a href={p.link_teams} target="_blank" rel="noreferrer" className="px-anexo-chip" style={{textDecoration:"none"}}><ExternalLink size={11}/> Teams</a>}
+            </div>
+          );
+        })}
+      </div>}
+
+      {/* ---------------- MENTOR: avaliação ---------------- */}
+      {!isAdmin && inscricao && aba==="avaliacao" && <CursoAvaliacaoForm token={token} inscricao={inscricao} onEnviada={carregarInscricao}/>}
+
+      {/* ---------------- MENTOR: certificado ---------------- */}
+      {!isAdmin && inscricao && aba==="certificado" && <CursoCertificadoView token={token} inscricao={inscricao} onGerado={carregarInscricao}/>}
+
+      {/* ---------------- ADMIN: inscritos ---------------- */}
+      {isAdmin && aba==="inscritos" && <div>
+        {!inscritos.length && <div style={{fontSize:"12px",color:C.faint}}>Ninguém se inscreveu no curso ainda.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+          {inscritos.map(i=>(
+            <button key={i.id} onClick={()=>setInscritoAberto(i)} style={{textAlign:"left",display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:"9px",background:"#fff",cursor:"pointer"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:"12.5px",fontWeight:700}}>{i.mentor_nome}</div>
+                <div style={{fontSize:"10.5px",color:C.faint}}>{TURMA_LABEL[i.turma]}</div>
+              </div>
+              <div style={{width:"90px",height:"6px",borderRadius:"99px",background:C.line,overflow:"hidden",flexShrink:0}}>
+                <div style={{width:`${Math.round(i.concluidas/CURSO_TOTAL_OFICINAS*100)}%`,height:"100%",background:C.primary}}/>
+              </div>
+              <span style={{fontSize:"10.5px",fontWeight:700,color:i.concluidas>=CURSO_TOTAL_OFICINAS?C.green:C.sub,minWidth:"38px",textAlign:"right"}}>{i.concluidas}/{CURSO_TOTAL_OFICINAS}</span>
+              {i.tem_certificado && <Trophy size={13} color={C.yellow}/>}
+            </button>
+          ))}
+        </div>
+        {inscritoAberto && <CursoInscritoDetalhe resumo={inscritoAberto} token={token} onFechar={()=>setInscritoAberto(null)} onMudou={carregarInscritos}/>}
+      </div>}
+
+      {/* ---------------- ADMIN: cronograma ---------------- */}
+      {isAdmin && aba==="cronograma" && <CursoCronogramaAdmin token={token} oficinas={oficinas} onMudou={carregarOficinas}/>}
+    </div>
+  );
+}
+
+function CursoAvaliacaoForm({token,inscricao,onEnviada}){
+  const [resp,setResp]=useState({autoavaliacao1:"",autoavaliacao2:"",educadores:{},suporte:{},execucao1:"",execucao2:"",execucao3:"",execucao4:"",execucao5:"",feedback:""});
+  const [enviando,setEnviando]=useState(false);
+  const [erro,setErro]=useState("");
+  const concluidas=inscricao.progresso.filter(p=>p.status==="concluida").length;
+  const podeAvaliar=concluidas>=CURSO_TOTAL_OFICINAS;
+
+  const opcaoUnica=(chave,valor)=>setResp(s=>({...s,[chave]:valor}));
+  const likert=(grupo,pessoa,valor)=>setResp(s=>({...s,[grupo]:{...s[grupo],[pessoa]:valor}}));
+
+  async function enviar(){
+    if(enviando) return;
+    setEnviando(true); setErro("");
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/avaliacao`,{
+        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({respostas:resp}),
+      });
+      const dados=await r.json();
+      if(!r.ok) throw new Error(dados.erro||"Erro ao enviar avaliação.");
+      onEnviada&&onEnviada();
+    }catch(err){ setErro(err.message||"Erro ao enviar avaliação."); }
+    finally{ setEnviando(false); }
+  }
+
+  if(inscricao.avaliacao) return <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"16px",fontSize:"12.5px",color:C.sub}}><CheckCircle2 size={14} color={C.green}/> Avaliação enviada em {new Date(inscricao.avaliacao.enviado_em).toLocaleDateString("pt-BR")}. Obrigado pela participação!</div>;
+  if(!podeAvaliar) return <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"16px",fontSize:"12.5px",color:C.sub}}>A avaliação libera depois de concluir as {CURSO_TOTAL_OFICINAS} oficinas (você está em {concluidas}/{CURSO_TOTAL_OFICINAS}).</div>;
+
+  const Opcoes=({chave,opcoes})=><div style={{display:"flex",gap:"7px",flexWrap:"wrap"}}>
+    {opcoes.map(o=><button key={o} type="button" onClick={()=>opcaoUnica(chave,o)}
+      style={{fontSize:"11.5px",padding:"6px 13px",borderRadius:"7px",border:`1px solid ${resp[chave]===o?C.primary:C.line}`,background:resp[chave]===o?C.primary:"#fff",color:resp[chave]===o?"#fff":C.sub,cursor:"pointer"}}>{o}</button>)}
+  </div>;
+  const Likert=({titulo,grupo,pessoas})=>(
+    <div style={{marginBottom:"16px"}}>
+      <div style={{fontSize:"12px",color:C.sub,marginBottom:"8px"}}>{titulo}</div>
+      <div style={{border:`1px solid ${C.line}`,borderRadius:"9px",overflow:"hidden"}}>
+        {pessoas.map((p,i)=>(
+          <div key={p} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 11px",borderTop:i?`1px solid ${C.line}`:"none"}}>
+            <span style={{fontSize:"11.5px",fontWeight:600}}>{p}</span>
+            <div style={{display:"flex",gap:"12px"}}>
+              {["Ruim","Médio","Bom"].map(op=>(
+                <span key={op} title={op} onClick={()=>likert(grupo,p,op)}
+                  style={{width:"16px",height:"16px",borderRadius:"50%",display:"inline-block",cursor:"pointer",
+                    border:`2px solid ${resp[grupo][p]===op?C.primary:C.line}`,background:resp[grupo][p]===op?C.primary:"transparent"}}/>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"18px"}}>
+      <h3 style={{margin:"0 0 4px",fontSize:"15px",color:C.navy}}>Avaliação do Curso de Mentores</h3>
+      <p style={{fontSize:"12px",color:C.sub,marginBottom:"18px"}}>Seu feedback é essencial pra garantir a excelência das ações educacionais do MGI.</p>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"12px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"10px"}}>Autoavaliação</div>
+      <div style={{marginBottom:"14px"}}>
+        <div style={{fontSize:"12px",fontWeight:600,marginBottom:"6px"}}>Em que medida a ação educacional atendeu às suas expectativas de aprendizado, garantiu a compreensão dos conteúdos e motivou sua participação?</div>
+        <Opcoes chave="autoavaliacao1" opcoes={["Bom","Médio","Ruim"]}/>
+      </div>
+      <div style={{marginBottom:"18px"}}>
+        <div style={{fontSize:"12px",fontWeight:600,marginBottom:"6px"}}>Sinto-me mais seguro(a) para fazer o DFT a partir dos conhecimentos adquiridos.</div>
+        <Opcoes chave="autoavaliacao2" opcoes={["Sim","Não"]}/>
+      </div>
+
+      <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"10px"}}>Avaliação dos educadores</div>
+      <Likert titulo="Capacidade do instrutor(a) de dominar o assunto e transmiti-lo de forma clara" grupo="educadores" pessoas={CURSO_EDUCADORES}/>
+
+      <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"10px"}}>Avaliação do suporte</div>
+      <Likert titulo="O suporte oferecido durante o treinamento atendeu às suas expectativas?" grupo="suporte" pessoas={CURSO_SUPORTE}/>
+
+      <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"10px"}}>Execução educacional</div>
+      {[["execucao1","Os conteúdos abordados mantiveram coerência com os objetivos propostos.",["Bom","Médio","Ruim"]],
+        ["execucao2","A carga horária sugerida foi suficiente para a execução das atividades propostas.",["Bom","Médio","Ruim"]],
+        ["execucao3","O material didático e de apoio contribuíram para a assimilação dos conteúdos.",["Bom","Médio","Ruim"]],
+        ["execucao4","A coordenação do evento esteve disponível para dirimir dúvidas.",["Sim","Não","Às vezes"]],
+        ["execucao5","Recebi apoio da minha chefia imediata para a participação na ação educacional.",["Sim","Não"]],
+      ].map(([chave,pergunta,opcoes])=>(
+        <div key={chave} style={{marginBottom:"14px"}}>
+          <div style={{fontSize:"12px",fontWeight:600,marginBottom:"6px"}}>{pergunta}</div>
+          <Opcoes chave={chave} opcoes={opcoes}/>
+        </div>
+      ))}
+
+      <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"10px"}}>Feedback</div>
+      <textarea rows={3} placeholder="Se tiver alguma sugestão, digite aqui…" value={resp.feedback} onChange={e=>opcaoUnica("feedback",e.target.value)}
+        style={{width:"100%",padding:"9px 11px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px",fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
+
+      <button className="px-btn-primary" onClick={enviar} disabled={enviando||!resp.autoavaliacao1||!resp.autoavaliacao2} style={{marginTop:"16px",padding:"9px 18px",fontSize:"12.5px"}}>
+        {enviando?"Enviando…":"Enviar avaliação"}
+      </button>
+    </div>
+  );
+}
+
+function CursoCertificadoView({token,inscricao,onGerado}){
+  const [certificado,setCertificado]=useState(inscricao.certificado);
+  const [erro,setErro]=useState("");
+  const [gerando,setGerando]=useState(false);
+
+  async function gerar(){
+    if(gerando) return;
+    setGerando(true); setErro("");
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/certificado`,{headers:mentoriaAuthHeader(token)});
+      const dados=await r.json();
+      if(!r.ok) throw new Error(dados.erro||"Erro ao gerar certificado.");
+      setCertificado(dados); onGerado&&onGerado();
+    }catch(err){ setErro(err.message||"Erro ao gerar certificado."); }
+    finally{ setGerando(false); }
+  }
+
+  if(!inscricao.avaliacao) return <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"16px",fontSize:"12.5px",color:C.sub}}>O certificado é liberado depois que você concluir as {CURSO_TOTAL_OFICINAS} oficinas e enviar a avaliação final.</div>;
+
+  if(!certificado) return (
+    <div style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"18px",textAlign:"center"}}>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"12px"}}><AlertTriangle size={12}/> {erro}</div>}
+      <p style={{fontSize:"12.5px",color:C.sub,marginBottom:"12px"}}>Sua avaliação já foi enviada — seu certificado está pronto pra ser emitido.</p>
+      <button className="px-btn-primary" onClick={gerar} disabled={gerando} style={{padding:"9px 18px",fontSize:"12.5px"}}><Trophy size={14}/> {gerando?"Gerando…":"Emitir certificado"}</button>
+    </div>
+  );
+
+  return (
+    <div style={{border:`3px solid ${C.navy}`,borderRadius:"14px",padding:"36px 28px",textAlign:"center",
+      background:`radial-gradient(circle at 0 0, ${C.primarySoft}, transparent 45%), radial-gradient(circle at 100% 100%, ${C.primarySoft}, transparent 45%), #fff`}}>
+      <div style={{width:"52px",height:"52px",borderRadius:"50%",background:C.yellow,color:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"10.5px",margin:"0 auto 12px"}}>MGI</div>
+      <div style={{fontSize:"11.5px",letterSpacing:".14em",textTransform:"uppercase",color:C.sub,fontWeight:700}}>Certificado de Conclusão</div>
+      <div style={{fontSize:"23px",fontWeight:800,color:C.navy,margin:"12px 0"}}>{inscricao.mentor_nome}</div>
+      <p style={{fontSize:"12px",color:C.sub,maxWidth:"52ch",margin:"0 auto",lineHeight:1.6}}>
+        concluiu com aproveitamento o <b>Curso de Formação de Mentores em DFT</b>, promovido pela Coordenação-Geral de Planejamento da Força de Trabalho (CGFOR/DEPRO/MGI), tendo participado das {CURSO_TOTAL_OFICINAS} oficinas síncronas do programa.
+      </p>
+      <div style={{marginTop:"18px",fontFamily:"monospace",fontSize:"10px",color:C.faint}}>Autenticação: {certificado.codigo} · emitido em {new Date(certificado.gerado_em).toLocaleDateString("pt-BR")}</div>
+    </div>
+  );
+}
+
+function CursoInscritoDetalhe({resumo,token,onFechar,onMudou}){
+  const [inscricao,setInscricao]=useState(null);
+  const [erro,setErro]=useState("");
+
+  async function carregar(){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/inscricao?mentorId=${resumo.mentor_id}`,{headers:mentoriaAuthHeader(token)});
+      const dados=await r.json();
+      if(r.ok) setInscricao(dados);
+    }catch{}
+  }
+  useEffect(()=>{ carregar(); },[resumo.id]); // eslint-disable-line
+
+  async function alternar(oficinaNumero,statusAtual){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/progresso/${oficinaNumero}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({inscricaoId:resumo.id,status:statusAtual==="concluida"?"pendente":"concluida"}),
+      });
+      if(!r.ok) throw new Error();
+      await carregar(); onMudou&&onMudou();
+    }catch{ setErro("Não consegui atualizar a presença."); }
+  }
+
+  return (
+    <div className="px-modal-bg" onClick={onFechar}>
+      <div className="px-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:"520px"}}>
+        <div className="px-modal-h">
+          <div><GraduationCap size={17} color={C.primary}/> <b>{resumo.mentor_nome}</b></div>
+          <button onClick={onFechar}><X size={18}/></button>
+        </div>
+        {erro && <div className="px-anexo-erro" style={{margin:"8px 0"}}><AlertTriangle size={12}/> {erro}</div>}
+        {!inscricao && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+        {inscricao && <div style={{maxHeight:"60vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:"6px",padding:"6px 0"}}>
+          {inscricao.progresso.map(p=>{
+            const feita=p.status==="concluida";
+            return (
+              <button key={p.oficina_numero} onClick={()=>alternar(p.oficina_numero,p.status)}
+                style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",background:feita?C.greenSoft:"#fff",cursor:"pointer",textAlign:"left"}}>
+                <div style={{width:"22px",height:"22px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9.5px",fontWeight:700,
+                  background:feita?C.green:"#fff",border:`2px solid ${feita?C.green:C.line}`,color:feita?"#fff":C.faint}}>{feita?<Check size={11}/>:p.oficina_numero}</div>
+                <span style={{fontSize:"12px",flex:1}}>{p.tema}</span>
+                <span style={{fontSize:"10px",color:feita?C.green:C.faint,fontWeight:700}}>{feita?"concluída":"marcar"}</span>
+              </button>
+            );
+          })}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+function CursoCronogramaAdmin({token,oficinas,onMudou}){
+  const [editando,setEditando]=useState(null); // numero da oficina em edição
+  const [form,setForm]=useState({data:"",tema:"",linkTeams:""});
+  const [erro,setErro]=useState("");
+
+  function abrir(of){
+    setEditando(of.numero);
+    setForm({data:of.data?of.data.slice(0,10):"",tema:of.tema,linkTeams:of.link_teams||""});
+  }
+  async function salvar(numero){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/oficinas/${numero}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({data:form.data||null,tema:form.tema,linkTeams:form.linkTeams||null}),
+      });
+      if(!r.ok) throw new Error();
+      setEditando(null); onMudou&&onMudou();
+    }catch{ setErro("Não consegui salvar a oficina."); }
+  }
+
+  return (
+    <div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"12px"}}><AlertTriangle size={12}/> {erro}</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+        {oficinas.map(of=>(
+          <div key={of.numero} style={{border:`1px solid ${C.line}`,borderRadius:"9px",padding:"9px 12px"}}>
+            {editando===of.numero ? (
+              <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+                <input value={form.tema} onChange={e=>setForm(s=>({...s,tema:e.target.value}))} placeholder="Tema"
+                  style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+                <div style={{display:"flex",gap:"7px",flexWrap:"wrap"}}>
+                  <input type="date" value={form.data} onChange={e=>setForm(s=>({...s,data:e.target.value}))}
+                    style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+                  <input value={form.linkTeams} onChange={e=>setForm(s=>({...s,linkTeams:e.target.value}))} placeholder="Link do Teams"
+                    style={{flex:1,minWidth:"160px",padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+                </div>
+                <div style={{display:"flex",gap:"7px"}}>
+                  <button className="px-btn-primary" style={{padding:"5px 12px",fontSize:"11.5px"}} onClick={()=>salvar(of.numero)}>Salvar</button>
+                  <button className="px-btn-ghost" style={{padding:"5px 12px",fontSize:"11.5px"}} onClick={()=>setEditando(null)}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+                <b style={{fontSize:"11.5px",color:C.primary,width:"22px",flexShrink:0}}>#{of.numero}</b>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:"12px",fontWeight:600}}>{of.tema}</div>
+                  <div style={{fontSize:"10.5px",color:C.faint}}>{of.data?new Date(of.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
+                </div>
+                <button onClick={()=>abrir(of)} title="Editar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"5px 8px",cursor:"pointer",color:C.sub}}><Pencil size={12}/></button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
