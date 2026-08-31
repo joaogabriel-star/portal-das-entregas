@@ -3615,82 +3615,67 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
 
       {erro && <div className="px-anexo-erro" style={{margin:"10px 16px 0"}}><AlertTriangle size={12}/> {erro}</div>}
 
-      <div style={{display:"flex",flexWrap:"wrap"}}>
-        {/* ---- lateral: todos os passos, estilo dashboard ---- */}
-        <div style={{flex:"0 0 172px",minWidth:"150px",background:"#f3f5f8",borderRight:`1px solid ${C.line}`,padding:"10px"}}>
-          {ETAPAS_CRED.map(([chave,rot,fase],i)=>{
-            const et=(detalhe.etapas||[]).find(e=>e.etapa===chave);
-            const feita=et?.status==="concluida";
-            const ativa=etapaAtiva===chave;
-            const numDocs=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).length;
-            const faltam=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).filter(([tipo])=>{
-              const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
-              return !doc || doc.status==="rejeitado";
-            }).length;
-            const numeroNaFase=ETAPAS_CRED.filter(([,,f],j)=>f===fase&&j<=i).length;
-            return (<React.Fragment key={chave}>
-              {(i===0||ETAPAS_CRED[i-1][2]!==fase) && <div style={{fontSize:"9.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",padding:"10px 8px 4px"}}>{FASE_LABEL[fase]}</div>}
-              <button onClick={()=>setEtapaAtiva(chave)}
-                style={{display:"flex",alignItems:"center",gap:"8px",width:"100%",textAlign:"left",
-                  padding:"9px 8px",borderRadius:"9px",border:"none",cursor:"pointer",marginBottom:"4px",
-                  background:ativa?"#fff":"transparent",boxShadow:ativa?"0 1px 4px rgba(20,30,60,.10)":"none"}}>
-                <div style={{width:"22px",height:"22px",flexShrink:0,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
-                  background:feita?"#1a9c5c":(faltam?"#d64545":"#fff"),
-                  border:`2px solid ${feita?"#1a9c5c":(faltam?"#d64545":C.line)}`,color:feita||faltam?"#fff":C.faint}}>
-                  {feita?<Check size={12}/>:<span style={{fontSize:"9.5px",fontWeight:700}}>{numeroNaFase}</span>}
-                </div>
-                <div style={{minWidth:0}}>
-                  <div style={{fontSize:"11.5px",fontWeight:ativa?700:600,color:ativa?C.navy:C.sub,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{rot}</div>
-                  <div style={{fontSize:"9.5px",color:feita?"#1a9c5c":(faltam?"#d64545":C.faint)}}>
-                    {feita?(et.data_conclusao?new Date(et.data_conclusao).toLocaleDateString("pt-BR"):"concluída"):(faltam?`${faltam} pendente${faltam>1?"s":""}`:(numDocs?"em dia":"sem documento"))}
-                  </div>
-                </div>
-              </button>
-            </React.Fragment>);
-          })}
-        </div>
+      <div style={{padding:"14px 16px"}}>
+        {ETAPAS_CRED.map(([chave,rot,fase],i)=>{
+          const et=(detalhe.etapas||[]).find(e=>e.etapa===chave);
+          const feita=et?.status==="concluida";
+          const ativa=etapaAtiva===chave;
+          const numDocs=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).length;
+          const faltam=(TIPOS_DOCUMENTO_POR_ETAPA[chave]||[]).filter(([tipo])=>{
+            const doc=[...(detalhe.documentos||[])].reverse().find(d=>d.tipo===tipo);
+            return !doc || doc.status==="rejeitado";
+          }).length;
+          const numeroNaFase=ETAPAS_CRED.filter(([,,f],j)=>f===fase&&j<=i).length;
+          return (<React.Fragment key={chave}>
+            {(i===0||ETAPAS_CRED[i-1][2]!==fase) && <div style={{fontSize:"10px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".05em",padding:i===0?"0 0 8px":"18px 0 8px",borderTop:i===0?"none":`1px solid ${C.line}`,marginTop:i===0?0:"10px"}}>{FASE_LABEL[fase]}</div>}
 
-        {/* ---- conteúdo: só os documentos da etapa selecionada ---- */}
-        <div style={{flex:"1 1 320px",minWidth:"260px",padding:"14px 16px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px",flexWrap:"wrap",gap:"8px"}}>
-            <div>
-              <div style={{fontSize:"13.5px",fontWeight:700,color:C.navy}}>{ETAPAS_CRED.find(([c])=>c===etapaAtiva)?.[1]}</div>
-              <div style={{fontSize:"11px",color:faltantesEtapaAtiva?"#d64545":"#1a9c5c",fontWeight:600}}>
-                {faltantesEtapaAtiva
-                  ? `${faltantesEtapaAtiva} documento${faltantesEtapaAtiva>1?"s":""} faltando`
-                  : (docsDaEtapaAtiva.length?"Tudo enviado":"Sem documento — marque a conclusão quando o pagamento estiver em dia")}
+            <button onClick={()=>setEtapaAtiva(ativa?null:chave)}
+              style={{display:"flex",alignItems:"center",gap:"10px",width:"100%",textAlign:"left",
+                padding:"10px 12px",borderRadius:ativa?"10px 10px 0 0":"10px",border:`1px solid ${ativa?C.primary:C.line}`,
+                borderBottom:ativa?"none":`1px solid ${C.line}`,cursor:"pointer",marginBottom:ativa?0:"8px",
+                background:ativa?C.primarySoft:"#fff"}}>
+              <div style={{width:"24px",height:"24px",flexShrink:0,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                background:feita?"#1a9c5c":(faltam?"#d64545":"#fff"),
+                border:`2px solid ${feita?"#1a9c5c":(faltam?"#d64545":C.line)}`,color:feita||faltam?"#fff":C.faint}}>
+                {feita?<Check size={13}/>:<span style={{fontSize:"10px",fontWeight:700}}>{numeroNaFase}</span>}
               </div>
-            </div>
-            {isAdmin && (()=>{
-              const et=(detalhe.etapas||[]).find(e=>e.etapa===etapaAtiva);
-              const feita=et?.status==="concluida";
-              return (
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:"12.5px",fontWeight:700,color:C.navy}}>{rot}</div>
+                <div style={{fontSize:"10.5px",color:feita?"#1a9c5c":(faltam?"#d64545":C.faint)}}>
+                  {feita?(et.data_conclusao?`concluída em ${new Date(et.data_conclusao).toLocaleDateString("pt-BR")}`:"concluída"):(faltam?`${faltam} pendente${faltam>1?"s":""}`:(numDocs?"em dia":"sem documento"))}
+                </div>
+              </div>
+              <ChevronsRight size={14} color={C.faint} style={{transform:ativa?"rotate(90deg)":"none",transition:"transform .15s",flexShrink:0}}/>
+            </button>
+
+            {ativa && <div style={{border:`1px solid ${C.primary}`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:"14px",marginBottom:"14px",background:"#fff"}}>
+              {isAdmin && <div style={{display:"flex",justifyContent:"flex-end",marginBottom:"10px"}}>
                 <button className={feita?"px-btn-ghost":"px-btn-primary"} style={{padding:"6px 12px",fontSize:"12px"}}
-                  onClick={()=>cliqueEtapa(etapaAtiva,et?.status)}>
+                  onClick={()=>cliqueEtapa(chave,et?.status)}>
                   {feita?"Desfazer conclusão":"Marcar etapa concluída"}
                 </button>
-              );
-            })()}
-          </div>
+              </div>}
 
-          {marcandoEtapa===etapaAtiva && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:`1px solid ${C.primary}`,background:C.primarySoft,borderRadius:"8px",padding:"9px 11px",marginBottom:"14px"}}>
-            <span style={{fontSize:"12px"}}>Concluída em:</span>
-            <input type="date" value={dataEtapa} onChange={e=>setDataEtapa(e.target.value)}
-              style={{padding:"5px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
-            <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>confirmarMarcarEtapa(marcandoEtapa)}>Confirmar</button>
-            <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setMarcandoEtapa(null)}>Cancelar</button>
-          </div>}
-          {desfazendoEtapa===etapaAtiva && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:"1px solid #d64545",background:"#fdecec",borderRadius:"8px",padding:"9px 11px",marginBottom:"14px"}}>
-            <span style={{fontSize:"12px"}}>Voltar essa etapa pra pendente?</span>
-            <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px",background:"#d64545"}} onClick={()=>confirmarDesfazerEtapa(desfazendoEtapa)}>Desfazer</button>
-            <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setDesfazendoEtapa(null)}>Cancelar</button>
-          </div>}
+              {marcandoEtapa===chave && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:`1px solid ${C.primary}`,background:C.primarySoft,borderRadius:"8px",padding:"9px 11px",marginBottom:"14px"}}>
+                <span style={{fontSize:"12px"}}>Concluída em:</span>
+                <input type="date" value={dataEtapa} onChange={e=>setDataEtapa(e.target.value)}
+                  style={{padding:"5px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+                <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>confirmarMarcarEtapa(chave)}>Confirmar</button>
+                <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setMarcandoEtapa(null)}>Cancelar</button>
+              </div>}
+              {desfazendoEtapa===chave && <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",border:"1px solid #d64545",background:"#fdecec",borderRadius:"8px",padding:"9px 11px",marginBottom:"14px"}}>
+                <span style={{fontSize:"12px"}}>Voltar essa etapa pra pendente?</span>
+                <button className="px-btn-primary" style={{padding:"5px 10px",fontSize:"11.5px",background:"#d64545"}} onClick={()=>confirmarDesfazerEtapa(chave)}>Desfazer</button>
+                <button className="px-btn-ghost" style={{padding:"5px 10px",fontSize:"11.5px"}} onClick={()=>setDesfazendoEtapa(null)}>Cancelar</button>
+              </div>}
 
-          <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
-            {docsDaEtapaAtiva.length===0 && <div style={{fontSize:"12px",color:C.faint,fontStyle:"italic"}}>Essa etapa não tem documento — só a data de conclusão, marcada acima.</div>}
-            {docsDaEtapaAtiva.map(([tipo,rot])=>linhaDocumento(tipo,rot,etapaAtiva))}
-          </div>
-        </div>
+              <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+                {docsDaEtapaAtiva.length===0 && <div style={{fontSize:"12px",color:C.faint,fontStyle:"italic"}}>Essa etapa não tem documento — só a data de conclusão, marcada acima.</div>}
+                {docsDaEtapaAtiva.map(([tipo,rotDoc])=>linhaDocumento(tipo,rotDoc,chave))}
+              </div>
+            </div>}
+          </React.Fragment>);
+        })}
       </div>
 
       {preview && (()=>{
