@@ -2618,7 +2618,7 @@ function PainelMentoria({abaInicial}={}){
       {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
       {subaba==="documentos" && <BibliotecaDocumentos token={token} isAdmin={!!mentor?.isAdmin} eventosDoMentor={!mentor?.isAdmin}/>}
       {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
-      {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token}/>}
+      {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
       {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
@@ -3204,24 +3204,43 @@ function DocumentosOficina({token,isAdmin}){
 
 /* ---------- Dashboard (admin) — progresso de cada órgão nas 15 oficinas,
    num "caminho" visual estilo a planilha de acompanhamento. ---------- */
-function DashboardOrgaos({token}){
+function DashboardOrgaos({token,mentores}){
   const [dados,setDados]=useState([]);
+  const [vinculos,setVinculos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
   const [filtro,setFiltro]=useState("");
+  const [modo,setModo]=useState("orgao"); // "orgao" | "mentor"
 
   useEffect(()=>{
     (async()=>{
       setCarregando(true); setErro("");
       try{
-        const resp=await fetch(`${API_BASE}/api/mentoria/dashboard/orgaos`,{headers:mentoriaAuthHeader(token)});
-        const d=await resp.json();
-        if(!resp.ok) throw new Error(d.erro||"Erro ao carregar dashboard.");
+        const [respOrgaos,respVinculos]=await Promise.all([
+          fetch(`${API_BASE}/api/mentoria/dashboard/orgaos`,{headers:mentoriaAuthHeader(token)}),
+          fetch(`${API_BASE}/api/mentoria/vinculos?todos=true`,{headers:mentoriaAuthHeader(token)}),
+        ]);
+        const d=await respOrgaos.json();
+        const v=await respVinculos.json();
+        if(!respOrgaos.ok) throw new Error(d.erro||"Erro ao carregar dashboard.");
         setDados(d);
+        if(respVinculos.ok) setVinculos(v);
       }catch(err){ setErro(err.message||"Erro ao carregar dashboard."); }
       finally{ setCarregando(false); }
     })();
   },[token]);
+
+  const porMentor=useMemo(()=>{
+    const grupos={};
+    vinculos.forEach(v=>{
+      (grupos[v.mentor_id] ||= []).push(v);
+    });
+    return Object.entries(grupos).map(([mentorId,vs])=>({
+      mentorId:Number(mentorId),
+      nome:(mentores||[]).find(m=>m.id===Number(mentorId))?.nome || `Mentor #${mentorId}`,
+      vinculos:vs,
+    })).sort((a,b)=>a.nome.localeCompare(b.nome));
+  },[vinculos,mentores]);
 
   const CORES={pendente:C.line,agendada:C.amber||"#e0a400",concluida:C.green||"#1a9c5c"};
 
@@ -3232,6 +3251,32 @@ function DashboardOrgaos({token}){
 
   return (
     <div>
+      <div style={{display:"flex",gap:"6px",marginBottom:"14px"}}>
+        <button className={`px-mode ${modo==="orgao"?"on":""}`} onClick={()=>setModo("orgao")}><Building2 size={13}/> <span className="px-mode-lbl">Por órgão</span></button>
+        <button className={`px-mode ${modo==="mentor"?"on":""}`} onClick={()=>setModo("mentor")}><Users size={13}/> <span className="px-mode-lbl">Por mentor</span></button>
+      </div>
+
+      {modo==="mentor" ? <div>
+        <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"14px"}}>Onde cada mentor está atuando — um mentor pode estar vinculado a mais de um órgão.</p>
+        {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+        {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+        {!carregando && !porMentor.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum mentor vinculado a órgão ainda.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          {porMentor.map(m=>(
+            <div key={m.mentorId} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"11px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}}>
+              <b style={{fontSize:"12.5px"}}>{m.nome}</b>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"6px"}}>
+                {m.vinculos.map(v=>(
+                  <span key={v.id} style={{fontSize:"10.5px",fontWeight:700,color:C.navy,background:C.primarySoft,borderRadius:"999px",padding:"3px 9px"}}>
+                    {v.orgao}{v.unidade&&v.unidade!==v.orgao?` · ${v.unidade}`:""}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div> : <>
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"14px"}}>
         <p style={{fontSize:"12.5px",color:C.faint,margin:0}}>Caminho de cada órgão até a conclusão das 15 oficinas (0 a 14). Verde = concluída, amarelo = agendada, cinza = pendente.</p>
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
@@ -3276,6 +3321,7 @@ function DashboardOrgaos({token}){
           </div>
         ))}
       </div>
+      </>}
     </div>
   );
 }
@@ -3445,7 +3491,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
         <button className={`px-mode ${aba==="dashboard"?"on":""}`} onClick={()=>setAba("dashboard")}><BarChart3 size={13}/> <span className="px-mode-lbl">Dashboard</span></button>
       </div>}
 
-      {aba==="dashboard" && isAdmin ? <CredenciamentoDashboard token={token}/> : <>
+      {aba==="dashboard" && isAdmin ? <CredenciamentoDashboard token={token} mentores={mentores}/> : <>
       <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
         Trâmite entre o convite e a liberação para vincular o mentor a um órgão: documentos, assinatura no SEI, cadastro na DICAP e orçamentária.
       </p>
@@ -3508,9 +3554,10 @@ const STATUS_PAG_LABEL={nao_recebido:"Não recebido",em_execucao:"Em execução"
 const STATUS_PAG_COR={nao_recebido:"#d64545",em_execucao:"#e0a400",previsto:"#7a8ba6",recebido:"#1a9c5c"};
 const fmtBRL=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 
-function CredenciamentoDashboard({token}){
+function CredenciamentoDashboard({token,mentores}){
   const [cred,setCred]=useState([]);
   const [pag,setPag]=useState([]);
+  const [vinculos,setVinculos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
 
@@ -3518,18 +3565,30 @@ function CredenciamentoDashboard({token}){
     (async()=>{
       setCarregando(true); setErro("");
       try{
-        const [respCred,respPag]=await Promise.all([
+        const [respCred,respPag,respVinculos]=await Promise.all([
           fetch(`${API_BASE}/api/mentoria/credenciamento/dashboard`,{headers:mentoriaAuthHeader(token)}),
           fetch(`${API_BASE}/api/mentoria/pagamento-mentoria`,{headers:mentoriaAuthHeader(token)}),
+          fetch(`${API_BASE}/api/mentoria/vinculos?todos=true`,{headers:mentoriaAuthHeader(token)}),
         ]);
         const dCred=await respCred.json(), dPag=await respPag.json();
         if(!respCred.ok) throw new Error(dCred.erro||"Erro ao carregar dashboard de credenciamento.");
         if(!respPag.ok) throw new Error(dPag.erro||"Erro ao carregar dashboard de pagamento.");
         setCred(dCred); setPag(dPag);
+        if(respVinculos.ok) setVinculos(await respVinculos.json());
       }catch(err){ setErro(err.message||"Erro ao carregar dashboard."); }
       finally{ setCarregando(false); }
     })();
   },[token]);
+
+  const porMentor=useMemo(()=>{
+    const grupos={};
+    vinculos.forEach(v=>{ (grupos[v.mentor_id] ||= []).push(v); });
+    return Object.entries(grupos).map(([mentorId,vs])=>({
+      mentorId:Number(mentorId),
+      nome:(mentores||[]).find(m=>m.id===Number(mentorId))?.nome || `Mentor #${mentorId}`,
+      vinculos:vs,
+    })).sort((a,b)=>a.nome.localeCompare(b.nome));
+  },[vinculos,mentores]);
 
   const statsCred=useMemo(()=>{
     const total=cred.length;
@@ -3655,6 +3714,22 @@ function CredenciamentoDashboard({token}){
             </div>
             <span style={{fontSize:"11px",color:C.faint,width:"18px",textAlign:"right"}}>{statsCred.porEtapa.concluido}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Onde cada mentor está atuando -- pode ser mais de um órgão */}
+      <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px",marginTop:"14px"}}>
+        <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><Building2 size={13}/> Onde cada mentor está atuando</div>
+        {!porMentor.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum mentor vinculado a órgão ainda.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+          {porMentor.map(m=>(
+            <div key={m.mentorId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"6px",fontSize:"12px"}}>
+              <span>{m.nome}</span>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
+                {m.vinculos.map(v=><span key={v.id} style={{fontSize:"10px",fontWeight:700,color:C.navy,background:C.primarySoft,borderRadius:"999px",padding:"2px 8px"}}>{v.orgao}</span>)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
