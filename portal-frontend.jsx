@@ -3327,6 +3327,66 @@ const TIPOS_DOCUMENTO_POR_ETAPA={
 const STATUS_GERAL_LABEL={em_andamento:"Em andamento",indeferido:"Indeferido",concluido:"Concluído"};
 const STATUS_GERAL_COR={em_andamento:"#e0a400",indeferido:"#d64545",concluido:"#1a9c5c"};
 
+// Combobox de busca de mentor -- por nome ou por nº de processo SEI já
+// aberto pra ele. Em vez de um <select> gigante com todo mundo listado,
+// mostra no máximo 6 resultados enquanto o admin digita.
+function BuscaMentor({mentores,processos,value,onChange,placeholder}){
+  const [busca,setBusca]=useState("");
+  const [aberto,setAberto]=useState(false);
+  const norm=s=>(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+
+  const processosPorMentor=useMemo(()=>{
+    const m={};
+    (processos||[]).forEach(p=>{ if(p.numero_sei_processo) (m[p.mentor_id] ||= []).push(p.numero_sei_processo); });
+    return m;
+  },[processos]);
+
+  const selecionado=(mentores||[]).find(m=>String(m.id)===String(value));
+
+  const resultados=useMemo(()=>{
+    if(!busca.trim()) return [];
+    const b=norm(busca);
+    return (mentores||[]).filter(m=>{
+      if(m.is_admin) return false;
+      if(norm(m.nome).includes(b)) return true;
+      return (processosPorMentor[m.id]||[]).some(sei=>norm(sei).includes(b));
+    }).slice(0,6);
+  },[busca,mentores,processosPorMentor]);
+
+  if(selecionado && !aberto){
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:"6px",padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",minWidth:"180px",background:C.primarySoft}}>
+        <span style={{flex:1}}>{selecionado.nome}</span>
+        <button type="button" onClick={()=>{onChange("");setBusca("");setAberto(true);}} style={{border:"none",background:"none",cursor:"pointer",color:C.faint,display:"flex"}}><X size={13}/></button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{position:"relative"}}>
+      <input value={busca}
+        onChange={e=>{setBusca(e.target.value);setAberto(true);}}
+        onFocus={()=>setAberto(true)}
+        onBlur={()=>setTimeout(()=>setAberto(false),150)}
+        placeholder={placeholder||"Nome ou nº SEI…"}
+        style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",minWidth:"180px"}}/>
+      {aberto && busca.trim() && <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:"#fff",border:`1px solid ${C.line}`,borderRadius:"7px",marginTop:"3px",boxShadow:"0 4px 14px rgba(0,0,0,.12)",maxHeight:"230px",overflowY:"auto"}}>
+        {!resultados.length && <div style={{padding:"8px 10px",fontSize:"11.5px",color:C.faint}}>Nenhum mentor encontrado.</div>}
+        {resultados.map(m=>{
+          const seis=processosPorMentor[m.id]||[];
+          return (
+            <button key={m.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{onChange(String(m.id));setBusca("");setAberto(false);}}
+              style={{display:"block",width:"100%",textAlign:"left",padding:"7px 10px",border:"none",borderBottom:`1px solid ${C.line}`,background:"#fff",cursor:"pointer",fontSize:"12px"}}>
+              <div>{m.nome}</div>
+              {!!seis.length && <div style={{fontSize:"10.5px",color:C.faint}}>{seis.join(" · ")}</div>}
+            </button>
+          );
+        })}
+      </div>}
+    </div>
+  );
+}
+
 function Credenciamento({token,isAdmin,mentorId,mentores}){
   const [aba,setAba]=useState("processos"); // "processos" | "dashboard" (dashboard é admin-only)
   const [processos,setProcessos]=useState([]);
@@ -3387,11 +3447,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
       {isAdmin && <form onSubmit={abrirProcesso} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",marginBottom:"18px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"flex-end"}}>
         <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
           <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Mentor</label>
-          <select required value={novo.mentorId} onChange={e=>setNovo(s=>({...s,mentorId:e.target.value}))}
-            style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",minWidth:"180px"}}>
-            <option value="">Selecione…</option>
-            {(mentores||[]).filter(m=>!m.is_admin).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
-          </select>
+          <BuscaMentor mentores={mentores} processos={processos} value={novo.mentorId} onChange={v=>setNovo(s=>({...s,mentorId:v}))}/>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
           <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Nº SEI processo (opcional)</label>
@@ -3964,16 +4020,9 @@ function CursoMentores({token,isAdmin,mentorId}){
 
       {/* ---------------- MENTOR: sem inscrição ainda ---------------- */}
       {!isAdmin && inscricao===null && (aba==="curso"||aba==="aulas") && <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px"}}>
+        <span style={{display:"inline-block",fontSize:"10.5px",fontWeight:700,color:C.primary,background:C.primarySoft,borderRadius:"999px",padding:"3px 10px",marginBottom:"10px"}}>Em breve</span>
         <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Formação de Mentores em DFT</h3>
-        <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6,maxWidth:"56ch"}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. Escolha sua turma pra se inscrever.</p>
-        <form onSubmit={inscrever} style={{display:"flex",gap:"8px",alignItems:"center",marginTop:"14px",flexWrap:"wrap"}}>
-          <select value={turmaEscolhida} onChange={e=>setTurmaEscolhida(e.target.value)}
-            style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px"}}>
-            <option value="turma1">{TURMA_LABEL.turma1}</option>
-            <option value="turma2">{TURMA_LABEL.turma2}</option>
-          </select>
-          <button className="px-btn-primary" type="submit" disabled={inscrevendo} style={{padding:"8px 16px",fontSize:"12.5px"}}>{inscrevendo?"Inscrevendo…":"Inscrever-se"}</button>
-        </form>
+        <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6,maxWidth:"56ch"}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. As inscrições ainda não abriram — assim que abrirem, você vai poder escolher sua turma aqui.</p>
       </div>}
 
       {/* ---------------- MENTOR: visão geral do curso ---------------- */}
