@@ -2613,9 +2613,6 @@ function PainelMentoria({abaInicial}={}){
         <button className={`px-mode ${subaba==="credenciamento"?"on":""}`} onClick={()=>setSubaba("credenciamento")}>
           <ShieldCheck size={13}/> <span className="px-mode-lbl">Credenciamento</span>
         </button>
-        <button className={`px-mode ${subaba==="curso"?"on":""}`} onClick={()=>setSubaba("curso")}>
-          <GraduationCap size={13}/> <span className="px-mode-lbl">Curso de Mentores</span>
-        </button>
       </div>
 
       {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
