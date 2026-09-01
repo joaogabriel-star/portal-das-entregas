@@ -3326,6 +3326,7 @@ const STATUS_GERAL_LABEL={em_andamento:"Em andamento",indeferido:"Indeferido",co
 const STATUS_GERAL_COR={em_andamento:"#e0a400",indeferido:"#d64545",concluido:"#1a9c5c"};
 
 function Credenciamento({token,isAdmin,mentorId,mentores}){
+  const [aba,setAba]=useState("processos"); // "processos" | "dashboard" (dashboard é admin-only)
   const [processos,setProcessos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
@@ -3370,6 +3371,12 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
 
   return (
     <div>
+      {isAdmin && <div style={{display:"flex",gap:"6px",marginBottom:"14px"}}>
+        <button className={`px-mode ${aba==="processos"?"on":""}`} onClick={()=>setAba("processos")}><ClipboardList size={13}/> <span className="px-mode-lbl">Processos</span></button>
+        <button className={`px-mode ${aba==="dashboard"?"on":""}`} onClick={()=>setAba("dashboard")}><BarChart3 size={13}/> <span className="px-mode-lbl">Dashboard</span></button>
+      </div>}
+
+      {aba==="dashboard" && isAdmin ? <CredenciamentoDashboard token={token}/> : <>
       <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
         Trâmite entre o convite e a liberação para vincular o mentor a um órgão: documentos, assinatura no SEI, cadastro na DICAP e orçamentária.
       </p>
@@ -3415,6 +3422,164 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
         {selecionado && <div>
           <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar} onFechar={()=>setSelId(null)}/>
         </div>}
+      </div>
+      </>}
+    </div>
+  );
+}
+
+const STATUS_PAG_LABEL={nao_recebido:"Não recebido",em_execucao:"Em execução",previsto:"Previsto",recebido:"Recebido"};
+const STATUS_PAG_COR={nao_recebido:"#d64545",em_execucao:"#e0a400",previsto:"#7a8ba6",recebido:"#1a9c5c"};
+const fmtBRL=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+
+function CredenciamentoDashboard({token}){
+  const [cred,setCred]=useState([]);
+  const [pag,setPag]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+
+  useEffect(()=>{
+    (async()=>{
+      setCarregando(true); setErro("");
+      try{
+        const [respCred,respPag]=await Promise.all([
+          fetch(`${API_BASE}/api/mentoria/credenciamento/dashboard`,{headers:mentoriaAuthHeader(token)}),
+          fetch(`${API_BASE}/api/mentoria/pagamento-mentoria`,{headers:mentoriaAuthHeader(token)}),
+        ]);
+        const dCred=await respCred.json(), dPag=await respPag.json();
+        if(!respCred.ok) throw new Error(dCred.erro||"Erro ao carregar dashboard de credenciamento.");
+        if(!respPag.ok) throw new Error(dPag.erro||"Erro ao carregar dashboard de pagamento.");
+        setCred(dCred); setPag(dPag);
+      }catch(err){ setErro(err.message||"Erro ao carregar dashboard."); }
+      finally{ setCarregando(false); }
+    })();
+  },[token]);
+
+  const statsCred=useMemo(()=>{
+    const total=cred.length;
+    const liberados=cred.filter(p=>p.fase1Completa).length;
+    const porStatus={em_andamento:0,indeferido:0,concluido:0};
+    cred.forEach(p=>{ porStatus[p.statusGeral]=(porStatus[p.statusGeral]||0)+1; });
+    const porEtapa={};
+    ETAPAS_CRED.forEach(([chave])=>{ porEtapa[chave]=0; });
+    porEtapa.concluido=0;
+    cred.forEach(p=>{ porEtapa[p.etapaAtual]=(porEtapa[p.etapaAtual]||0)+1; });
+    return {total,liberados,porStatus,porEtapa};
+  },[cred]);
+
+  const statsPag=useMemo(()=>{
+    const totalGeral=pag.reduce((s,p)=>s+Number(p.valor),0);
+    const porStatus={nao_recebido:{qtd:0,valor:0},em_execucao:{qtd:0,valor:0},previsto:{qtd:0,valor:0},recebido:{qtd:0,valor:0}};
+    pag.forEach(p=>{ porStatus[p.status].qtd++; porStatus[p.status].valor+=Number(p.valor); });
+    const porTipo={curso_formacao:{qtd:0,valor:0},oficina_mentoria:{qtd:0,valor:0}};
+    pag.forEach(p=>{ porTipo[p.tipo].qtd++; porTipo[p.tipo].valor+=Number(p.valor); });
+    const pendentesValor=porStatus.nao_recebido.valor+porStatus.em_execucao.valor+porStatus.previsto.valor;
+    const porBeneficiario={};
+    pag.filter(p=>p.status!=="recebido").forEach(p=>{
+      const k=p.beneficiario_nome;
+      (porBeneficiario[k] ||= {nome:k,valor:0,processos:0}).valor+=Number(p.valor);
+      porBeneficiario[k].processos++;
+    });
+    const topPendencias=Object.values(porBeneficiario).sort((a,b)=>b.valor-a.valor).slice(0,8);
+    const semNumeroProcesso=pag.filter(p=>!p.numero_sei_processo).length;
+    return {totalGeral,porStatus,porTipo,pendentesValor,topPendencias,semNumeroProcesso};
+  },[pag]);
+
+  if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando dashboard…</div>;
+  if(erro) return <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>;
+
+  return (
+    <div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
+        Panorama geral do credenciamento e do controle financeiro (SEI) de quem atua na mentoria — Curso de Formação e Oficinas de Mentoria.
+      </p>
+
+      {/* Cards de totais financeiros, estilo painel */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:"10px",marginBottom:"18px"}}>
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px",background:C.navy,color:"#fff"}}>
+          <div style={{fontSize:"10.5px",opacity:.8,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Necessidade orçamentária total</div>
+          <div style={{fontSize:"21px",fontWeight:800,marginTop:"6px"}}>{fmtBRL(statsPag.totalGeral)}</div>
+          <div style={{fontSize:"10.5px",opacity:.75,marginTop:"2px"}}>{pag.length} processo{pag.length===1?"":"s"}</div>
+        </div>
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"10.5px",color:C.faint,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Pendente (não recebido + em execução + previsto)</div>
+          <div style={{fontSize:"19px",fontWeight:800,marginTop:"6px",color:STATUS_PAG_COR.nao_recebido}}>{fmtBRL(statsPag.pendentesValor)}</div>
+          <div style={{fontSize:"10.5px",color:C.faint,marginTop:"2px"}}>{statsPag.porStatus.nao_recebido.qtd+statsPag.porStatus.em_execucao.qtd+statsPag.porStatus.previsto.qtd} processos</div>
+        </div>
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"10.5px",color:C.faint,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Recebido / liquidado</div>
+          <div style={{fontSize:"19px",fontWeight:800,marginTop:"6px",color:STATUS_PAG_COR.recebido}}>{fmtBRL(statsPag.porStatus.recebido.valor)}</div>
+          <div style={{fontSize:"10.5px",color:C.faint,marginTop:"2px"}}>{statsPag.porStatus.recebido.qtd} processos</div>
+        </div>
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"10.5px",color:C.faint,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Mentores liberados p/ vínculo</div>
+          <div style={{fontSize:"19px",fontWeight:800,marginTop:"6px",color:C.primary}}>{statsCred.liberados} <span style={{fontSize:"12px",fontWeight:600,color:C.faint}}>de {statsCred.total}</span></div>
+          <div style={{fontSize:"10.5px",color:C.faint,marginTop:"2px"}}>fase 1 (credenciamento) completa</div>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"minmax(260px,1.1fr) minmax(260px,1fr)",gap:"14px",marginBottom:"14px"}}>
+        {/* Split Curso de Formação vs Oficinas */}
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><PieChart size={13}/> Por tipo de atuação</div>
+          {[["curso_formacao","Curso de Formação de Mentores"],["oficina_mentoria","Oficinas de Mentoria"]].map(([chave,rot])=>(
+            <div key={chave} style={{marginBottom:"10px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:"12px",marginBottom:"4px"}}>
+                <span>{rot}</span><b>{fmtBRL(statsPag.porTipo[chave].valor)}</b>
+              </div>
+              <div style={{height:"7px",borderRadius:"999px",background:C.bg,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${statsPag.totalGeral?statsPag.porTipo[chave].valor/statsPag.totalGeral*100:0}%`,background:C.primary,borderRadius:"999px"}}/>
+              </div>
+              <div style={{fontSize:"10.5px",color:C.faint,marginTop:"3px"}}>{statsPag.porTipo[chave].qtd} processos</div>
+            </div>
+          ))}
+          <div style={{marginTop:"12px",paddingTop:"10px",borderTop:`1px solid ${C.line}`,display:"flex",flexWrap:"wrap",gap:"6px"}}>
+            {Object.entries(STATUS_PAG_LABEL).map(([k,rot])=>(
+              <span key={k} style={{fontSize:"10.5px",fontWeight:700,color:"#fff",background:STATUS_PAG_COR[k],borderRadius:"999px",padding:"3px 9px"}}>
+                {rot}: {statsPag.porStatus[k].qtd} · {fmtBRL(statsPag.porStatus[k].valor)}
+              </span>
+            ))}
+          </div>
+          {statsPag.semNumeroProcesso>0 && <div style={{marginTop:"10px",fontSize:"10.5px",color:C.faint}}><AlertTriangle size={11} style={{verticalAlign:"-1px"}}/> {statsPag.semNumeroProcesso} processo(s) ainda sem número SEI ("processo iniciando" na planilha original).</div>}
+        </div>
+
+        {/* Top pendências */}
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
+          <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><TrendingUp size={13}/> Top pendências (não recebido + previsto)</div>
+          {!statsPag.topPendencias.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma pendência.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+            {statsPag.topPendencias.map((p,i)=>(
+              <div key={p.nome} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:"12px",padding:"6px 8px",borderRadius:"7px",background:i===0?C.primarySoft:C.bg}}>
+                <span>{i+1}. {p.nome}{p.processos>1?<span style={{color:C.faint}}> ({p.processos} processos)</span>:null}</span>
+                <b>{fmtBRL(p.valor)}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Etapa atual do credenciamento (fase 1 + fase 2) */}
+      <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
+        <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><Workflow size={13}/> Onde cada mentor está no credenciamento</div>
+        {!statsCred.total && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo de credenciamento ainda.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+          {ETAPAS_CRED.map(([chave,rot])=>(
+            <div key={chave} style={{display:"flex",alignItems:"center",gap:"8px"}}>
+              <span style={{fontSize:"11.5px",width:"150px",flexShrink:0,color:C.sub}}>{rot}</span>
+              <div style={{flex:1,height:"16px",borderRadius:"999px",background:C.bg,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${statsCred.total?statsCred.porEtapa[chave]/statsCred.total*100:0}%`,background:C.primary,borderRadius:"999px"}}/>
+              </div>
+              <span style={{fontSize:"11px",color:C.faint,width:"18px",textAlign:"right"}}>{statsCred.porEtapa[chave]}</span>
+            </div>
+          ))}
+          <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+            <span style={{fontSize:"11.5px",width:"150px",flexShrink:0,color:C.sub,fontWeight:700}}>Concluído</span>
+            <div style={{flex:1,height:"16px",borderRadius:"999px",background:C.bg,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${statsCred.total?statsCred.porEtapa.concluido/statsCred.total*100:0}%`,background:C.green,borderRadius:"999px"}}/>
+            </div>
+            <span style={{fontSize:"11px",color:C.faint,width:"18px",textAlign:"right"}}>{statsCred.porEtapa.concluido}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
