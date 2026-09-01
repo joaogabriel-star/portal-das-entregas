@@ -3395,6 +3395,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
   const [selId,setSelId]=useState(undefined); // undefined = ainda não decidiu; null = fechado pelo usuário; número = selecionado
   const [novo,setNovo]=useState({mentorId:"",numeroSeiProcesso:"",numeroSeiDocumento:""});
   const [abrindo,setAbrindo]=useState(false);
+  const [filtro,setFiltro]=useState("");
 
   async function carregar(){
     setCarregando(true); setErro("");
@@ -3430,6 +3431,11 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
   }
 
   const selecionado=processos.find(p=>p.id===selId)||null;
+  const processosFiltrados=useMemo(()=>{
+    if(!filtro.trim()) return processos;
+    const f=norm(filtro);
+    return processos.filter(p=>norm(p.mentor_nome).includes(f)||norm(p.numero_sei_processo).includes(f));
+  },[processos,filtro]);
 
   return (
     <div>
@@ -3465,9 +3471,16 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
       {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
       {!carregando && !processos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo de credenciamento ainda.</div>}
 
+      {isAdmin && !!processos.length && <div style={{position:"relative",marginBottom:"12px",maxWidth:"320px"}}>
+        <Search size={13} color={C.faint} style={{position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={filtro} onChange={e=>setFiltro(e.target.value)} placeholder="Buscar por nome ou nº SEI…"
+          style={{width:"100%",padding:"7px 10px 7px 30px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+      </div>}
+
       <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
         <div style={{display:"flex",flexWrap:"wrap",gap:"8px"}}>
-          {processos.map(p=>(
+          {!processosFiltrados.length && filtro.trim() && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo encontrado com esse filtro.</div>}
+          {processosFiltrados.map(p=>(
             <button key={p.id} onClick={()=>setSelId(p.id)}
               style={{textAlign:"left",padding:"9px 12px",flex:"0 1 220px",minWidth:"170px",border:`1px solid ${selId===p.id?C.primary:C.line}`,borderRadius:"9px",background:selId===p.id?C.primarySoft:"#fff",cursor:"pointer"}}>
               {isAdmin && <b style={{fontSize:"12.5px"}}>{p.mentor_nome}</b>}
