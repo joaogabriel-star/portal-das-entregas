@@ -4,7 +4,7 @@
   "scripts": {
     "build:catalogo": "esbuild index.jsx --bundle --minify --format=iife --loader:.html=text --outfile=dist/bundle.js",
     "build:organizacoes": "esbuild organizacoes.jsx --bundle --minify --format=iife --loader:.html=text --outfile=dist/organizacoes-bundle.js",
-    "copy:html": "node -e \"const fs=require('fs');fs.copyFileSync('index.html','dist/index.html');fs.copyFileSync('organizacoes.html','dist/organizacoes.html')\"",
+    "copy:html": "node -e \"const fs=require('fs');fs.copyFileSync('index.html','dist/index.html');fs.copyFileSync('organizacoes.html','dist/organizacoes.html');fs.copyFileSync('banco.json','dist/banco.json');fs.copyFileSync('banco-detalhes.json','dist/banco-detalhes.json')\"",
     "build": "npm run build:catalogo && npm run build:organizacoes && npm run copy:html",
     "dev": "npm run build && npx serve dist"
   },
