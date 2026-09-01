@@ -3479,7 +3479,7 @@ function CredenciamentoDashboard({token}){
     const porBeneficiario={};
     pag.filter(p=>p.status!=="recebido").forEach(p=>{
       const k=p.beneficiario_nome;
-      (porBeneficiario[k] ||= {nome:k,valor:0,processos:0}).valor+=Number(p.valor);
+      (porBeneficiario[k] ||= {nome:k,valor:0,processos:0,orgao:p.orgao||null}).valor+=Number(p.valor);
       porBeneficiario[k].processos++;
     });
     const topPendencias=Object.values(porBeneficiario).sort((a,b)=>b.valor-a.valor).slice(0,8);
@@ -3552,7 +3552,7 @@ function CredenciamentoDashboard({token}){
           <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
             {statsPag.topPendencias.map((p,i)=>(
               <div key={p.nome} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:"12px",padding:"6px 8px",borderRadius:"7px",background:i===0?C.primarySoft:C.bg}}>
-                <span>{i+1}. {p.nome}{p.processos>1?<span style={{color:C.faint}}> ({p.processos} processos)</span>:null}</span>
+                <span>{i+1}. {p.nome}{p.orgao?<span style={{color:C.faint}}> · {p.orgao}</span>:null}{p.processos>1?<span style={{color:C.faint}}> ({p.processos} processos)</span>:null}</span>
                 <b>{fmtBRL(p.valor)}</b>
               </div>
             ))}
