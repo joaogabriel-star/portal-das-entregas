@@ -3556,6 +3556,7 @@ function DashboardFinanceiro({token,mentores}){
   const [vinculos,setVinculos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
+  const [filtroTipo,setFiltroTipo]=useState("geral"); // "geral" | "curso_formacao" | "oficina_mentoria"
 
   useEffect(()=>{
     (async()=>{
@@ -3598,17 +3599,25 @@ function DashboardFinanceiro({token,mentores}){
     return {total,liberados,porStatus,porEtapa};
   },[cred]);
 
+  // Cards de totais respeitam o filtro (Geral / Curso de Formação /
+  // Oficinas de Mentoria); a comparação "Por tipo de atuação" sempre usa
+  // os dois juntos, senão não haveria o que comparar.
+  const pagFiltrado=useMemo(()=>{
+    return filtroTipo==="geral" ? pag : pag.filter(p=>p.tipo===filtroTipo);
+  },[pag,filtroTipo]);
+
   const statsPag=useMemo(()=>{
-    const totalGeral=pag.reduce((s,p)=>s+Number(p.valor),0);
+    const totalGeral=pagFiltrado.reduce((s,p)=>s+Number(p.valor),0);
     const porStatus={nao_recebido:{qtd:0,valor:0},em_execucao:{qtd:0,valor:0},previsto:{qtd:0,valor:0},recebido:{qtd:0,valor:0}};
-    pag.forEach(p=>{ porStatus[p.status].qtd++; porStatus[p.status].valor+=Number(p.valor); });
+    pagFiltrado.forEach(p=>{ porStatus[p.status].qtd++; porStatus[p.status].valor+=Number(p.valor); });
     const porTipo={curso_formacao:{qtd:0,valor:0},oficina_mentoria:{qtd:0,valor:0}};
     pag.forEach(p=>{ porTipo[p.tipo].qtd++; porTipo[p.tipo].valor+=Number(p.valor); });
     const pendentesValor=porStatus.nao_recebido.valor+porStatus.em_execucao.valor+porStatus.previsto.valor;
     // Top pendências separado por tipo -- somar curso_formacao com
     // oficina_mentoria no mesmo total por pessoa confundia (o mesmo nome
     // aparecia com um valor que não batia com nenhuma das duas planilhas
-    // de origem).
+    // de origem). Sem limite de linhas -- tem que aparecer todo mundo que
+    // está no pdf, não só um top N.
     function topPendenciasDoTipo(tipo){
       const porBeneficiario={};
       pag.filter(p=>p.tipo===tipo && p.status!=="recebido").forEach(p=>{
@@ -3616,31 +3625,43 @@ function DashboardFinanceiro({token,mentores}){
         (porBeneficiario[k] ||= {nome:k,valor:0,processos:0,orgao:p.orgao||null}).valor+=Number(p.valor);
         porBeneficiario[k].processos++;
       });
-      return Object.values(porBeneficiario).sort((a,b)=>b.valor-a.valor).slice(0,8);
+      return Object.values(porBeneficiario).sort((a,b)=>b.valor-a.valor);
     }
     const topPendenciasPorTipo={
       curso_formacao:topPendenciasDoTipo('curso_formacao'),
       oficina_mentoria:topPendenciasDoTipo('oficina_mentoria'),
     };
-    const semNumeroProcesso=pag.filter(p=>!p.numero_sei_processo).length;
+    const semNumeroProcesso=pagFiltrado.filter(p=>!p.numero_sei_processo).length;
     return {totalGeral,porStatus,porTipo,pendentesValor,topPendenciasPorTipo,semNumeroProcesso};
-  },[pag]);
+  },[pag,pagFiltrado]);
 
   if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando dashboard…</div>;
   if(erro) return <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>;
 
   return (
     <div>
-      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"12px"}}>
         Panorama financeiro (SEI) e de credenciamento de quem atua na mentoria — Curso de Formação e Oficinas de Mentoria.
       </p>
 
-      {/* Cards de totais financeiros, estilo painel */}
+      <div style={{display:"flex",gap:"6px",marginBottom:"16px",flexWrap:"wrap"}}>
+        {[["geral","Geral"],["curso_formacao","Curso de Formação de Mentores"],["oficina_mentoria","Oficinas de Mentoria"]].map(([chave,rot])=>(
+          <button key={chave} onClick={()=>setFiltroTipo(chave)}
+            style={{padding:"6px 13px",borderRadius:"999px",fontSize:"12px",fontWeight:700,cursor:"pointer",
+              border:`1px solid ${filtroTipo===chave?C.primary:C.line}`,
+              background:filtroTipo===chave?C.primary:"#fff",
+              color:filtroTipo===chave?"#fff":C.sub}}>
+            {rot}
+          </button>
+        ))}
+      </div>
+
+      {/* Cards de totais financeiros, estilo painel -- respeitam o filtro acima */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:"10px",marginBottom:"18px"}}>
         <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px",background:C.navy,color:"#fff"}}>
-          <div style={{fontSize:"10.5px",opacity:.8,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Necessidade orçamentária total</div>
+          <div style={{fontSize:"10.5px",opacity:.8,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Necessidade orçamentária {filtroTipo==="geral"?"total":""}</div>
           <div style={{fontSize:"21px",fontWeight:800,marginTop:"6px"}}>{fmtBRL(statsPag.totalGeral)}</div>
-          <div style={{fontSize:"10.5px",opacity:.75,marginTop:"2px"}}>{pag.length} processo{pag.length===1?"":"s"}</div>
+          <div style={{fontSize:"10.5px",opacity:.75,marginTop:"2px"}}>{pagFiltrado.length} processo{pagFiltrado.length===1?"":"s"}</div>
         </div>
         <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
           <div style={{fontSize:"10.5px",color:C.faint,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Pendente (não recebido + em execução + previsto)</div>
@@ -3684,10 +3705,10 @@ function DashboardFinanceiro({token,mentores}){
           {statsPag.semNumeroProcesso>0 && <div style={{marginTop:"10px",fontSize:"10.5px",color:C.faint}}><AlertTriangle size={11} style={{verticalAlign:"-1px"}}/> {statsPag.semNumeroProcesso} processo(s) ainda sem número SEI ("processo iniciando" na planilha original).</div>}
         </div>
 
-        {/* Top pendências -- separadas por tipo, pra não somar curso com oficina na mesma pessoa */}
+        {/* Pendências -- separadas por tipo, pra não somar curso com oficina na mesma pessoa. Filtro no topo restringe a um tipo só. */}
         <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
-          <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><TrendingUp size={13}/> Top pendências (não recebido + previsto)</div>
-          {[["curso_formacao","Curso de Formação de Mentores"],["oficina_mentoria","Oficinas de Mentoria"]].map(([chave,rot],idx)=>(
+          <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><TrendingUp size={13}/> Pendências (não recebido + previsto)</div>
+          {[["curso_formacao","Curso de Formação de Mentores"],["oficina_mentoria","Oficinas de Mentoria"]].filter(([chave])=>filtroTipo==="geral"||filtroTipo===chave).map(([chave,rot],idx)=>(
             <div key={chave} style={{marginTop:idx?"14px":0}}>
               <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"6px"}}>{rot}</div>
               {!statsPag.topPendenciasPorTipo[chave].length && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma pendência.</div>}
