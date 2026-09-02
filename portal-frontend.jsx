@@ -3557,6 +3557,7 @@ function DashboardFinanceiro({token,mentores}){
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
   const [filtroTipo,setFiltroTipo]=useState("geral"); // "geral" | "curso_formacao" | "oficina_mentoria"
+  const [expandido,setExpandido]=useState({curso_formacao:false,oficina_mentoria:false});
 
   useEffect(()=>{
     (async()=>{
@@ -3589,7 +3590,7 @@ function DashboardFinanceiro({token,mentores}){
 
   const statsCred=useMemo(()=>{
     const total=cred.length;
-    const liberados=cred.filter(p=>p.fase1Completa).length;
+    const liberados=cred.filter(p=>p.liberadoParaVinculo).length;
     const porStatus={em_andamento:0,indeferido:0,concluido:0};
     cred.forEach(p=>{ porStatus[p.statusGeral]=(porStatus[p.statusGeral]||0)+1; });
     const porEtapa={};
@@ -3676,7 +3677,7 @@ function DashboardFinanceiro({token,mentores}){
         <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
           <div style={{fontSize:"10.5px",color:C.faint,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em"}}>Mentores liberados p/ vínculo</div>
           <div style={{fontSize:"19px",fontWeight:800,marginTop:"6px",color:C.primary}}>{statsCred.liberados} <span style={{fontSize:"12px",fontWeight:600,color:C.faint}}>de {statsCred.total}</span></div>
-          <div style={{fontSize:"10.5px",color:C.faint,marginTop:"2px"}}>fase 1 (credenciamento) completa</div>
+          <div style={{fontSize:"10.5px",color:C.faint,marginTop:"2px"}}>assinatura no SEI concluída</div>
         </div>
       </div>
 
@@ -3713,13 +3714,16 @@ function DashboardFinanceiro({token,mentores}){
               <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"6px"}}>{rot}</div>
               {!statsPag.topPendenciasPorTipo[chave].length && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma pendência.</div>}
               <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
-                {statsPag.topPendenciasPorTipo[chave].map((p,i)=>(
+                {(expandido[chave]?statsPag.topPendenciasPorTipo[chave]:statsPag.topPendenciasPorTipo[chave].slice(0,10)).map((p,i)=>(
                   <div key={p.nome} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:"12px",padding:"6px 8px",borderRadius:"7px",background:i===0?C.primarySoft:C.bg}}>
                     <span>{i+1}. {p.nome}{p.orgao?<span style={{color:C.faint}}> · {p.orgao}</span>:null}{p.processos>1?<span style={{color:C.faint}}> ({p.processos} processos)</span>:null}</span>
                     <b>{fmtBRL(p.valor)}</b>
                   </div>
                 ))}
               </div>
+              {statsPag.topPendenciasPorTipo[chave].length>10 && <button className="px-btn-ghost" onClick={()=>setExpandido(s=>({...s,[chave]:!s[chave]}))} style={{marginTop:"7px",padding:"4px 10px",fontSize:"11px"}}>
+                {expandido[chave]?"Recolher":`Ver mais (${statsPag.topPendenciasPorTipo[chave].length-10})`}
+              </button>}
             </div>
           ))}
         </div>
