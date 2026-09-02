@@ -2610,6 +2610,9 @@ function PainelMentoria({abaInicial}={}){
         {mentor?.isAdmin && <button className={`px-mode ${subaba==="dashboard"?"on":""}`} onClick={()=>setSubaba("dashboard")}>
           <BarChart2 size={13}/> <span className="px-mode-lbl">Dashboard</span>
         </button>}
+        {mentor?.isAdmin && <button className={`px-mode ${subaba==="dashboard-financeiro"?"on":""}`} onClick={()=>setSubaba("dashboard-financeiro")}>
+          <BarChart3 size={13}/> <span className="px-mode-lbl">Dashboard Financeiro</span>
+        </button>}
         <button className={`px-mode ${subaba==="credenciamento"?"on":""}`} onClick={()=>setSubaba("credenciamento")}>
           <ShieldCheck size={13}/> <span className="px-mode-lbl">Credenciamento</span>
         </button>
@@ -2619,6 +2622,7 @@ function PainelMentoria({abaInicial}={}){
       {subaba==="documentos" && <BibliotecaDocumentos token={token} isAdmin={!!mentor?.isAdmin} eventosDoMentor={!mentor?.isAdmin}/>}
       {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
       {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
+      {subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
       {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
@@ -3434,7 +3438,6 @@ function BuscaMentor({mentores,processos,value,onChange,placeholder}){
 }
 
 function Credenciamento({token,isAdmin,mentorId,mentores}){
-  const [aba,setAba]=useState("processos"); // "processos" | "dashboard" (dashboard é admin-only)
   const [processos,setProcessos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
@@ -3486,12 +3489,6 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
 
   return (
     <div>
-      {isAdmin && <div style={{display:"flex",gap:"6px",marginBottom:"14px"}}>
-        <button className={`px-mode ${aba==="processos"?"on":""}`} onClick={()=>setAba("processos")}><ClipboardList size={13}/> <span className="px-mode-lbl">Processos</span></button>
-        <button className={`px-mode ${aba==="dashboard"?"on":""}`} onClick={()=>setAba("dashboard")}><BarChart3 size={13}/> <span className="px-mode-lbl">Dashboard</span></button>
-      </div>}
-
-      {aba==="dashboard" && isAdmin ? <CredenciamentoDashboard token={token} mentores={mentores}/> : <>
       <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
         Trâmite entre o convite e a liberação para vincular o mentor a um órgão: documentos, assinatura no SEI, cadastro na DICAP e orçamentária.
       </p>
@@ -3545,7 +3542,6 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
           <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar} onFechar={()=>setSelId(null)}/>
         </div>}
       </div>
-      </>}
     </div>
   );
 }
@@ -3554,7 +3550,7 @@ const STATUS_PAG_LABEL={nao_recebido:"Não recebido",em_execucao:"Em execução"
 const STATUS_PAG_COR={nao_recebido:"#d64545",em_execucao:"#e0a400",previsto:"#7a8ba6",recebido:"#1a9c5c"};
 const fmtBRL=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 
-function CredenciamentoDashboard({token,mentores}){
+function DashboardFinanceiro({token,mentores}){
   const [cred,setCred]=useState([]);
   const [pag,setPag]=useState([]);
   const [vinculos,setVinculos]=useState([]);
@@ -3609,15 +3605,25 @@ function CredenciamentoDashboard({token,mentores}){
     const porTipo={curso_formacao:{qtd:0,valor:0},oficina_mentoria:{qtd:0,valor:0}};
     pag.forEach(p=>{ porTipo[p.tipo].qtd++; porTipo[p.tipo].valor+=Number(p.valor); });
     const pendentesValor=porStatus.nao_recebido.valor+porStatus.em_execucao.valor+porStatus.previsto.valor;
-    const porBeneficiario={};
-    pag.filter(p=>p.status!=="recebido").forEach(p=>{
-      const k=p.beneficiario_nome;
-      (porBeneficiario[k] ||= {nome:k,valor:0,processos:0,orgao:p.orgao||null}).valor+=Number(p.valor);
-      porBeneficiario[k].processos++;
-    });
-    const topPendencias=Object.values(porBeneficiario).sort((a,b)=>b.valor-a.valor).slice(0,8);
+    // Top pendências separado por tipo -- somar curso_formacao com
+    // oficina_mentoria no mesmo total por pessoa confundia (o mesmo nome
+    // aparecia com um valor que não batia com nenhuma das duas planilhas
+    // de origem).
+    function topPendenciasDoTipo(tipo){
+      const porBeneficiario={};
+      pag.filter(p=>p.tipo===tipo && p.status!=="recebido").forEach(p=>{
+        const k=p.beneficiario_nome;
+        (porBeneficiario[k] ||= {nome:k,valor:0,processos:0,orgao:p.orgao||null}).valor+=Number(p.valor);
+        porBeneficiario[k].processos++;
+      });
+      return Object.values(porBeneficiario).sort((a,b)=>b.valor-a.valor).slice(0,8);
+    }
+    const topPendenciasPorTipo={
+      curso_formacao:topPendenciasDoTipo('curso_formacao'),
+      oficina_mentoria:topPendenciasDoTipo('oficina_mentoria'),
+    };
     const semNumeroProcesso=pag.filter(p=>!p.numero_sei_processo).length;
-    return {totalGeral,porStatus,porTipo,pendentesValor,topPendencias,semNumeroProcesso};
+    return {totalGeral,porStatus,porTipo,pendentesValor,topPendenciasPorTipo,semNumeroProcesso};
   },[pag]);
 
   if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando dashboard…</div>;
@@ -3626,7 +3632,7 @@ function CredenciamentoDashboard({token,mentores}){
   return (
     <div>
       <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
-        Panorama geral do credenciamento e do controle financeiro (SEI) de quem atua na mentoria — Curso de Formação e Oficinas de Mentoria.
+        Panorama financeiro (SEI) e de credenciamento de quem atua na mentoria — Curso de Formação e Oficinas de Mentoria.
       </p>
 
       {/* Cards de totais financeiros, estilo painel */}
@@ -3678,18 +3684,23 @@ function CredenciamentoDashboard({token,mentores}){
           {statsPag.semNumeroProcesso>0 && <div style={{marginTop:"10px",fontSize:"10.5px",color:C.faint}}><AlertTriangle size={11} style={{verticalAlign:"-1px"}}/> {statsPag.semNumeroProcesso} processo(s) ainda sem número SEI ("processo iniciando" na planilha original).</div>}
         </div>
 
-        {/* Top pendências */}
+        {/* Top pendências -- separadas por tipo, pra não somar curso com oficina na mesma pessoa */}
         <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"14px"}}>
           <div style={{fontSize:"12px",fontWeight:700,marginBottom:"10px",display:"flex",alignItems:"center",gap:"6px"}}><TrendingUp size={13}/> Top pendências (não recebido + previsto)</div>
-          {!statsPag.topPendencias.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma pendência.</div>}
-          <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
-            {statsPag.topPendencias.map((p,i)=>(
-              <div key={p.nome} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:"12px",padding:"6px 8px",borderRadius:"7px",background:i===0?C.primarySoft:C.bg}}>
-                <span>{i+1}. {p.nome}{p.orgao?<span style={{color:C.faint}}> · {p.orgao}</span>:null}{p.processos>1?<span style={{color:C.faint}}> ({p.processos} processos)</span>:null}</span>
-                <b>{fmtBRL(p.valor)}</b>
+          {[["curso_formacao","Curso de Formação de Mentores"],["oficina_mentoria","Oficinas de Mentoria"]].map(([chave,rot],idx)=>(
+            <div key={chave} style={{marginTop:idx?"14px":0}}>
+              <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"6px"}}>{rot}</div>
+              {!statsPag.topPendenciasPorTipo[chave].length && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma pendência.</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+                {statsPag.topPendenciasPorTipo[chave].map((p,i)=>(
+                  <div key={p.nome} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:"12px",padding:"6px 8px",borderRadius:"7px",background:i===0?C.primarySoft:C.bg}}>
+                    <span>{i+1}. {p.nome}{p.orgao?<span style={{color:C.faint}}> · {p.orgao}</span>:null}{p.processos>1?<span style={{color:C.faint}}> ({p.processos} processos)</span>:null}</span>
+                    <b>{fmtBRL(p.valor)}</b>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
