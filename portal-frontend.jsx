@@ -2303,6 +2303,7 @@ function PainelMentoria({abaInicial}={}){
   const [aviso,setAviso]=useState("");
 
   const [mentores,setMentores]=useState([]);
+  const [abrirProcessoId,setAbrirProcessoId]=useState(null); // processo pra abrir direto ao clicar numa notificação
   const [novoVinculo,setNovoVinculo]=useState({mentorId:"",orgao:"",unidade:""});
 
   // Autocadastro de mentor — primeiro acesso de todo mundo no sistema, com
@@ -2639,7 +2640,10 @@ function PainelMentoria({abaInicial}={}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"16px"}}>
         <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>Mentoria {mentor?.isAdmin && <span style={{fontSize:"11px",fontWeight:700,color:C.primary}}>· admin</span>}</h2>
         <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-          <NotificacoesSino token={token} onIrPara={()=>setSubaba("credenciamento")}/>
+          <NotificacoesSino token={token} onIrPara={(n)=>{
+            if(n.tipo==="chefia_desatualizada" && !mentor?.isAdmin){ setSubaba("vinculos"); }
+            else if(n.processoId||n.mentorId){ setAbrirProcessoId(n.processoId||null); setSubaba("credenciamento"); }
+          }}/>
           <button className="px-mode" onClick={sair}><X size={14}/> <span className="px-mode-lbl">Sair</span></button>
         </div>
       </div>
@@ -2674,10 +2678,11 @@ function PainelMentoria({abaInicial}={}){
       {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
       {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
       {subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
-      {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores}/>}
+      {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores} abrirProcessoId={abrirProcessoId} onAbriu={()=>setAbrirProcessoId(null)}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
       {subaba==="vinculos" && <>
+      {!mentor?.isAdmin && <ChefiaImediataForm token={token} mentorId={mentor?.mentorId}/>}
       {mentor?.isAdmin && <div style={{display:"flex",flexWrap:"wrap",gap:"16px",marginBottom:"22px"}}>
         <form onSubmit={criarVinculo} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",flex:"1 1 260px"}}>
           <div style={{fontSize:"11px",fontWeight:700,marginBottom:"8px",opacity:.7}}>Atribuir mentor a uma unidade</div>
@@ -3506,6 +3511,81 @@ function NotificacoesSino({token,onIrPara}){
   );
 }
 
+// Atualização da chefia imediata pelo próprio mentor -- é o que zera o
+// alerta trimestral (chefia_atualizada_em) quando ela muda ou só precisa
+// ser confirmada.
+function ChefiaImediataForm({token,mentorId}){
+  const [nome,setNome]=useState("");
+  const [salvando,setSalvando]=useState(false);
+  const [ok,setOk]=useState(false);
+  const [erro,setErro]=useState("");
+
+  async function salvar(ev){
+    ev.preventDefault();
+    if(salvando||!nome.trim()) return;
+    setSalvando(true); setErro(""); setOk(false);
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/mentores/${mentorId}/chefia`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({chefiaImediataNome:nome.trim()}),
+      });
+      if(!resp.ok) throw new Error();
+      setOk(true);
+    }catch{ setErro("Não consegui salvar."); }
+    finally{ setSalvando(false); }
+  }
+
+  return (
+    <form onSubmit={salvar} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",marginBottom:"18px",display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"flex-end"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:"4px",flex:"1 1 220px"}}>
+        <label style={{fontSize:"10.5px",fontWeight:700,opacity:.7}}>Chefia imediata (confirme a cada troca)</label>
+        <input placeholder="Nome da chefia imediata atual" value={nome} onChange={e=>{setNome(e.target.value); setOk(false);}}
+          style={{padding:"6px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px"}}/>
+      </div>
+      <button className="px-mode" type="submit" disabled={salvando}><Check size={12}/> <span className="px-mode-lbl">{salvando?"Salvando…":"Atualizar"}</span></button>
+      {ok && <span style={{fontSize:"11.5px",color:"#168821"}}>Atualizado!</span>}
+      {erro && <span style={{fontSize:"11.5px",color:"#d64545"}}>{erro}</span>}
+    </form>
+  );
+}
+
+// Alerta contextual dentro de Credenciamento -- as mesmas notificações do
+// sino, mas só as que fazem sentido enquanto se está trabalhando aqui
+// (prazo de fase 3 e item aguardando revisão), com um jeito de ir direto
+// pro processo em vez de precisar procurar.
+function AlertaCredenciamento({token,onAbrirProcesso}){
+  const [lista,setLista]=useState([]);
+  const [fechados,setFechados]=useState({});
+
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const resp=await fetch(`${API_BASE}/api/mentoria/notificacoes`,{headers:mentoriaAuthHeader(token)});
+        const dados=await resp.json();
+        if(resp.ok) setLista(dados.filter(n=>n.tipo==="prazo_fase3"||n.tipo==="aguardando_revisao"));
+      }catch{}
+    })();
+  },[token]);
+
+  const visiveis=lista.filter((n,i)=>!fechados[i]);
+  if(!visiveis.length) return null;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"16px"}}>
+      {lista.map((n,i)=>!fechados[i] && (
+        <div key={i} onClick={()=>n.processoId&&onAbrirProcesso(n.processoId)}
+          style={{display:"flex",alignItems:"center",gap:"8px",padding:"9px 12px",borderRadius:"8px",cursor:n.processoId?"pointer":"default",
+            border:`1px solid ${n.prioridade==="alta"?"#f0b3b3":"#e8cfa4"}`,background:n.prioridade==="alta"?"#fdf3f3":"#FBEEDB"}}>
+          <AlertTriangle size={13} color={n.prioridade==="alta"?"#d64545":"#B86E00"} style={{flexShrink:0}}/>
+          <span style={{fontSize:"12px",color:n.prioridade==="alta"?"#a33":"#8a5a00",flex:1}}>{n.mensagem}</span>
+          <button onClick={e=>{e.stopPropagation(); setFechados(s=>({...s,[i]:true}));}}
+            style={{border:"none",background:"none",cursor:"pointer",color:C.faint,padding:"2px",flexShrink:0}}><X size={13}/></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BuscaMentor({mentores,processos,value,onChange,placeholder}){
   const [busca,setBusca]=useState("");
   const [aberto,setAberto]=useState(false);
@@ -3563,7 +3643,7 @@ function BuscaMentor({mentores,processos,value,onChange,placeholder}){
   );
 }
 
-function Credenciamento({token,isAdmin,mentorId,mentores}){
+function Credenciamento({token,isAdmin,mentorId,mentores,abrirProcessoId,onAbriu}){
   const [processos,setProcessos]=useState([]);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
@@ -3589,6 +3669,15 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
   // Já abre o processo mais recente sozinho (uma vez só) -- se o usuário
   // fechar depois, não reabre na cara dele de novo a cada atualização.
   useEffect(()=>{ if(selId===undefined && processos.length) setSelId(processos[0].id); },[processos]); // eslint-disable-line
+  // Veio de um clique numa notificação -- abre esse processo específico,
+  // fora da fase "processos" (não "datas"), e limpa o filtro pra garantir
+  // que ele apareça mesmo se tinha uma busca ativa.
+  useEffect(()=>{
+    if(abrirProcessoId && processos.some(p=>p.id===abrirProcessoId)){
+      setAba("processos"); setFiltro(""); setMostrarTodos(true); setSelId(abrirProcessoId);
+      onAbriu&&onAbriu();
+    }
+  },[abrirProcessoId,processos]); // eslint-disable-line
 
   async function abrirProcesso(ev){
     ev.preventDefault();
@@ -3627,6 +3716,8 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
         <button className={`px-mode ${aba==="processos"?"on":""}`} onClick={()=>setAba("processos")}><ClipboardList size={13}/> <span className="px-mode-lbl">Processos</span></button>
         <button className={`px-mode ${aba==="datas"?"on":""}`} onClick={()=>setAba("datas")}><CalendarDays size={13}/> <span className="px-mode-lbl">Datas por mentor</span></button>
       </div>}
+
+      {isAdmin && <AlertaCredenciamento token={token} onAbrirProcesso={id=>{setAba("processos"); setFiltro(""); setMostrarTodos(true); setSelId(id);}}/>}
 
       {aba==="datas" && isAdmin ? <CredenciamentoDatas token={token}/> : <>
       <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
@@ -3750,49 +3841,73 @@ function CredenciamentoDatas({token}){
     return dados.filter(p=>norm(p.mentorNome).includes(f)||norm(p.numeroSeiProcesso).includes(f));
   },[dados,filtro]);
 
-  const dataBR=d=>d?new Date(String(d).slice(0,10)+"T12:00:00").toLocaleDateString("pt-BR"):"—";
+  const dataBR=d=>d?new Date(String(d).slice(0,10)+"T12:00:00").toLocaleDateString("pt-BR"):null;
+  const FASE_COR={1:C.primary,2:"#B86E00",3:"#168821"};
 
   return (
     <div>
-      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"12px"}}>
-        Data em que cada etapa foi concluída, por mentor. Célula vazia = etapa ainda pendente.
-      </p>
-      <div style={{position:"relative",marginBottom:"12px",maxWidth:"320px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:"10px",marginBottom:"12px"}}>
+        <p style={{fontSize:"12.5px",color:C.faint,margin:0,maxWidth:"56ch"}}>
+          Data em que cada etapa foi concluída, por mentor. Traço = etapa ainda pendente.
+        </p>
+        <div style={{display:"flex",gap:"10px",fontSize:"10.5px",color:C.faint}}>
+          {Object.entries(FASE_LABEL).map(([f,rot])=>(
+            <span key={f} style={{display:"flex",alignItems:"center",gap:"4px"}}>
+              <span style={{width:"8px",height:"8px",borderRadius:"999px",background:FASE_COR[f],display:"inline-block"}}/>{rot.replace(/^Fase \d — /,"")}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div style={{position:"relative",marginBottom:"14px",maxWidth:"320px"}}>
         <Search size={13} color={C.faint} style={{position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)"}}/>
         <input value={filtro} onChange={e=>setFiltro(e.target.value)} placeholder="Buscar por nome ou nº SEI…"
-          style={{width:"100%",padding:"7px 10px 7px 30px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+          style={{width:"100%",padding:"7px 10px 7px 30px",border:`1px solid ${C.line}`,borderRadius:"999px",fontSize:"12.5px",boxSizing:"border-box"}}/>
       </div>
       {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
       {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
       {!carregando && !filtrados.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo encontrado.</div>}
 
-      {!!filtrados.length && <div style={{overflowX:"auto",border:`1px solid ${C.line}`,borderRadius:"10px"}}>
-        <table style={{borderCollapse:"collapse",width:"100%",fontSize:"11.5px",whiteSpace:"nowrap"}}>
+      {!!filtrados.length && <div style={{overflowX:"auto",border:`1px solid ${C.line}`,borderRadius:"12px",boxShadow:"0 1px 3px rgba(0,0,0,.04)"}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,width:"100%",fontSize:"11.5px",whiteSpace:"nowrap"}}>
           <thead>
-            <tr style={{background:C.bg}}>
-              <th style={{position:"sticky",left:0,background:C.bg,textAlign:"left",padding:"8px 10px",borderBottom:`1px solid ${C.line}`,borderRight:`1px solid ${C.line}`}}>Mentor</th>
-              {ETAPAS_CRED.map(([chave,rot])=>(
-                <th key={chave} style={{textAlign:"left",padding:"8px 10px",borderBottom:`1px solid ${C.line}`,color:C.sub,fontWeight:700}}>{rot}</th>
+            <tr>
+              <th style={{position:"sticky",left:0,top:0,zIndex:2,background:C.navy,color:"#fff",textAlign:"left",padding:"10px 14px",borderRight:`1px solid rgba(255,255,255,.15)`}}>Mentor</th>
+              {ETAPAS_CRED.map(([chave,rot,fase],i)=>(
+                <th key={chave} style={{position:"sticky",top:0,zIndex:1,textAlign:"left",padding:"10px 12px",
+                  background:C.navy,color:"#fff",fontWeight:700,fontSize:"10.5px",
+                  borderLeft:(i===0||ETAPAS_CRED[i-1][2]!==fase)?`2px solid ${FASE_COR[fase]}`:"1px solid rgba(255,255,255,.12)"}}>
+                  {rot}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtrados.map(p=>(
-              <tr key={p.id}>
-                <td style={{position:"sticky",left:0,background:"#fff",padding:"8px 10px",borderBottom:`1px solid ${C.line}`,borderRight:`1px solid ${C.line}`}}>
+            {filtrados.map((p,ri)=>{
+              const totalEtapasComData=ETAPAS_CRED.length;
+              const concluidas=ETAPAS_CRED.filter(([chave])=>p.etapasDatas?.[chave]).length;
+              return (
+              <tr key={p.id} style={{background:ri%2?C.bg:"#fff"}}>
+                <td style={{position:"sticky",left:0,background:ri%2?C.bg:"#fff",padding:"10px 14px",borderBottom:`1px solid ${C.line}`,borderRight:`1px solid ${C.line}`}}>
                   <div style={{fontWeight:700,color:C.navy}}>{p.mentorNome}</div>
-                  <div style={{fontSize:"10px",color:C.faint}}>{p.numeroSeiProcesso||"sem nº SEI"}</div>
+                  <div style={{fontSize:"10px",color:C.faint,marginTop:"1px"}}>{p.numeroSeiProcesso||"sem nº SEI"}</div>
+                  <div style={{marginTop:"4px",height:"4px",width:"90px",borderRadius:"999px",background:"#e4e7eb",overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${concluidas/totalEtapasComData*100}%`,background:concluidas===totalEtapasComData?"#168821":C.primary,borderRadius:"999px"}}/>
+                  </div>
                 </td>
-                {ETAPAS_CRED.map(([chave])=>{
-                  const dt=p.etapasDatas?.[chave];
+                {ETAPAS_CRED.map(([chave,,fase],i)=>{
+                  const dt=dataBR(p.etapasDatas?.[chave]);
                   return (
-                    <td key={chave} style={{padding:"8px 10px",borderBottom:`1px solid ${C.line}`,color:dt?"#168821":C.faint,fontWeight:dt?700:400}}>
-                      {dataBR(dt)}
+                    <td key={chave} style={{padding:"8px 12px",borderBottom:`1px solid ${C.line}`,
+                      borderLeft:(i===0||ETAPAS_CRED[i-1][2]!==fase)?`2px solid ${FASE_COR[fase]}30`:"none",
+                      textAlign:"center"}}>
+                      {dt
+                        ? <span style={{display:"inline-flex",alignItems:"center",gap:"3px",fontSize:"10.5px",fontWeight:700,color:"#168821",background:"#E3F2E5",borderRadius:"999px",padding:"3px 8px"}}><Check size={9}/>{dt}</span>
+                        : <span style={{color:"#c9d0d8"}}>—</span>}
                     </td>
                   );
                 })}
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       </div>}
