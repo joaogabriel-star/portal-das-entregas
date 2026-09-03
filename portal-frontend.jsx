@@ -3398,6 +3398,7 @@ function DashboardOrgaos({token,mentores}){
    WhatsApp e voltam assinados aqui. ---------- */
 const ETAPAS_CRED=[
   ["liberacao_mentor","Liberação para atuar como mentor",1],
+  ["ciencia_gestores","Coordenador geral e Diretor(a) Ciente",1],
   ["documentos_mentor","Documentos do mentor",1],
   ["projeto","Projeto",1],
   ["declaracao_termo","Declaração e termo",1],
@@ -3423,6 +3424,10 @@ const ITENS_POR_ETAPA={
     ["email_chefia","E-mail da chefia","status_admin"],
     ["pdp","PDP","status_admin"],
     ["cdo","CDO","status_admin"],
+  ],
+  ciencia_gestores:[
+    ["ciencia_coordenador_geral","Coordenador Geral","status_admin"],
+    ["ciencia_diretor","Diretor(a)","status_admin"],
   ],
   documentos_mentor:[
     ["curriculo","Currículo","upload_mentor"],
