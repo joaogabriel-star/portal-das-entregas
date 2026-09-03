@@ -2671,6 +2671,9 @@ function PainelMentoria({abaInicial}={}){
         <button className={`px-mode ${subaba==="credenciamento"?"on":""}`} onClick={()=>setSubaba("credenciamento")}>
           <ShieldCheck size={13}/> <span className="px-mode-lbl">Credenciamento</span>
         </button>
+        {mentor?.isAdmin && <button className={`px-mode ${subaba==="dados-mentores"?"on":""}`} onClick={()=>setSubaba("dados-mentores")}>
+          <Users size={13}/> <span className="px-mode-lbl">Dados dos Mentores</span>
+        </button>}
       </div>
 
       {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
@@ -2679,6 +2682,7 @@ function PainelMentoria({abaInicial}={}){
       {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
       {subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
       {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores} abrirProcessoId={abrirProcessoId} onAbriu={()=>setAbrirProcessoId(null)}/>}
+      {subaba==="dados-mentores" && mentor?.isAdmin && <DadosMentores mentores={mentores}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
       {subaba==="vinculos" && <>
@@ -3582,6 +3586,85 @@ function AlertaCredenciamento({token,onAbrirProcesso}){
             style={{border:"none",background:"none",cursor:"pointer",color:C.faint,padding:"2px",flexShrink:0}}><X size={13}/></button>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Diretório de dados dos mentores -- o que o admin sentiu falta: ver CPF,
+// SIAPE, cargo, UG, dados bancários, chefia, férias e o motivo de quem
+// recusou a mentoria, sem precisar abrir um processo novo pra cada um.
+function DadosMentores({mentores}){
+  const [busca,setBusca]=useState("");
+  const [abertoId,setAbertoId]=useState(null);
+
+  const lista=useMemo(()=>{
+    const semAdmin=(mentores||[]).filter(m=>!m.is_admin);
+    if(!busca.trim()) return semAdmin;
+    const b=norm(busca);
+    return semAdmin.filter(m=>norm(m.nome).includes(b)||norm(m.email).includes(b)||norm(m.cpf).includes(b)||norm(m.unidade_exercicio).includes(b));
+  },[mentores,busca]);
+
+  const CAMPOS=[
+    ["Dados pessoais",[["CPF","cpf"],["Telefone","telefone"],["Matrícula SIAPE","matricula_siape"],["Cargo efetivo","cargo_efetivo"],["Função/cargo em comissão","funcao_cargo_comissao"],["Unidade de exercício","unidade_exercicio"],["Formação","formacao"],["Chefia imediata","chefia_imediata_nome"]]],
+    ["UG da folha de pagamento",[["Nome da UG","ug_nome"],["Código da UG","ug_codigo"],["Código da gestão favorecida","ug_codigo_gestao"],["Responsável","ug_responsavel_nome"],["E-mail do responsável","ug_responsavel_email"],["Telefone do responsável","ug_responsavel_telefone"]]],
+    ["Dados bancários",[["Banco","banco"],["Agência","agencia"],["Conta","conta"]]],
+  ];
+
+  return (
+    <div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"12px"}}>
+        Dados cadastrais de cada mentor — os mesmos que o "Banco de Mentores" pedia por planilha, agora num lugar só.
+      </p>
+      <div style={{position:"relative",marginBottom:"14px",maxWidth:"340px"}}>
+        <Search size={13} color={C.faint} style={{position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, e-mail, CPF ou unidade…"
+          style={{width:"100%",padding:"7px 10px 7px 30px",border:`1px solid ${C.line}`,borderRadius:"999px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+      </div>
+      <div style={{fontSize:"11px",color:C.faint,marginBottom:"10px"}}>{lista.length} mentor{lista.length===1?"":"es"}</div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+        {lista.map(m=>{
+          const aberto=abertoId===m.id;
+          return (
+            <div key={m.id} style={{border:`1px solid ${aberto?C.primary:C.line}`,borderRadius:"10px",overflow:"hidden",background:"#fff"}}>
+              <button onClick={()=>setAbertoId(aberto?null:m.id)}
+                style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",padding:"10px 14px",border:"none",background:aberto?C.primarySoft:"#fff",cursor:"pointer",textAlign:"left"}}>
+                <div>
+                  <div style={{fontSize:"12.5px",fontWeight:700,color:C.navy}}>{m.nome}</div>
+                  <div style={{fontSize:"11px",color:C.faint}}>{m.email}{!m.ativo?" · conta ainda não ativada":""}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                  {m.interesse_mentor===false && <span style={{fontSize:"10px",fontWeight:700,color:"#d64545",background:"#FBE3E3",borderRadius:"999px",padding:"3px 9px"}}>Recusou</span>}
+                  <ChevronsRight size={14} color={C.faint} style={{transform:aberto?"rotate(90deg)":"none",transition:"transform .15s"}}/>
+                </div>
+              </button>
+              {aberto && <div style={{padding:"14px",borderTop:`1px solid ${C.line}`}}>
+                {m.interesse_mentor===false && m.motivo_recusa && <div style={{marginBottom:"12px",fontSize:"12px",color:"#a33",background:"#fdf3f3",border:"1px solid #f0b3b3",borderRadius:"8px",padding:"9px 11px"}}>
+                  <b>Motivo da recusa:</b> {m.motivo_recusa}
+                </div>}
+                {(m.ferias_inicio||m.motivo_afastamento) && <div style={{marginBottom:"12px",fontSize:"12px",color:C.sub}}>
+                  {m.ferias_inicio && <div>Férias: {new Date(m.ferias_inicio+"T12:00:00").toLocaleDateString("pt-BR")}{m.ferias_fim?` a ${new Date(m.ferias_fim+"T12:00:00").toLocaleDateString("pt-BR")}`:""}</div>}
+                  {m.motivo_afastamento && <div>Afastamento: {m.motivo_afastamento}{m.afastamento_inicio?` (${new Date(m.afastamento_inicio+"T12:00:00").toLocaleDateString("pt-BR")}${m.afastamento_fim?" a "+new Date(m.afastamento_fim+"T12:00:00").toLocaleDateString("pt-BR"):""})`:""}</div>}
+                </div>}
+                {CAMPOS.map(([titulo,campos])=>{
+                  const preenchidos=campos.filter(([,chave])=>m[chave]);
+                  if(!preenchidos.length) return null;
+                  return (
+                    <div key={titulo} style={{marginBottom:"10px"}}>
+                      <div style={{fontSize:"10px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"5px"}}>{titulo}</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:"6px 20px"}}>
+                        {preenchidos.map(([rot,chave])=><div key={chave} style={{fontSize:"12px"}}><span style={{color:C.faint}}>{rot}:</span> <b style={{color:C.navy}}>{m[chave]}</b></div>)}
+                      </div>
+                    </div>
+                  );
+                })}
+                {CAMPOS.every(([,campos])=>!campos.some(([,chave])=>m[chave])) && <div style={{fontSize:"12px",color:C.faint,fontStyle:"italic"}}>Sem dados cadastrais além do login (pré-cadastro administrativo).</div>}
+              </div>}
+            </div>
+          );
+        })}
+        {!lista.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum mentor encontrado.</div>}
+      </div>
     </div>
   );
 }
