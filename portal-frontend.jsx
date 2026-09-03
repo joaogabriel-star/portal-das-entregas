@@ -3572,6 +3572,7 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
   const [abrindo,setAbrindo]=useState(false);
   const [filtro,setFiltro]=useState("");
   const [mostrarTodos,setMostrarTodos]=useState(false);
+  const [aba,setAba]=useState("processos"); // "processos" | "datas"
 
   async function carregar(){
     setCarregando(true); setErro("");
@@ -3622,6 +3623,12 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
 
   return (
     <div>
+      {isAdmin && <div style={{display:"flex",gap:"6px",marginBottom:"14px"}}>
+        <button className={`px-mode ${aba==="processos"?"on":""}`} onClick={()=>setAba("processos")}><ClipboardList size={13}/> <span className="px-mode-lbl">Processos</span></button>
+        <button className={`px-mode ${aba==="datas"?"on":""}`} onClick={()=>setAba("datas")}><CalendarDays size={13}/> <span className="px-mode-lbl">Datas por mentor</span></button>
+      </div>}
+
+      {aba==="datas" && isAdmin ? <CredenciamentoDatas token={token}/> : <>
       <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"16px"}}>
         Trâmite entre o convite e a liberação para vincular o mentor a um órgão: documentos, assinatura no SEI, cadastro na DICAP e orçamentária.
       </p>
@@ -3711,6 +3718,84 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
           <ProcessoCredenciamentoDetalhe processo={selecionado} token={token} isAdmin={isAdmin} onMudou={carregar} onFechar={()=>setSelId(null)}/>
         </div>}
       </div>
+      </>}
+    </div>
+  );
+}
+
+// Tabela mentor × etapa, com a data de conclusão de cada etapa -- pra
+// ter, num lugar só, "onde cada um está" com data, não só contagem.
+function CredenciamentoDatas({token}){
+  const [dados,setDados]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [erro,setErro]=useState("");
+  const [filtro,setFiltro]=useState("");
+
+  useEffect(()=>{
+    (async()=>{
+      setCarregando(true); setErro("");
+      try{
+        const resp=await fetch(`${API_BASE}/api/mentoria/credenciamento/dashboard`,{headers:mentoriaAuthHeader(token)});
+        const d=await resp.json();
+        if(!resp.ok) throw new Error(d.erro||"Erro ao carregar.");
+        setDados(d);
+      }catch(err){ setErro(err.message||"Erro ao carregar."); }
+      finally{ setCarregando(false); }
+    })();
+  },[token]);
+
+  const filtrados=useMemo(()=>{
+    if(!filtro.trim()) return dados;
+    const f=norm(filtro);
+    return dados.filter(p=>norm(p.mentorNome).includes(f)||norm(p.numeroSeiProcesso).includes(f));
+  },[dados,filtro]);
+
+  const dataBR=d=>d?new Date(String(d).slice(0,10)+"T12:00:00").toLocaleDateString("pt-BR"):"—";
+
+  return (
+    <div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"12px"}}>
+        Data em que cada etapa foi concluída, por mentor. Célula vazia = etapa ainda pendente.
+      </p>
+      <div style={{position:"relative",marginBottom:"12px",maxWidth:"320px"}}>
+        <Search size={13} color={C.faint} style={{position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={filtro} onChange={e=>setFiltro(e.target.value)} placeholder="Buscar por nome ou nº SEI…"
+          style={{width:"100%",padding:"7px 10px 7px 30px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+      </div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+      {!carregando && !filtrados.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo encontrado.</div>}
+
+      {!!filtrados.length && <div style={{overflowX:"auto",border:`1px solid ${C.line}`,borderRadius:"10px"}}>
+        <table style={{borderCollapse:"collapse",width:"100%",fontSize:"11.5px",whiteSpace:"nowrap"}}>
+          <thead>
+            <tr style={{background:C.bg}}>
+              <th style={{position:"sticky",left:0,background:C.bg,textAlign:"left",padding:"8px 10px",borderBottom:`1px solid ${C.line}`,borderRight:`1px solid ${C.line}`}}>Mentor</th>
+              {ETAPAS_CRED.map(([chave,rot])=>(
+                <th key={chave} style={{textAlign:"left",padding:"8px 10px",borderBottom:`1px solid ${C.line}`,color:C.sub,fontWeight:700}}>{rot}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtrados.map(p=>(
+              <tr key={p.id}>
+                <td style={{position:"sticky",left:0,background:"#fff",padding:"8px 10px",borderBottom:`1px solid ${C.line}`,borderRight:`1px solid ${C.line}`}}>
+                  <div style={{fontWeight:700,color:C.navy}}>{p.mentorNome}</div>
+                  <div style={{fontSize:"10px",color:C.faint}}>{p.numeroSeiProcesso||"sem nº SEI"}</div>
+                </td>
+                {ETAPAS_CRED.map(([chave])=>{
+                  const dt=p.etapasDatas?.[chave];
+                  return (
+                    <td key={chave} style={{padding:"8px 10px",borderBottom:`1px solid ${C.line}`,color:dt?"#168821":C.faint,fontWeight:dt?700:400}}>
+                      {dataBR(dt)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>}
     </div>
   );
 }
