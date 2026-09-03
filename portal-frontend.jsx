@@ -12,7 +12,7 @@ import {
   TrendingDown, TrendingUp, Minus, BarChart3, Clock, CircleDot, ExternalLink, ZoomIn, ZoomOut, Maximize2,
   AlertCircle, ArrowLeft, BarChart2, CheckCircle2, MapPin, Minimize2, PlusCircle, GraduationCap,
   CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, UploadCloud,
-  FlaskConical, ThumbsUp, Eye, EyeOff,
+  FlaskConical, ThumbsUp, Eye, EyeOff, Bell,
 } from "lucide-react";
 
 /* ---------- leitura de arquivos no navegador (planilha / pdf / docx) ---------- */
@@ -2305,15 +2305,20 @@ function PainelMentoria({abaInicial}={}){
   const [mentores,setMentores]=useState([]);
   const [novoVinculo,setNovoVinculo]=useState({mentorId:"",orgao:"",unidade:""});
 
-  // Autocadastro de mentor — mesmos campos do formulário "Banco de Mentores"
-  // (Microsoft Forms) que ele substitui, mais a senha (a pessoa escolhe a
-  // própria e já fica ativa, sem depender de aprovação de admin).
+  // Autocadastro de mentor — primeiro acesso de todo mundo no sistema, com
+  // os mesmos dados que o formulário/planilha "Banco de Mentores" pedia
+  // (ver migrations/019_cadastro_mentor_completo.sql) mais a senha (a
+  // pessoa escolhe a própria e já fica ativa, sem depender de aprovação).
   const MOTIVOS_AFASTAMENTO=["Não","Licença médica","Licença maternidade/paternidade","Viagem","Curso ou capacitação","Outra"];
   const [cad,setCad]=useState({
-    nome:"",email:"",senha:"",
-    interesseMentor:"",disponivelPeriodo:"",foiConvidado:"",
-    estaraDeFerias:"",feriasInicio:"",feriasFim:"",
+    nome:"",email:"",senha:"",senhaConfirmar:"",
+    interesseMentor:"",motivoRecusa:"",foiConvidado:"",
+    feriasInicio:"",feriasFim:"",
     motivoAfastamento:"Não",afastamentoInicio:"",afastamentoFim:"",
+    cpf:"",matriculaSiape:"",cargoEfetivo:"",funcaoCargoComissao:"",unidadeExercicio:"",formacao:"",telefone:"",
+    ugNome:"",ugCodigo:"",ugCodigoGestao:"",ugResponsavelNome:"",ugResponsavelEmail:"",ugResponsavelTelefone:"",
+    banco:"",agencia:"",conta:"",
+    chefiaImediataNome:"",
   });
   const [cadastrando,setCadastrando]=useState(false);
   const [erroCadastro,setErroCadastro]=useState("");
@@ -2343,20 +2348,34 @@ function PainelMentoria({abaInicial}={}){
     if(cadastrando) return;
     setCadastrando(true); setErroCadastro("");
     try{
-      if(cad.interesseMentor===""||cad.disponivelPeriodo===""||cad.estaraDeFerias===""||cad.foiConvidado===""){
+      if(cad.interesseMentor===""||cad.foiConvidado===""){
         throw new Error("Responda todas as perguntas obrigatórias.");
+      }
+      if(cad.interesseMentor==="nao" && !cad.motivoRecusa.trim()){
+        throw new Error("Conte pra gente o motivo de não ter interesse em ser mentor.");
+      }
+      if(cad.senha!==cad.senhaConfirmar){
+        throw new Error("As senhas não coincidem.");
       }
       const resp=await fetch(`${API_BASE}/api/mentoria/mentores`,{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           nome:cad.nome, email:cad.email, senha:cad.senha,
-          interesseMentor:cad.interesseMentor==="sim", disponivelPeriodo:cad.disponivelPeriodo==="sim",
+          interesseMentor:cad.interesseMentor==="sim",
+          motivoRecusa:cad.interesseMentor==="nao"?cad.motivoRecusa:null,
           foiConvidado:cad.foiConvidado==="sim",
-          feriasInicio:cad.estaraDeFerias==="sim"?(cad.feriasInicio||null):null,
-          feriasFim:cad.estaraDeFerias==="sim"?(cad.feriasFim||null):null,
+          feriasInicio:cad.feriasInicio||null, feriasFim:cad.feriasFim||null,
           motivoAfastamento:cad.motivoAfastamento!=="Não"?cad.motivoAfastamento:null,
           afastamentoInicio:cad.motivoAfastamento!=="Não"?(cad.afastamentoInicio||null):null,
           afastamentoFim:cad.motivoAfastamento!=="Não"?(cad.afastamentoFim||null):null,
+          cpf:cad.cpf||null, matriculaSiape:cad.matriculaSiape||null,
+          cargoEfetivo:cad.cargoEfetivo||null, funcaoCargoComissao:cad.funcaoCargoComissao||null,
+          unidadeExercicio:cad.unidadeExercicio||null, formacao:cad.formacao||null, telefone:cad.telefone||null,
+          ugNome:cad.ugNome||null, ugCodigo:cad.ugCodigo||null, ugCodigoGestao:cad.ugCodigoGestao||null,
+          ugResponsavelNome:cad.ugResponsavelNome||null, ugResponsavelEmail:cad.ugResponsavelEmail||null,
+          ugResponsavelTelefone:cad.ugResponsavelTelefone||null,
+          banco:cad.banco||null, agencia:cad.agencia||null, conta:cad.conta||null,
+          chefiaImediataNome:cad.chefiaImediataNome||null,
         }),
       });
       const dados=await resp.json();
@@ -2505,56 +2524,85 @@ function PainelMentoria({abaInicial}={}){
 
   if(!token && tela==="cadastro"){
     const r=(chave,valor)=>e=>setCad(s=>({...s,[chave]:valor!==undefined?valor:e.target.value}));
+    const secao=(titulo)=><div style={{fontSize:"11px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".05em",marginTop:"14px",marginBottom:"2px",borderTop:`1px solid ${C.line}`,paddingTop:"12px"}}>{titulo}</div>;
+    const campo=(placeholder,chave,tipo="text")=><input placeholder={placeholder} type={tipo} value={cad[chave]} onChange={r(chave)}
+      style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>;
     return (
-      <div style={{padding:"32px 24px",maxWidth:"420px"}}>
-        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Banco de Mentores</b></div>
-        <div style={{fontSize:"12.5px",lineHeight:1.5,marginBottom:"16px",color:C.sub}}>
-          Cadastre-se para fazer parte do banco de mentores do DFT. Sua disponibilidade ajuda a organizar melhor as oficinas de mentoria.
+      <div style={{padding:"32px 24px",maxWidth:"460px"}}>
+        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Cadastro de mentor</b></div>
+        <div style={{fontSize:"12.5px",lineHeight:1.5,marginBottom:"10px",color:C.sub}}>
+          Primeiro acesso? Preencha os dados abaixo — são os mesmos que a coordenação já pedia por planilha, agora reunidos aqui.
         </div>
         <form onSubmit={cadastrar} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+          {secao("Dados pessoais")}
           <input required placeholder="Nome completo" value={cad.nome} onChange={r("nome")}
             style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
           <input required type="email" placeholder="E-mail institucional" value={cad.email} onChange={r("email")}
             style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
-          <input required type="password" placeholder="Crie uma senha" value={cad.senha} onChange={r("senha")}
-            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          <div style={{display:"flex",gap:"8px"}}>
+            <input required type="password" placeholder="Crie uma senha" value={cad.senha} onChange={r("senha")}
+              style={{flex:1,padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+            <input required type="password" placeholder="Confirme a senha" value={cad.senhaConfirmar} onChange={r("senhaConfirmar")}
+              style={{flex:1,padding:"8px 10px",border:`1px solid ${cad.senhaConfirmar&&cad.senha!==cad.senhaConfirmar?"#d64545":C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+          </div>
+          {cad.senhaConfirmar && cad.senha!==cad.senhaConfirmar && <div style={{fontSize:"11px",color:"#d64545"}}>As senhas não coincidem.</div>}
+          <div style={{display:"flex",gap:"8px"}}>
+            {campo("CPF","cpf")}
+            {campo("Telefone","telefone")}
+          </div>
+          {campo("Matrícula SIAPE","matriculaSiape")}
+          {campo("Cargo efetivo","cargoEfetivo")}
+          {campo("Função / cargo em comissão","funcaoCargoComissao")}
+          {campo("Unidade de exercício / órgão","unidadeExercicio")}
+          {campo("Formação","formacao")}
+          {campo("Chefia imediata (nome)","chefiaImediataNome")}
 
+          {secao("Dados financeiros — UG da folha de pagamento")}
+          {campo("Nome da UG","ugNome")}
+          <div style={{display:"flex",gap:"8px"}}>
+            {campo("Código da UG","ugCodigo")}
+            {campo("Código da gestão favorecida","ugCodigoGestao")}
+          </div>
+          {campo("Nome do responsável pela UG","ugResponsavelNome")}
+          <div style={{display:"flex",gap:"8px"}}>
+            {campo("E-mail do responsável","ugResponsavelEmail","email")}
+            {campo("Telefone do responsável","ugResponsavelTelefone")}
+          </div>
+
+          {secao("Dados bancários")}
+          <div style={{display:"flex",gap:"8px"}}>
+            {campo("Banco","banco")}
+            {campo("Agência","agencia")}
+            {campo("Conta","conta")}
+          </div>
+
+          {secao("Disponibilidade")}
           <div>
             <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Tem interesse em ser mentor? *</div>
             <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="interesseMentor" checked={cad.interesseMentor==="sim"} onChange={r("interesseMentor","sim")} required/> Sim</label>
             <label style={{fontSize:"12.5px"}}><input type="radio" name="interesseMentor" checked={cad.interesseMentor==="nao"} onChange={r("interesseMentor","nao")}/> Não</label>
           </div>
-
-          <div>
-            <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Tem disponibilidade de atuar no período? *</div>
-            <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="disponivelPeriodo" checked={cad.disponivelPeriodo==="sim"} onChange={r("disponivelPeriodo","sim")} required/> Sim</label>
-            <label style={{fontSize:"12.5px"}}><input type="radio" name="disponivelPeriodo" checked={cad.disponivelPeriodo==="nao"} onChange={r("disponivelPeriodo","nao")}/> Não</label>
-          </div>
+          {cad.interesseMentor==="nao" && <textarea required rows={2} placeholder="Conte pra gente o motivo (a coordenação vai ver isso)…" value={cad.motivoRecusa} onChange={r("motivoRecusa")}
+            style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px",resize:"vertical"}}/>}
 
           <div>
             <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Você foi convidado(a) para ser mentor(a)? *</div>
-            <div style={{fontSize:"11.5px",color:C.sub,marginBottom:"4px"}}>Se sim, depois do cadastro você vai ver a aba "Credenciamento" pra enviar os documentos exigidos (PDP, CDO, currículo etc.).</div>
+            <div style={{fontSize:"11.5px",color:C.sub,marginBottom:"4px"}}>Se sim, depois do cadastro você vai ver a aba "Credenciamento" pra enviar os documentos exigidos.</div>
             <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="foiConvidado" checked={cad.foiConvidado==="sim"} onChange={r("foiConvidado","sim")} required/> Sim</label>
             <label style={{fontSize:"12.5px"}}><input type="radio" name="foiConvidado" checked={cad.foiConvidado==="nao"} onChange={r("foiConvidado","nao")}/> Não</label>
           </div>
 
-          <div style={{borderTop:`1px solid ${C.line}`,paddingTop:"10px",marginTop:"4px"}}>
-            <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginBottom:"8px"}}>Período de férias</div>
-            <div style={{fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>Você estará de férias durante esse período? *</div>
-            <label style={{fontSize:"12.5px",marginRight:"14px"}}><input type="radio" name="estaraDeFerias" checked={cad.estaraDeFerias==="sim"} onChange={r("estaraDeFerias","sim")} required/> Sim</label>
-            <label style={{fontSize:"12.5px"}}><input type="radio" name="estaraDeFerias" checked={cad.estaraDeFerias==="nao"} onChange={r("estaraDeFerias","nao")}/> Não</label>
-          </div>
-
-          {cad.estaraDeFerias==="sim" && <div style={{display:"flex",gap:"8px"}}>
-            <label style={{flex:1,fontSize:"11.5px"}}>Início das férias
+          <div style={{fontSize:"11px",fontWeight:700,opacity:.7,marginTop:"4px"}}>Período de férias (se souber)</div>
+          <div style={{display:"flex",gap:"8px"}}>
+            <label style={{flex:1,fontSize:"11.5px"}}>Início
               <input type="date" value={cad.feriasInicio} onChange={r("feriasInicio")}
                 style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",boxSizing:"border-box",marginTop:"3px"}}/>
             </label>
-            <label style={{flex:1,fontSize:"11.5px"}}>Fim das férias
+            <label style={{flex:1,fontSize:"11.5px"}}>Fim
               <input type="date" value={cad.feriasFim} onChange={r("feriasFim")}
                 style={{display:"block",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",boxSizing:"border-box",marginTop:"3px"}}/>
             </label>
-          </div>}
+          </div>
 
           <label style={{fontSize:"12px"}}>Outro motivo de afastamento durante esse período?
             <select value={cad.motivoAfastamento} onChange={r("motivoAfastamento")}
@@ -2590,7 +2638,10 @@ function PainelMentoria({abaInicial}={}){
     <div style={{padding:"32px 24px",maxWidth:"920px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px",marginBottom:"16px"}}>
         <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>Mentoria {mentor?.isAdmin && <span style={{fontSize:"11px",fontWeight:700,color:C.primary}}>· admin</span>}</h2>
-        <button className="px-mode" onClick={sair}><X size={14}/> <span className="px-mode-lbl">Sair</span></button>
+        <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+          <NotificacoesSino token={token} onIrPara={()=>setSubaba("credenciamento")}/>
+          <button className="px-mode" onClick={sair}><X size={14}/> <span className="px-mode-lbl">Sair</span></button>
+        </div>
       </div>
       {aviso && <div className="px-anexo-erro" style={{marginBottom:"14px"}}><AlertTriangle size={12}/> {aviso}</div>}
 
@@ -3408,6 +3459,53 @@ const STATUS_GERAL_COR={em_andamento:"#e0a400",indeferido:"#d64545",concluido:"#
 // Combobox de busca de mentor -- por nome ou por nº de processo SEI já
 // aberto pra ele. Em vez de um <select> gigante com todo mundo listado,
 // mostra no máximo 6 resultados enquanto o admin digita.
+// Sino de notificações -- serve pro admin (prazo de fase 3, item
+// aguardando revisão, chefia desatualizada) e pro mentor (documento
+// rejeitado, item aguardando sua assinatura, sua própria chefia). O
+// backend já devolve a lista certa pra cada papel em GET /notificacoes.
+const PRIORIDADE_COR={alta:"#d64545",media:"#e0a400",baixa:C.faint};
+function NotificacoesSino({token,onIrPara}){
+  const [lista,setLista]=useState([]);
+  const [aberto,setAberto]=useState(false);
+  const [carregando,setCarregando]=useState(true);
+
+  async function carregar(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/notificacoes`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setLista(dados);
+    }catch{}
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregar(); const t=setInterval(carregar,120000); return ()=>clearInterval(t); },[token]); // eslint-disable-line
+
+  const qtdAlta=lista.filter(n=>n.prioridade==="alta").length;
+
+  return (
+    <div style={{position:"relative"}}>
+      <button className="px-mode" onClick={()=>{setAberto(s=>!s); if(!aberto) carregar();}} style={{position:"relative"}}>
+        <Bell size={14}/> <span className="px-mode-lbl">Notificações</span>
+        {!!lista.length && <span style={{position:"absolute",top:"-4px",right:"-4px",minWidth:"16px",height:"16px",borderRadius:"999px",background:qtdAlta?"#d64545":C.primary,color:"#fff",fontSize:"9.5px",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{lista.length}</span>}
+      </button>
+      {aberto && <>
+        <div onClick={()=>setAberto(false)} style={{position:"fixed",inset:0,zIndex:19}}/>
+        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:20,width:"340px",maxHeight:"420px",overflowY:"auto",background:"#fff",border:`1px solid ${C.line}`,borderRadius:"10px",boxShadow:"0 8px 24px rgba(0,0,0,.14)"}}>
+          <div style={{padding:"10px 12px",borderBottom:`1px solid ${C.line}`,fontSize:"12.5px",fontWeight:700,color:C.navy}}>Notificações</div>
+          {carregando && <div style={{padding:"14px",fontSize:"12px",color:C.faint}}>Carregando…</div>}
+          {!carregando && !lista.length && <div style={{padding:"14px",fontSize:"12px",color:C.faint}}>Nenhuma notificação por enquanto.</div>}
+          {lista.map((n,i)=>(
+            <div key={i} onClick={()=>{setAberto(false); onIrPara&&onIrPara(n);}}
+              style={{display:"flex",gap:"8px",alignItems:"flex-start",padding:"10px 12px",borderBottom:`1px solid ${C.line}`,cursor:onIrPara?"pointer":"default"}}>
+              <span style={{width:"7px",height:"7px",borderRadius:"999px",background:PRIORIDADE_COR[n.prioridade],flexShrink:0,marginTop:"4px"}}/>
+              <div style={{fontSize:"12px",color:C.sub,lineHeight:1.4}}>{n.mensagem}</div>
+            </div>
+          ))}
+        </div>
+      </>}
+    </div>
+  );
+}
+
 function BuscaMentor({mentores,processos,value,onChange,placeholder}){
   const [busca,setBusca]=useState("");
   const [aberto,setAberto]=useState(false);
@@ -3561,6 +3659,27 @@ function Credenciamento({token,isAdmin,mentorId,mentores}){
         </div>
         <button className="px-mode" type="submit" disabled={abrindo}><Plus size={12}/> <span className="px-mode-lbl">{abrindo?"Abrindo…":"Abrir processo"}</span></button>
       </form>}
+
+      {isAdmin && novo.mentorId && (()=>{
+        const m=(mentores||[]).find(x=>String(x.id)===String(novo.mentorId));
+        if(!m) return null;
+        const linhas=[
+          ["CPF",m.cpf],["Matrícula SIAPE",m.matricula_siape],["Telefone",m.telefone],
+          ["Cargo efetivo",m.cargo_efetivo],["Unidade de exercício",m.unidade_exercicio],
+          ["UG",m.ug_nome&&m.ug_codigo?`${m.ug_nome} (${m.ug_codigo})`:m.ug_nome],
+          ["Banco",m.banco?`${m.banco} · ag ${m.agencia||"—"} · c/c ${m.conta||"—"}`:null],
+          ["Chefia imediata",m.chefia_imediata_nome],
+        ].filter(([,v])=>v);
+        return (
+          <div style={{border:`1px solid ${C.line}`,background:C.bg,borderRadius:"9px",padding:"10px 12px",marginBottom:"18px",marginTop:"-8px"}}>
+            <div style={{fontSize:"10.5px",fontWeight:700,color:C.faint,textTransform:"uppercase",letterSpacing:".04em",marginBottom:"6px"}}>Dados já cadastrados de {m.nome} — reaproveite ao abrir outro processo</div>
+            {!linhas.length && <div style={{fontSize:"12px",color:C.faint}}>Sem dados cadastrais além do login.</div>}
+            <div style={{display:"flex",flexWrap:"wrap",gap:"6px 18px"}}>
+              {linhas.map(([rot,val])=><div key={rot} style={{fontSize:"11.5px"}}><span style={{color:C.faint}}>{rot}:</span> <b style={{color:C.navy}}>{val}</b></div>)}
+            </div>
+          </div>
+        );
+      })()}
 
       {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
       {!carregando && !processos.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum processo de credenciamento ainda.</div>}
