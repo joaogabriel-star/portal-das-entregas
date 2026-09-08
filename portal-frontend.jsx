@@ -4664,7 +4664,7 @@ function CursoMentores({token,isAdmin,mentorId}){
           <div key={o.numero} style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:"9px"}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:"12.5px",fontWeight:700}}>Oficina {o.numero} — {o.tema}</div>
-              <div style={{fontSize:"10.5px",color:C.faint}}>{o.data?new Date(o.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
+              <div style={{fontSize:"10.5px",color:C.faint}}>{o.data?new Date(o.data.slice(0,10)+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
             </div>
             <a href={o.link_gravacao} target="_blank" rel="noreferrer" className="px-anexo-chip" style={{textDecoration:"none"}}><ExternalLink size={11}/> Assistir</a>
           </div>
@@ -4732,7 +4732,7 @@ function CursoAulaLinha({p,feita,ehHoje,token,abertaInicial}){
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:"12.5px",fontWeight:700}}>Oficina {p.oficina_numero} — {p.tema}</div>
           <div style={{fontSize:"10.5px",color:ehHoje?C.primaryDark:C.faint,fontWeight:ehHoje?700:400}}>
-            {ehHoje?"É hoje! ":""}{p.data?new Date(p.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}
+            {ehHoje?"É hoje! ":""}{p.data?new Date(p.data.slice(0,10)+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}
           </div>
         </div>
         {ehHoje && (p.link_teams
@@ -4803,7 +4803,7 @@ function CursoChamadaAdmin({token,oficinas,focoOficina}){
         </select>
         {!carregando && <span style={{fontSize:"11px",color:C.sub}}>{presentes}/{lista.length} marcados presentes</span>}
       </div>
-      {oficinaAtual?.data && <div style={{fontSize:"11px",color:C.faint,marginBottom:"10px"}}>{new Date(oficinaAtual.data+"T00:00:00").toLocaleDateString("pt-BR")}</div>}
+      {oficinaAtual?.data && <div style={{fontSize:"11px",color:C.faint,marginBottom:"10px"}}>{new Date(oficinaAtual.data.slice(0,10)+"T00:00:00").toLocaleDateString("pt-BR")}</div>}
       {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
       {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
       {!carregando && !lista.length && <div style={{fontSize:"12px",color:C.faint}}>Ninguém inscrito ainda.</div>}
