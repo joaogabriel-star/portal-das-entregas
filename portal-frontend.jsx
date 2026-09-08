@@ -4702,7 +4702,7 @@ function CursoMentores({token,isAdmin,mentorId}){
       {isAdmin && aba==="chamada" && <CursoChamadaAdmin token={token} oficinas={oficinas} focoOficina={focoOficina}/>}
 
       {/* ---------------- ADMIN: materiais ---------------- */}
-      {isAdmin && aba==="materiais" && <CursoMateriaisAdmin token={token} oficinas={oficinas} focoOficina={focoOficina} onMudouOficina={carregarOficinas}/>}
+      {isAdmin && aba==="materiais" && <CursoMateriaisAdmin token={token} oficinas={oficinas} focoOficina={focoOficina}/>}
 
       {/* ---------------- ADMIN/MENTOR: aulas gravadas (admin edita aqui) ---------------- */}
       {isAdmin && aba==="gravadas" && <CursoGravacoesAdmin token={token} oficinas={oficinas} onMudou={carregarOficinas}/>}
@@ -4826,17 +4826,12 @@ function CursoChamadaAdmin({token,oficinas,focoOficina}){
   );
 }
 
-function CursoMateriaisAdmin({token,oficinas,focoOficina,onMudouOficina}){
+function CursoMateriaisAdmin({token,oficinas,focoOficina}){
   const [numero,setNumero]=useState(focoOficina||oficinas[0]?.numero||1);
   const [lista,setLista]=useState([]);
   const [form,setForm]=useState({tipo:"documento",titulo:"",descricao:"",arquivo:null});
   const [enviando,setEnviando]=useState(false);
   const [erro,setErro]=useState("");
-  const [editandoDescOficina,setEditandoDescOficina]=useState(false);
-  const [descOficina,setDescOficina]=useState("");
-  const [salvandoDescOficina,setSalvandoDescOficina]=useState(false);
-
-  const oficinaAtual=oficinas.find(o=>o.numero===numero);
 
   async function carregar(n){
     try{
@@ -4845,22 +4840,7 @@ function CursoMateriaisAdmin({token,oficinas,focoOficina,onMudouOficina}){
       if(r.ok) setLista(d);
     }catch{}
   }
-  useEffect(()=>{ carregar(numero); setEditandoDescOficina(false); },[numero]); // eslint-disable-line
-
-  async function salvarDescOficina(){
-    if(salvandoDescOficina) return;
-    setSalvandoDescOficina(true);
-    try{
-      const r=await fetch(`${API_BASE}/api/mentoria/curso/oficinas/${numero}`,{
-        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
-        body:JSON.stringify({descricao:descOficina||null}),
-      });
-      if(!r.ok) throw new Error();
-      setEditandoDescOficina(false);
-      onMudouOficina&&onMudouOficina();
-    }catch{ setErro("Não consegui salvar a descrição da oficina."); }
-    finally{ setSalvandoDescOficina(false); }
-  }
+  useEffect(()=>{ carregar(numero); },[numero]); // eslint-disable-line
 
   async function adicionar(ev){
     ev.preventDefault();
@@ -4893,23 +4873,6 @@ function CursoMateriaisAdmin({token,oficinas,focoOficina,onMudouOficina}){
       <select value={numero} onChange={e=>setNumero(Number(e.target.value))} style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12px",marginBottom:"10px"}}>
         {oficinas.map(o=><option key={o.numero} value={o.numero}>Oficina {o.numero} — {o.tema}</option>)}
       </select>
-
-      <div style={{border:`1px solid ${C.line}`,borderRadius:"9px",padding:"10px 12px",marginBottom:"14px",maxWidth:"420px"}}>
-        <div style={{fontSize:"10.5px",fontWeight:700,opacity:.7,marginBottom:"4px"}}>Descrição da oficina (o que ela cobre)</div>
-        {editandoDescOficina
-          ? <>
-              <textarea autoFocus rows={3} value={descOficina} onChange={e=>setDescOficina(e.target.value)}
-                placeholder="Descreva o que essa oficina aborda, pra dar contexto de qual oficina os materiais/atividades pertencem."
-                style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"12px",fontFamily:"inherit",resize:"vertical"}}/>
-              <button onClick={salvarDescOficina} disabled={salvandoDescOficina} className="px-mode on" style={{marginTop:"6px"}}>
-                <Check size={13}/> <span className="px-mode-lbl">{salvandoDescOficina?"Salvando…":"Salvar"}</span>
-              </button>
-            </>
-          : <div style={{display:"flex",alignItems:"flex-start",gap:"8px"}}>
-              <span style={{fontSize:"12px",color:oficinaAtual?.descricao?C.sub:C.faint,flex:1,lineHeight:1.5}}>{oficinaAtual?.descricao||"Sem descrição ainda."}</span>
-              <button onClick={()=>{ setDescOficina(oficinaAtual?.descricao||""); setEditandoDescOficina(true); }} title="Editar" style={{background:"none",border:"none",cursor:"pointer",color:C.faint,flexShrink:0}}><Pencil size={14}/></button>
-            </div>}
-      </div>
 
       {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
 
