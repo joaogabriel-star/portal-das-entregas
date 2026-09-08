@@ -2291,6 +2291,16 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
   const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
   const [erroLogin,setErroLogin]=useState(""); const [entrando,setEntrando]=useState(false);
 
+  // Enquanto a próxima turma do curso não abre, a tela de login/cadastro
+  // (pré-autenticação) mostra "em breve" em vez do formulário -- só faz
+  // sentido pra quem chega pela seção Curso, não pela Mentoria.
+  const [cursoInscricoesAbertas,setCursoInscricoesAbertas]=useState(null); // null=carregando
+  useEffect(()=>{
+    if(abaInicial!=="curso" || token) return;
+    fetch(`${API_BASE}/api/mentoria/curso/configuracao`).then(r=>r.json())
+      .then(d=>setCursoInscricoesAbertas(!!d.inscricoes_abertas)).catch(()=>setCursoInscricoesAbertas(false));
+  },[abaInicial,token]);
+
   // Primeiro acesso de administrador — tela separada do cadastro de mentor,
   // só pros e-mails autorizados no backend (ver ADMINS_PERMITIDOS).
   const [adminEmail,setAdminEmail]=useState(""); const [adminSenha,setAdminSenha]=useState(""); const [adminConfirmar,setAdminConfirmar]=useState("");
@@ -2468,7 +2478,26 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
     }catch(err){ setAviso(err.message||"Erro ao criar vínculo."); }
   }
 
-  if(!token && tela==="login"){
+  if(!token && tela==="login" && abaInicial==="curso" && cursoInscricoesAbertas===null){
+    return <div style={{padding:"32px 24px",fontSize:"12px",color:C.faint}}>Carregando…</div>;
+  }
+
+  if(!token && tela==="login" && abaInicial==="curso" && cursoInscricoesAbertas===false){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px"}}>
+          <span style={{display:"inline-block",fontSize:"10.5px",fontWeight:700,color:C.primary,background:C.primarySoft,borderRadius:"999px",padding:"3px 10px",marginBottom:"10px"}}>Em breve</span>
+          <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Formação de Mentores em DFT</h3>
+          <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. As inscrições da próxima turma ainda não abriram.</p>
+        </div>
+        <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("admin")}>
+          <ShieldCheck size={14}/> <span className="px-mode-lbl">Sou administrador</span>
+        </button>
+      </div>
+    );
+  }
+
+  if(!token && tela==="login" && !(abaInicial==="curso" && cursoInscricoesAbertas===false)){
     return (
       <div style={{padding:"32px 24px",maxWidth:"360px"}}>
         <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px",display:"flex",gap:"8px",alignItems:"flex-start"}}>
