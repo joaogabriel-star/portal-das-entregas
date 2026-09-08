@@ -811,8 +811,8 @@ export default function PortalEntregas(){
         </div>
       </div>}
 
-      {secao==="mentoria" && <div className="px-wrap"><PainelMentoria/></div>}
-      {secao==="curso" && <div className="px-wrap"><PainelMentoria abaInicial="curso"/></div>}
+      {secao==="mentoria" && <div className="px-wrap"><PainelMentoria irParaSecao={setSecao}/></div>}
+      {secao==="curso" && <div className="px-wrap"><PainelMentoria abaInicial="curso" irParaSecao={setSecao}/></div>}
 
       {/* botões flutuantes (apenas na seção Catálogo) */}
       {secao==="catalogo" && navPanel && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
@@ -2282,7 +2282,7 @@ function decodificarJwt(token){
 
 const STATUS_OFICINA=[["pendente","Pendente"],["agendada","Agendada"],["realizada","Realizada"],["cancelada","Cancelada"]];
 
-function PainelMentoria({abaInicial}={}){
+function PainelMentoria({abaInicial,irParaSecao}={}){
   const [token,setToken]=useState(()=>localStorage.getItem(MENTORIA_TOKEN_KEY));
   const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
   const [subaba,setSubaba]=useState(abaInicial||"vinculos"); // "vinculos" · "calendario" · "documentos" · "curso"
@@ -2641,7 +2641,11 @@ function PainelMentoria({abaInicial}={}){
         <h2 style={{margin:0,fontSize:"18px",color:C.navy}}>Mentoria {mentor?.isAdmin && <span style={{fontSize:"11px",fontWeight:700,color:C.primary}}>· admin</span>}</h2>
         <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
           <NotificacoesSino token={token} onIrPara={(n)=>{
-            if(n.tipo==="chefia_desatualizada" && !mentor?.isAdmin){ setSubaba("vinculos"); }
+            if(n.tipo==="oficina_hoje"){
+              try{ sessionStorage.setItem(CURSO_FOCO_OFICINA_KEY, String(n.oficinaNumero)); }catch{}
+              irParaSecao ? irParaSecao("curso") : setSubaba("vinculos");
+            }
+            else if(n.tipo==="chefia_desatualizada" && !mentor?.isAdmin){ setSubaba("vinculos"); }
             else if(n.processoId||n.mentorId){ setAbrirProcessoId(n.processoId||null); setSubaba("credenciamento"); }
           }}/>
           <button className="px-mode" onClick={sair}><X size={14}/> <span className="px-mode-lbl">Sair</span></button>
@@ -4540,14 +4544,20 @@ const CURSO_SUPORTE=["Ieda Brasil","Rita Maria Ferreira","Manoel Sales","Sandra 
 const CURSO_TOTAL_OFICINAS=20;
 const CURSO_TURMA_LABEL={turma1:"Turma 1 — segunda, quarta e sexta",turma2:"Turma 2 — terça e quinta"};
 
+const CURSO_FOCO_OFICINA_KEY="px-curso-foco-oficina";
+
 function CursoMentores({token,isAdmin,mentorId}){
-  const [aba,setAba]=useState(isAdmin?"inscritos":"curso");
+  const focoInicial=(()=>{ try{ const v=sessionStorage.getItem(CURSO_FOCO_OFICINA_KEY); return v?Number(v):null; }catch{ return null; } })();
+  const [aba,setAba]=useState(focoInicial?(isAdmin?"chamada":"aulas"):(isAdmin?"inscritos":"curso"));
+  const [focoOficina]=useState(focoInicial);
   const [oficinas,setOficinas]=useState([]);
   const [inscricao,setInscricao]=useState(undefined); // undefined=carregando · null=nao inscrito
   const [inscritos,setInscritos]=useState([]);
   const [inscritoAberto,setInscritoAberto]=useState(null); // resumo do inscrito selecionado (admin)
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
+
+  useEffect(()=>{ try{ sessionStorage.removeItem(CURSO_FOCO_OFICINA_KEY); }catch{} },[]);
 
   async function carregarOficinas(){
     try{
@@ -4578,6 +4588,7 @@ function CursoMentores({token,isAdmin,mentorId}){
   if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
 
   const TURMA_LABEL=CURSO_TURMA_LABEL;
+  const hojeISO=new Date().toISOString().slice(0,10);
 
   return (
     <div>
@@ -4587,11 +4598,15 @@ function CursoMentores({token,isAdmin,mentorId}){
         {!isAdmin && <>
           <button className={`px-mode ${aba==="curso"?"on":""}`} onClick={()=>setAba("curso")}><GraduationCap size={13}/> <span className="px-mode-lbl">Curso</span></button>
           <button className={`px-mode ${aba==="aulas"?"on":""}`} onClick={()=>setAba("aulas")}><ClipboardList size={13}/> <span className="px-mode-lbl">Aulas</span></button>
+          <button className={`px-mode ${aba==="gravadas"?"on":""}`} onClick={()=>setAba("gravadas")}><ExternalLink size={13}/> <span className="px-mode-lbl">Aulas gravadas</span></button>
           <button className={`px-mode ${aba==="avaliacao"?"on":""}`} onClick={()=>setAba("avaliacao")}><CheckCircle2 size={13}/> <span className="px-mode-lbl">Avaliação</span></button>
           <button className={`px-mode ${aba==="certificado"?"on":""}`} onClick={()=>setAba("certificado")}><Trophy size={13}/> <span className="px-mode-lbl">Certificado</span></button>
         </>}
         {isAdmin && <>
           <button className={`px-mode ${aba==="inscritos"?"on":""}`} onClick={()=>setAba("inscritos")}><Users size={13}/> <span className="px-mode-lbl">Inscritos</span></button>
+          <button className={`px-mode ${aba==="chamada"?"on":""}`} onClick={()=>setAba("chamada")}><ClipboardCheck size={13}/> <span className="px-mode-lbl">Chamada</span></button>
+          <button className={`px-mode ${aba==="materiais"?"on":""}`} onClick={()=>setAba("materiais")}><FileText size={13}/> <span className="px-mode-lbl">Materiais</span></button>
+          <button className={`px-mode ${aba==="gravadas"?"on":""}`} onClick={()=>setAba("gravadas")}><ExternalLink size={13}/> <span className="px-mode-lbl">Aulas gravadas</span></button>
           <button className={`px-mode ${aba==="cronograma"?"on":""}`} onClick={()=>setAba("cronograma")}><CalendarDays size={13}/> <span className="px-mode-lbl">Cronograma</span></button>
         </>}
       </div>
@@ -4635,18 +4650,25 @@ function CursoMentores({token,isAdmin,mentorId}){
       {!isAdmin && inscricao && aba==="aulas" && <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
         {inscricao.progresso.map(p=>{
           const feita=p.status==="concluida";
+          const ehHoje=p.data && p.data.slice(0,10)===hojeISO;
           return (
-            <div key={p.oficina_numero} style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:"9px"}}>
-              <div style={{width:"26px",height:"26px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10.5px",fontWeight:700,
-                background:feita?C.green:"#fff",border:`2px solid ${feita?C.green:C.line}`,color:feita?"#fff":C.faint}}>{feita?<Check size={13}/>:p.oficina_numero}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:"12.5px",fontWeight:700}}>Oficina {p.oficina_numero} — {p.tema}</div>
-                <div style={{fontSize:"10.5px",color:C.faint}}>{p.data?new Date(p.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
-              </div>
-              {p.link_teams && <a href={p.link_teams} target="_blank" rel="noreferrer" className="px-anexo-chip" style={{textDecoration:"none"}}><ExternalLink size={11}/> Teams</a>}
-            </div>
+            <CursoAulaLinha key={p.oficina_numero} p={p} feita={feita} ehHoje={ehHoje} token={token} abertaInicial={focoOficina===p.oficina_numero}/>
           );
         })}
+      </div>}
+
+      {/* ---------------- MENTOR: aulas gravadas ---------------- */}
+      {!isAdmin && inscricao && aba==="gravadas" && <div style={{display:"flex",flexDirection:"column",gap:"7px"}}>
+        {oficinas.filter(o=>o.link_gravacao).length===0 && <div style={{fontSize:"12px",color:C.faint}}>Nenhuma aula gravada disponível ainda.</div>}
+        {oficinas.filter(o=>o.link_gravacao).map(o=>(
+          <div key={o.numero} style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:"9px"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:"12.5px",fontWeight:700}}>Oficina {o.numero} — {o.tema}</div>
+              <div style={{fontSize:"10.5px",color:C.faint}}>{o.data?new Date(o.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
+            </div>
+            <a href={o.link_gravacao} target="_blank" rel="noreferrer" className="px-anexo-chip" style={{textDecoration:"none"}}><ExternalLink size={11}/> Assistir</a>
+          </div>
+        ))}
       </div>}
 
       {/* ---------------- MENTOR: avaliação ---------------- */}
@@ -4676,8 +4698,257 @@ function CursoMentores({token,isAdmin,mentorId}){
         {inscritoAberto && <CursoInscritoDetalhe resumo={inscritoAberto} token={token} onFechar={()=>setInscritoAberto(null)} onMudou={carregarInscritos}/>}
       </div>}
 
+      {/* ---------------- ADMIN: chamada ---------------- */}
+      {isAdmin && aba==="chamada" && <CursoChamadaAdmin token={token} oficinas={oficinas} focoOficina={focoOficina}/>}
+
+      {/* ---------------- ADMIN: materiais ---------------- */}
+      {isAdmin && aba==="materiais" && <CursoMateriaisAdmin token={token} oficinas={oficinas} focoOficina={focoOficina}/>}
+
+      {/* ---------------- ADMIN/MENTOR: aulas gravadas (admin edita aqui) ---------------- */}
+      {isAdmin && aba==="gravadas" && <CursoGravacoesAdmin token={token} oficinas={oficinas} onMudou={carregarOficinas}/>}
+
       {/* ---------------- ADMIN: cronograma ---------------- */}
       {isAdmin && aba==="cronograma" && <CursoCronogramaAdmin token={token} oficinas={oficinas} onMudou={carregarOficinas}/>}
+    </div>
+  );
+}
+
+function CursoAulaLinha({p,feita,ehHoje,token,abertaInicial}){
+  const [aberta,setAberta]=useState(!!abertaInicial);
+  const [materiais,setMateriais]=useState(null);
+
+  useEffect(()=>{
+    if(aberta && materiais===null){
+      fetch(`${API_BASE}/api/mentoria/curso/oficinas/${p.oficina_numero}/materiais`,{headers:mentoriaAuthHeader(token)})
+        .then(r=>r.json()).then(d=>setMateriais(Array.isArray(d)?d:[])).catch(()=>setMateriais([]));
+    }
+  },[aberta]); // eslint-disable-line
+
+  return (
+    <div style={{border:`1px solid ${ehHoje?C.primary:C.line}`,borderRadius:"9px",overflow:"hidden",background:ehHoje?C.primarySoft:"#fff"}}>
+      <div style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px"}}>
+        <div style={{width:"26px",height:"26px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10.5px",fontWeight:700,
+          background:feita?C.green:"#fff",border:`2px solid ${feita?C.green:C.line}`,color:feita?"#fff":C.faint}}>{feita?<Check size={13}/>:p.oficina_numero}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:"12.5px",fontWeight:700}}>Oficina {p.oficina_numero} — {p.tema}</div>
+          <div style={{fontSize:"10.5px",color:ehHoje?C.primaryDark:C.faint,fontWeight:ehHoje?700:400}}>
+            {ehHoje?"É hoje! ":""}{p.data?new Date(p.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}
+          </div>
+        </div>
+        {ehHoje && (p.link_teams
+          ? <a href={p.link_teams} target="_blank" rel="noreferrer" className="px-anexo-chip" style={{textDecoration:"none",background:C.primary,color:"#fff",borderColor:C.primary}}><ExternalLink size={11}/> Entrar no Teams</a>
+          : <span style={{fontSize:"10.5px",color:C.primaryDark,fontStyle:"italic"}}>Link do Teams ainda não disponível</span>)}
+        {!ehHoje && p.link_teams && <a href={p.link_teams} target="_blank" rel="noreferrer" className="px-anexo-chip" style={{textDecoration:"none"}}><ExternalLink size={11}/> Teams</a>}
+        <button onClick={()=>setAberta(a=>!a)} style={{background:"none",border:"none",cursor:"pointer",color:C.faint,padding:"4px"}} title="Materiais e atividades">
+          {aberta?<ChevronDown size={15}/>:<ChevronRight size={15}/>}
+        </button>
+      </div>
+      {aberta && <div style={{borderTop:`1px solid ${C.line}`,padding:"10px 12px",background:"#fff"}}>
+        {materiais===null && <div style={{fontSize:"11px",color:C.faint}}>Carregando…</div>}
+        {materiais && !materiais.length && <div style={{fontSize:"11px",color:C.faint}}>Nenhum material ou atividade anexado nessa oficina.</div>}
+        {materiais && materiais.length>0 && <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+          {materiais.map(m=>(
+            <div key={m.id} style={{display:"flex",alignItems:"center",gap:"8px"}}>
+              <span style={{fontSize:"9.5px",fontWeight:700,color:m.tipo==="atividade"?C.primary:C.sub,background:m.tipo==="atividade"?C.primarySoft:C.bg,borderRadius:"999px",padding:"2px 7px",flexShrink:0}}>{m.tipo==="atividade"?"Atividade":"Documento"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:"11.5px",fontWeight:600}}>{m.titulo}</div>
+                {m.descricao && <div style={{fontSize:"10.5px",color:C.sub}}>{m.descricao}</div>}
+              </div>
+              {m.nome_arquivo && <button onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/curso/materiais/${m.id}/download`,{nome_arquivo:m.nome_arquivo})} className="px-anexo-chip" style={{cursor:"pointer"}}><Download size={11}/> {m.nome_arquivo}</button>}
+            </div>
+          ))}
+        </div>}
+      </div>}
+    </div>
+  );
+}
+
+function CursoChamadaAdmin({token,oficinas,focoOficina}){
+  const [numero,setNumero]=useState(focoOficina||oficinas[0]?.numero||1);
+  const [lista,setLista]=useState([]);
+  const [carregando,setCarregando]=useState(false);
+  const [erro,setErro]=useState("");
+
+  async function carregar(n){
+    setCarregando(true); setErro("");
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/oficinas/${n}/chamada`,{headers:mentoriaAuthHeader(token)});
+      const d=await r.json();
+      if(!r.ok) throw new Error(d.erro||"Erro ao carregar chamada.");
+      setLista(d);
+    }catch(err){ setErro(err.message||"Erro ao carregar chamada."); }
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregar(numero); },[numero]); // eslint-disable-line
+
+  async function alternar(inscricaoId,statusAtual){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/progresso/${numero}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({inscricaoId,status:statusAtual==="concluida"?"pendente":"concluida"}),
+      });
+      if(!r.ok) throw new Error();
+      await carregar(numero);
+    }catch{ setErro("Não consegui atualizar a presença."); }
+  }
+
+  const oficinaAtual=oficinas.find(o=>o.numero===numero);
+  const presentes=lista.filter(l=>l.status==="concluida").length;
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"6px",flexWrap:"wrap"}}>
+        <select value={numero} onChange={e=>setNumero(Number(e.target.value))} style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12px"}}>
+          {oficinas.map(o=><option key={o.numero} value={o.numero}>Oficina {o.numero} — {o.tema}</option>)}
+        </select>
+        {!carregando && <span style={{fontSize:"11px",color:C.sub}}>{presentes}/{lista.length} marcados presentes</span>}
+      </div>
+      {oficinaAtual?.data && <div style={{fontSize:"11px",color:C.faint,marginBottom:"10px"}}>{new Date(oficinaAtual.data+"T00:00:00").toLocaleDateString("pt-BR")}</div>}
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      {carregando && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
+      {!carregando && !lista.length && <div style={{fontSize:"12px",color:C.faint}}>Ninguém inscrito ainda.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+        {lista.map(l=>{
+          const presente=l.status==="concluida";
+          return (
+            <button key={l.inscricao_id} onClick={()=>alternar(l.inscricao_id,l.status)}
+              style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",background:presente?C.greenSoft:"#fff",cursor:"pointer",textAlign:"left"}}>
+              <div style={{width:"22px",height:"22px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",
+                background:presente?C.green:"#fff",border:`2px solid ${presente?C.green:C.line}`,color:presente?"#fff":C.faint}}>{presente&&<Check size={12}/>}</div>
+              <span style={{fontSize:"12.5px",flex:1}}>{l.mentor_nome}</span>
+              <span style={{fontSize:"10px",color:C.faint}}>{CURSO_TURMA_LABEL[l.turma]}</span>
+              <span style={{fontSize:"10px",fontWeight:700,color:presente?C.green:C.faint}}>{presente?"presente":"marcar"}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CursoMateriaisAdmin({token,oficinas,focoOficina}){
+  const [numero,setNumero]=useState(focoOficina||oficinas[0]?.numero||1);
+  const [lista,setLista]=useState([]);
+  const [form,setForm]=useState({tipo:"documento",titulo:"",descricao:"",arquivo:null});
+  const [enviando,setEnviando]=useState(false);
+  const [erro,setErro]=useState("");
+
+  async function carregar(n){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/oficinas/${n}/materiais`,{headers:mentoriaAuthHeader(token)});
+      const d=await r.json();
+      if(r.ok) setLista(d);
+    }catch{}
+  }
+  useEffect(()=>{ carregar(numero); },[numero]); // eslint-disable-line
+
+  async function adicionar(ev){
+    ev.preventDefault();
+    if(enviando||!form.titulo.trim()) return;
+    setEnviando(true); setErro("");
+    try{
+      const fd=new FormData();
+      fd.append("tipo",form.tipo); fd.append("titulo",form.titulo); fd.append("descricao",form.descricao||"");
+      if(form.arquivo) fd.append("arquivo",form.arquivo);
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/oficinas/${numero}/materiais`,{
+        method:"POST", headers:mentoriaAuthHeader(token), body:fd,
+      });
+      const d=await r.json();
+      if(!r.ok) throw new Error(d.erro||"Erro ao anexar material.");
+      setForm({tipo:"documento",titulo:"",descricao:"",arquivo:null});
+      await carregar(numero);
+    }catch(err){ setErro(err.message||"Erro ao anexar material."); }
+    finally{ setEnviando(false); }
+  }
+  async function remover(id){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/materiais/${id}`,{method:"DELETE",headers:mentoriaAuthHeader(token)});
+      if(!r.ok) throw new Error();
+      await carregar(numero);
+    }catch{ setErro("Não consegui remover o material."); }
+  }
+
+  return (
+    <div>
+      <select value={numero} onChange={e=>setNumero(Number(e.target.value))} style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12px",marginBottom:"14px"}}>
+        {oficinas.map(o=><option key={o.numero} value={o.numero}>Oficina {o.numero} — {o.tema}</option>)}
+      </select>
+
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"16px"}}>
+        {!lista.length && <div style={{fontSize:"12px",color:C.faint}}>Nenhum material anexado ainda nessa oficina.</div>}
+        {lista.map(m=>(
+          <div key={m.id} style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px"}}>
+            <span style={{fontSize:"10px",fontWeight:700,color:m.tipo==="atividade"?C.primary:C.sub,background:m.tipo==="atividade"?C.primarySoft:C.bg,borderRadius:"999px",padding:"2px 8px",flexShrink:0}}>{m.tipo==="atividade"?"Atividade":"Documento"}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:"12px",fontWeight:700}}>{m.titulo}</div>
+              {m.descricao && <div style={{fontSize:"10.5px",color:C.sub}}>{m.descricao}</div>}
+            </div>
+            {m.nome_arquivo && <button onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/curso/materiais/${m.id}/download`,{nome_arquivo:m.nome_arquivo})} className="px-anexo-chip" style={{cursor:"pointer"}}><Download size={11}/> {m.nome_arquivo}</button>}
+            <button onClick={()=>remover(m.id)} title="Remover" style={{background:"none",border:"none",cursor:"pointer",color:C.faint}}><Trash2 size={14}/></button>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={adicionar} style={{border:`1px solid ${C.line}`,borderRadius:"10px",padding:"12px",display:"flex",flexDirection:"column",gap:"8px",maxWidth:"420px"}}>
+        <div style={{fontSize:"11px",fontWeight:700,opacity:.7}}>Anexar novo</div>
+        <div style={{display:"flex",gap:"7px"}}>
+          <button type="button" onClick={()=>setForm(s=>({...s,tipo:"documento"}))} className={`px-mode ${form.tipo==="documento"?"on":""}`}>Documento</button>
+          <button type="button" onClick={()=>setForm(s=>({...s,tipo:"atividade"}))} className={`px-mode ${form.tipo==="atividade"?"on":""}`}>Atividade</button>
+        </div>
+        <input required placeholder="Título" value={form.titulo} onChange={e=>setForm(s=>({...s,titulo:e.target.value}))}
+          style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12px"}}/>
+        <textarea placeholder="Descrição (opcional)" rows={2} value={form.descricao} onChange={e=>setForm(s=>({...s,descricao:e.target.value}))}
+          style={{padding:"7px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12px",fontFamily:"inherit",resize:"vertical"}}/>
+        <input type="file" onChange={e=>setForm(s=>({...s,arquivo:e.target.files?.[0]||null}))} style={{fontSize:"11.5px"}}/>
+        <button className="px-mode cta-bot" disabled={enviando} type="submit" style={{alignSelf:"flex-start"}}>
+          <Plus size={13}/> <span className="px-mode-lbl">{enviando?"Enviando…":"Anexar"}</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function CursoGravacoesAdmin({token,oficinas,onMudou}){
+  const [editando,setEditando]=useState(null);
+  const [link,setLink]=useState("");
+  const [erro,setErro]=useState("");
+
+  function abrir(o){ setEditando(o.numero); setLink(o.link_gravacao||""); }
+  async function salvar(numero){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/curso/oficinas/${numero}`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({linkGravacao:link||null}),
+      });
+      if(!r.ok) throw new Error();
+      setEditando(null); onMudou&&onMudou();
+    }catch{ setErro("Não consegui salvar o link da gravação."); }
+  }
+
+  return (
+    <div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+        {oficinas.map(o=>(
+          <div key={o.numero} style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px"}}>
+            <span style={{fontSize:"10.5px",fontWeight:700,color:C.faint,width:"20px",flexShrink:0}}>{o.numero}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:"12px",fontWeight:600}}>{o.tema}</div>
+              {editando===o.numero
+                ? <input autoFocus value={link} onChange={e=>setLink(e.target.value)} placeholder="Link da gravação (Teams/Stream/YouTube…)"
+                    style={{marginTop:"4px",width:"100%",padding:"6px 8px",border:`1px solid ${C.line}`,borderRadius:"7px",fontSize:"11.5px"}}/>
+                : (o.link_gravacao
+                    ? <a href={o.link_gravacao} target="_blank" rel="noreferrer" style={{fontSize:"11px",color:C.primary}}>{o.link_gravacao}</a>
+                    : <span style={{fontSize:"11px",color:C.faint}}>Sem gravação ainda</span>)}
+            </div>
+            {editando===o.numero
+              ? <button onClick={()=>salvar(o.numero)} className="px-mode on" style={{flexShrink:0}}><Check size={13}/> <span className="px-mode-lbl">Salvar</span></button>
+              : <button onClick={()=>abrir(o)} className="px-mode" style={{flexShrink:0}}><Pencil size={13}/> <span className="px-mode-lbl">Editar</span></button>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
