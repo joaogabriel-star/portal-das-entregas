@@ -4538,6 +4538,7 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
 const CURSO_EDUCADORES=["Isana Rezende","Fábia Souza","Patrícia Gomes","Lorena Ferreira","Diego Dórea","Adalberto Bleme","Pedro Baena","Noelle Costa","Denise Falcão","Fábia Fernanda","Cinthya Santos","Ana Isabel","Sandra Luna","Ieda Brasil"];
 const CURSO_SUPORTE=["Ieda Brasil","Rita Maria Ferreira","Manoel Sales","Sandra Luna"];
 const CURSO_TOTAL_OFICINAS=20;
+const CURSO_TURMA_LABEL={turma1:"Turma 1 — segunda, quarta e sexta",turma2:"Turma 2 — terça e quinta"};
 
 function CursoMentores({token,isAdmin,mentorId}){
   const [aba,setAba]=useState(isAdmin?"inscritos":"curso");
@@ -4547,8 +4548,6 @@ function CursoMentores({token,isAdmin,mentorId}){
   const [inscritoAberto,setInscritoAberto]=useState(null); // resumo do inscrito selecionado (admin)
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
-  const [turmaEscolhida,setTurmaEscolhida]=useState("turma1");
-  const [inscrevendo,setInscrevendo]=useState(false);
 
   async function carregarOficinas(){
     try{
@@ -4576,25 +4575,9 @@ function CursoMentores({token,isAdmin,mentorId}){
     Promise.all([carregarOficinas(), isAdmin?carregarInscritos():carregarInscricao()]).finally(()=>setCarregando(false));
   },[token,isAdmin]); // eslint-disable-line
 
-  async function inscrever(ev){
-    ev.preventDefault();
-    if(inscrevendo) return;
-    setInscrevendo(true); setErro("");
-    try{
-      const resp=await fetch(`${API_BASE}/api/mentoria/curso/inscricao`,{
-        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
-        body:JSON.stringify({turma:turmaEscolhida}),
-      });
-      const dados=await resp.json();
-      if(!resp.ok) throw new Error(dados.erro||"Erro ao se inscrever.");
-      await carregarInscricao();
-    }catch(err){ setErro(err.message||"Erro ao se inscrever."); }
-    finally{ setInscrevendo(false); }
-  }
-
   if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
 
-  const TURMA_LABEL={turma1:"Turma 1 — segunda, quarta e sexta",turma2:"Turma 2 — terça e quinta"};
+  const TURMA_LABEL=CURSO_TURMA_LABEL;
 
   return (
     <div>
@@ -4614,11 +4597,8 @@ function CursoMentores({token,isAdmin,mentorId}){
       </div>
 
       {/* ---------------- MENTOR: sem inscrição ainda ---------------- */}
-      {!isAdmin && inscricao===null && (aba==="curso"||aba==="aulas") && <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px"}}>
-        <span style={{display:"inline-block",fontSize:"10.5px",fontWeight:700,color:C.primary,background:C.primarySoft,borderRadius:"999px",padding:"3px 10px",marginBottom:"10px"}}>Em breve</span>
-        <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Formação de Mentores em DFT</h3>
-        <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6,maxWidth:"56ch"}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. As inscrições ainda não abriram — assim que abrirem, você vai poder escolher sua turma aqui.</p>
-      </div>}
+      {!isAdmin && inscricao===null && (aba==="curso"||aba==="aulas") &&
+        <CursoInscricaoForm token={token} onInscrito={carregarInscricao}/>}
 
       {/* ---------------- MENTOR: visão geral do curso ---------------- */}
       {!isAdmin && inscricao && aba==="curso" && (()=>{
@@ -4698,6 +4678,136 @@ function CursoMentores({token,isAdmin,mentorId}){
 
       {/* ---------------- ADMIN: cronograma ---------------- */}
       {isAdmin && aba==="cronograma" && <CursoCronogramaAdmin token={token} oficinas={oficinas} onMudou={carregarOficinas}/>}
+    </div>
+  );
+}
+
+// Perguntas do formulário oficial de inscrição (Microsoft Forms) que não
+// têm campo equivalente no cadastro do mentor -- nome/CPF/SIAPE/cargo/
+// órgão/telefone/e-mail vêm prontos do cadastro (GET /mentores/me),
+// mostrados só pra conferência. Ver rotas-curso.js/migrations/023.
+const CURSO_SITUACAO_OPCOES=[["servidor","Servidor(a) público(a) federal"],["empregado","Empregado(a) público(a) federal"],["outra","Outra situação"]];
+const CURSO_OBJETIVO_OPCOES=[["conhecimento","Aquisição de conhecimento"],["indicacao_chefia","Indicação da chefia"],["interesse_mentor","Interesse em atuar como mentor em DFT"]];
+const CURSO_JA_ATUOU_OPCOES=[["trabalhou_tema","Sim, trabalhei com o tema em algum momento"],["foi_ponto_focal","Sim, fui ponto focal"],["trabalha_atualmente","Sim, eu trabalho atualmente com DFT"],["nao","Não"]];
+const CURSO_CURSOS_OPCOES=[["qualificacao_enap",'Sim, tenho o certificado do curso "Qualificação em DFT", da Enap'],["praticando_enap",'Sim, tenho o certificado do curso "Praticando o DFT", da Enap'],["ambos_enap","Sim, possuo os certificados dos dois cursos da Enap mencionados acima"],["outro_curso","Sim, tenho certificação de outro curso sobre DFT que não foi realizado pela Enap"],["nao","Não"]];
+
+function CursoInscricaoForm({token,onInscrito}){
+  const [perfil,setPerfil]=useState(null);
+  const [turma,setTurma]=useState("turma1");
+  const [situacaoFuncional,setSituacaoFuncional]=useState("");
+  const [objetivoCurso,setObjetivoCurso]=useState("");
+  const [jaAtuouDft,setJaAtuouDft]=useState([]);
+  const [cursosConcluidosDft,setCursosConcluidosDft]=useState([]);
+  const [formacaoMentoriaAnterior,setFormacaoMentoriaAnterior]=useState("");
+  const [interesseMentoriaDft,setInteresseMentoriaDft]=useState("");
+  const [chefiaCiente,setChefiaCiente]=useState("");
+  const [inscrevendo,setInscrevendo]=useState(false);
+  const [erro,setErro]=useState("");
+
+  useEffect(()=>{
+    fetch(`${API_BASE}/api/mentoria/mentores/me`,{headers:mentoriaAuthHeader(token)})
+      .then(r=>r.json()).then(d=>{ if(d && !d.erro) setPerfil(d); }).catch(()=>{});
+  },[token]);
+
+  function alternar(lista,setLista,chave,exclusiva,max){
+    setLista(atual=>{
+      if(chave===exclusiva) return atual.includes(chave)?[]:[chave];
+      const semExclusiva=atual.filter(v=>v!==exclusiva);
+      if(semExclusiva.includes(chave)) return semExclusiva.filter(v=>v!==chave);
+      if(max && semExclusiva.length>=max) return semExclusiva;
+      return [...semExclusiva,chave];
+    });
+  }
+
+  async function inscrever(ev){
+    ev.preventDefault();
+    if(inscrevendo) return;
+    setErro("");
+    if(!situacaoFuncional||!objetivoCurso||!jaAtuouDft.length||!cursosConcluidosDft.length||!formacaoMentoriaAnterior.trim()||!interesseMentoriaDft){
+      setErro("Responda todas as perguntas obrigatórias.");
+      return;
+    }
+    setInscrevendo(true);
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/inscricao`,{
+        method:"POST", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({turma,respostas:{
+          situacaoFuncional,objetivoCurso,jaAtuouDft,cursosConcluidosDft,
+          formacaoMentoriaAnterior,interesseMentoriaDft,
+          chefiaCiente:chefiaCiente||null,
+        }}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao se inscrever.");
+      onInscrito&&onInscrito();
+    }catch(err){ setErro(err.message||"Erro ao se inscrever."); }
+    finally{ setInscrevendo(false); }
+  }
+
+  const Radio=({valor,onChange,opcoes})=><div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+    {opcoes.map(([v,rotulo])=>(
+      <label key={v} style={{display:"flex",alignItems:"center",gap:"8px",fontSize:"12.5px",cursor:"pointer"}}>
+        <input type="radio" checked={valor===v} onChange={()=>onChange(v)}/> {rotulo}
+      </label>
+    ))}
+  </div>;
+  const Checks=({lista,setLista,opcoes,exclusiva,max})=><div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+    {opcoes.map(([v,rotulo])=>(
+      <label key={v} style={{display:"flex",alignItems:"center",gap:"8px",fontSize:"12.5px",cursor:"pointer"}}>
+        <input type="checkbox" checked={lista.includes(v)} onChange={()=>alternar(lista,setLista,v,exclusiva,max)}/> {rotulo}
+      </label>
+    ))}
+  </div>;
+  const Pergunta=({n,titulo,children})=><div style={{marginBottom:"18px"}}>
+    <div style={{fontSize:"12.5px",fontWeight:700,color:C.navy,marginBottom:"8px"}}>{n}. {titulo}</div>
+    {children}
+  </div>;
+
+  return (
+    <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px"}}>
+      <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Formação de Mentores em DFT</h3>
+      <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6,maxWidth:"60ch",marginBottom:"16px"}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. Preencha a inscrição abaixo, com as mesmas perguntas do formulário oficial do curso.</p>
+
+      {perfil && <div style={{background:C.faint?undefined:undefined,border:`1px solid ${C.line}`,borderRadius:"9px",padding:"12px 14px",marginBottom:"18px",fontSize:"11.5px",color:C.sub,lineHeight:1.7}}>
+        <b style={{color:C.navy}}>Dados do seu cadastro</b> (se algo estiver errado, atualize no seu cadastro antes de enviar):
+        <div>Nome: {perfil.nome} · CPF: {perfil.cpf||"—"} · SIAPE: {perfil.matricula_siape||"—"}</div>
+        <div>Cargo: {perfil.cargo_efetivo||"—"} · Órgão de exercício: {perfil.unidade_exercicio||"—"}</div>
+        <div>Telefone: {perfil.telefone||"—"} · E-mail: {perfil.email}</div>
+      </div>}
+
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"14px"}}><AlertTriangle size={12}/> {erro}</div>}
+
+      <form onSubmit={inscrever}>
+        <Pergunta n="1" titulo="Escolha sua turma">
+          <Radio valor={turma} onChange={setTurma} opcoes={Object.entries(CURSO_TURMA_LABEL)}/>
+        </Pergunta>
+        <Pergunta n="2" titulo="Com relação à sua situação funcional, você é:">
+          <Radio valor={situacaoFuncional} onChange={setSituacaoFuncional} opcoes={CURSO_SITUACAO_OPCOES}/>
+        </Pergunta>
+        <Pergunta n="3" titulo="Qual é seu objetivo em realizar este curso?">
+          <Radio valor={objetivoCurso} onChange={setObjetivoCurso} opcoes={CURSO_OBJETIVO_OPCOES}/>
+        </Pergunta>
+        <Pergunta n="4" titulo="Você já atuou/atua em DFT?">
+          <Checks lista={jaAtuouDft} setLista={setJaAtuouDft} opcoes={CURSO_JA_ATUOU_OPCOES} exclusiva="nao"/>
+        </Pergunta>
+        <Pergunta n="5" titulo="Você já concluiu cursos relacionados ao DFT? (selecione no máximo 2 opções)">
+          <Checks lista={cursosConcluidosDft} setLista={setCursosConcluidosDft} opcoes={CURSO_CURSOS_OPCOES} exclusiva="nao" max={2}/>
+        </Pergunta>
+        <Pergunta n="6" titulo='Você já participou de alguma formação específica em Mentoria? Caso afirmativo, escreva o nome do curso, da instituição promotora e o período de realização (responda "Não" se nunca participou).'>
+          <textarea value={formacaoMentoriaAnterior} onChange={e=>setFormacaoMentoriaAnterior(e.target.value)} rows={3}
+            style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px",fontFamily:"inherit",resize:"vertical"}}/>
+        </Pergunta>
+        <Pergunta n="7" titulo="Você tem interesse e disponibilidade para atuar em projetos de mentoria em DFT promovidos pelo MGI?">
+          <Radio valor={interesseMentoriaDft} onChange={setInteresseMentoriaDft} opcoes={[["sim","Sim"],["nao","Não"]]}/>
+        </Pergunta>
+        <Pergunta n="8" titulo="Você declara que sua chefia imediata está ciente de sua inscrição e participação neste curso?">
+          <Radio valor={chefiaCiente} onChange={setChefiaCiente} opcoes={[["sim","Sim, minha chefia está ciente"],["nao","Não"]]}/>
+        </Pergunta>
+
+        <button className="px-mode cta-bot" disabled={inscrevendo} type="submit">
+          <GraduationCap size={15}/> <span className="px-mode-lbl">{inscrevendo?"Enviando…":"Enviar inscrição"}</span>
+        </button>
+      </form>
     </div>
   );
 }
@@ -4874,7 +4984,22 @@ function CursoInscritoDetalhe({resumo,token,onFechar,onMudou}){
         </div>
         {erro && <div className="px-anexo-erro" style={{margin:"8px 0"}}><AlertTriangle size={12}/> {erro}</div>}
         {!inscricao && <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>}
-        {inscricao && <div style={{maxHeight:"60vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:"6px",padding:"6px 0"}}>
+        {inscricao && <div style={{maxHeight:"70vh",overflowY:"auto"}}>
+          <div style={{border:`1px solid ${C.line}`,borderRadius:"9px",padding:"12px 14px",margin:"8px 0 12px",fontSize:"11.5px",color:C.sub,lineHeight:1.7}}>
+            <div>{inscricao.mentor_email} · CPF: {inscricao.cpf||"—"} · SIAPE: {inscricao.matricula_siape||"—"}</div>
+            <div>Cargo: {inscricao.cargo_efetivo||"—"} · Órgão: {inscricao.unidade_exercicio||"—"} · Tel: {inscricao.telefone||"—"}</div>
+            <div>Turma: {CURSO_TURMA_LABEL[inscricao.turma]}</div>
+            {inscricao.respostas && <>
+              <div style={{marginTop:"6px"}}><b style={{color:C.navy}}>Situação funcional:</b> {CURSO_SITUACAO_OPCOES.find(([v])=>v===inscricao.respostas.situacaoFuncional)?.[1]||"—"}</div>
+              <div><b style={{color:C.navy}}>Objetivo:</b> {CURSO_OBJETIVO_OPCOES.find(([v])=>v===inscricao.respostas.objetivoCurso)?.[1]||"—"}</div>
+              <div><b style={{color:C.navy}}>Já atuou em DFT:</b> {(inscricao.respostas.jaAtuouDft||[]).map(v=>CURSO_JA_ATUOU_OPCOES.find(([o])=>o===v)?.[1]).filter(Boolean).join("; ")||"—"}</div>
+              <div><b style={{color:C.navy}}>Cursos DFT concluídos:</b> {(inscricao.respostas.cursosConcluidosDft||[]).map(v=>CURSO_CURSOS_OPCOES.find(([o])=>o===v)?.[1]).filter(Boolean).join("; ")||"—"}</div>
+              <div><b style={{color:C.navy}}>Formação prévia em mentoria:</b> {inscricao.respostas.formacaoMentoriaAnterior||"—"}</div>
+              <div><b style={{color:C.navy}}>Interesse em mentoria:</b> {inscricao.respostas.interesseMentoriaDft==="sim"?"Sim":inscricao.respostas.interesseMentoriaDft==="nao"?"Não":"—"}</div>
+              <div><b style={{color:C.navy}}>Chefia ciente:</b> {inscricao.respostas.chefiaCiente==="sim"?"Sim":inscricao.respostas.chefiaCiente==="nao"?"Não":"—"}</div>
+            </>}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
           {inscricao.progresso.map(p=>{
             const feita=p.status==="concluida";
             return (
@@ -4887,6 +5012,7 @@ function CursoInscritoDetalhe({resumo,token,onFechar,onMudou}){
               </button>
             );
           })}
+          </div>
         </div>}
       </div>
     </div>
