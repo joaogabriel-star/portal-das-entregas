@@ -4554,6 +4554,8 @@ function CursoMentores({token,isAdmin,mentorId}){
   const [inscricao,setInscricao]=useState(undefined); // undefined=carregando · null=nao inscrito
   const [inscritos,setInscritos]=useState([]);
   const [inscritoAberto,setInscritoAberto]=useState(null); // resumo do inscrito selecionado (admin)
+  const [inscricoesAbertas,setInscricoesAbertas]=useState(false);
+  const [alternandoInscricoes,setAlternandoInscricoes]=useState(false);
   const [carregando,setCarregando]=useState(true);
   const [erro,setErro]=useState("");
 
@@ -4565,6 +4567,26 @@ function CursoMentores({token,isAdmin,mentorId}){
       const dados=await resp.json();
       if(resp.ok) setOficinas(dados);
     }catch{}
+  }
+  async function carregarConfiguracao(){
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/configuracao`,{headers:mentoriaAuthHeader(token)});
+      const dados=await resp.json();
+      if(resp.ok) setInscricoesAbertas(!!dados.inscricoes_abertas);
+    }catch{}
+  }
+  async function alternarInscricoes(){
+    if(alternandoInscricoes) return;
+    setAlternandoInscricoes(true);
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/curso/configuracao`,{
+        method:"PATCH", headers:{"Content-Type":"application/json",...mentoriaAuthHeader(token)},
+        body:JSON.stringify({inscricoesAbertas:!inscricoesAbertas}),
+      });
+      const dados=await resp.json();
+      if(resp.ok) setInscricoesAbertas(!!dados.inscricoes_abertas);
+    }catch{ setErro("Não consegui atualizar as inscrições do curso."); }
+    finally{ setAlternandoInscricoes(false); }
   }
   async function carregarInscricao(){
     try{
@@ -4582,7 +4604,7 @@ function CursoMentores({token,isAdmin,mentorId}){
   }
   useEffect(()=>{
     setCarregando(true);
-    Promise.all([carregarOficinas(), isAdmin?carregarInscritos():carregarInscricao()]).finally(()=>setCarregando(false));
+    Promise.all([carregarOficinas(), carregarConfiguracao(), isAdmin?carregarInscritos():carregarInscricao()]).finally(()=>setCarregando(false));
   },[token,isAdmin]); // eslint-disable-line
 
   if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
@@ -4608,11 +4630,22 @@ function CursoMentores({token,isAdmin,mentorId}){
           <button className={`px-mode ${aba==="materiais"?"on":""}`} onClick={()=>setAba("materiais")}><FileText size={13}/> <span className="px-mode-lbl">Materiais</span></button>
           <button className={`px-mode ${aba==="gravadas"?"on":""}`} onClick={()=>setAba("gravadas")}><ExternalLink size={13}/> <span className="px-mode-lbl">Aulas gravadas</span></button>
           <button className={`px-mode ${aba==="cronograma"?"on":""}`} onClick={()=>setAba("cronograma")}><CalendarDays size={13}/> <span className="px-mode-lbl">Cronograma</span></button>
+          <button onClick={alternarInscricoes} disabled={alternandoInscricoes} className="px-mode"
+            style={{marginLeft:"auto",color:inscricoesAbertas?C.green:C.faint,borderColor:inscricoesAbertas?C.green:C.line}}>
+            <CircleDot size={13}/> <span className="px-mode-lbl">Inscrições {inscricoesAbertas?"abertas":"fechadas"} — clique pra {inscricoesAbertas?"fechar":"abrir"}</span>
+          </button>
         </>}
       </div>
 
-      {/* ---------------- MENTOR: sem inscrição ainda ---------------- */}
-      {!isAdmin && inscricao===null && (aba==="curso"||aba==="aulas") &&
+      {/* ---------------- MENTOR: sem inscrição, turma fechada ---------------- */}
+      {!isAdmin && inscricao===null && !inscricoesAbertas && (aba==="curso"||aba==="aulas") && <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px"}}>
+        <span style={{display:"inline-block",fontSize:"10.5px",fontWeight:700,color:C.primary,background:C.primarySoft,borderRadius:"999px",padding:"3px 10px",marginBottom:"10px"}}>Em breve</span>
+        <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Formação de Mentores em DFT</h3>
+        <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6,maxWidth:"56ch"}}>20 oficinas síncronas, 100% online via Teams — arquitetando o Dimensionamento da Força de Trabalho no Serviço Público. As inscrições da próxima turma ainda não abriram. Assim que abrirem, você vai poder se inscrever aqui.</p>
+      </div>}
+
+      {/* ---------------- MENTOR: sem inscrição, turma aberta ---------------- */}
+      {!isAdmin && inscricao===null && inscricoesAbertas && (aba==="curso"||aba==="aulas") &&
         <CursoInscricaoForm token={token} onInscrito={carregarInscricao}/>}
 
       {/* ---------------- MENTOR: visão geral do curso ---------------- */}
