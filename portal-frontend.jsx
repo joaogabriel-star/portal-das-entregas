@@ -2330,6 +2330,7 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
     ugNome:"",ugCodigo:"",ugCodigoGestao:"",ugResponsavelNome:"",ugResponsavelEmail:"",ugResponsavelTelefone:"",
     banco:"",agencia:"",conta:"",
     chefiaImediataNome:"",
+    curriculo:null,foto:null,
   });
   const [cadastrando,setCadastrando]=useState(false);
   const [erroCadastro,setErroCadastro]=useState("");
@@ -2343,6 +2344,7 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
     if(!resp.ok) throw new Error(dados.erro||"Falha no login.");
     localStorage.setItem(MENTORIA_TOKEN_KEY,dados.token);
     setToken(dados.token);
+    return dados.token;
   }
 
   async function login(ev){
@@ -2391,7 +2393,15 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
       });
       const dados=await resp.json();
       if(!resp.ok) throw new Error(dados.erro||"Erro ao cadastrar.");
-      await fazerLogin(cad.email,cad.senha);
+      const tok=await fazerLogin(cad.email,cad.senha);
+      if(cad.curriculo){
+        const fd=new FormData(); fd.append("arquivo",cad.curriculo);
+        await fetch(`${API_BASE}/api/mentoria/mentores/${dados.id}/curriculo`,{method:"POST",headers:mentoriaAuthHeader(tok),body:fd}).catch(()=>{});
+      }
+      if(cad.foto){
+        const fd=new FormData(); fd.append("arquivo",cad.foto);
+        await fetch(`${API_BASE}/api/mentoria/mentores/${dados.id}/foto`,{method:"POST",headers:mentoriaAuthHeader(tok),body:fd}).catch(()=>{});
+      }
     }catch(err){ setErroCadastro(err.message||"Não consegui cadastrar."); }
     finally{ setCadastrando(false); }
   }
@@ -2559,7 +2569,7 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
       style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>;
     return (
       <div style={{padding:"32px 24px",maxWidth:"460px"}}>
-        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Cadastro de mentor</b></div>
+        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Banco de mentor</b></div>
         <div style={{fontSize:"12.5px",lineHeight:1.5,marginBottom:"10px",color:C.sub}}>
           Primeiro acesso? Preencha os dados abaixo — são os mesmos que a coordenação já pedia por planilha, agora reunidos aqui.
         </div>
@@ -2586,6 +2596,16 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
           {campo("Unidade de exercício / órgão","unidadeExercicio")}
           {campo("Formação","formacao")}
           {campo("Chefia imediata (nome)","chefiaImediataNome")}
+
+          {secao("Currículo e foto")}
+          <label style={{fontSize:"12px"}}>Currículo (PDF)
+            <input type="file" accept="application/pdf" onChange={e=>setCad(s=>({...s,curriculo:e.target.files?.[0]||null}))}
+              style={{display:"block",width:"100%",fontSize:"11.5px",marginTop:"4px"}}/>
+          </label>
+          <label style={{fontSize:"12px"}}>Foto 3x4 (JPEG ou PNG)
+            <input type="file" accept="image/jpeg,image/png" onChange={e=>setCad(s=>({...s,foto:e.target.files?.[0]||null}))}
+              style={{display:"block",width:"100%",fontSize:"11.5px",marginTop:"4px"}}/>
+          </label>
 
           {secao("Dados financeiros — UG da folha de pagamento")}
           {campo("Nome da UG","ugNome")}
@@ -2715,7 +2735,7 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
       {abaInicial!=="curso" && subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
       {abaInicial!=="curso" && subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
       {abaInicial!=="curso" && subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores} abrirProcessoId={abrirProcessoId} onAbriu={()=>setAbrirProcessoId(null)}/>}
-      {abaInicial!=="curso" && subaba==="dados-mentores" && mentor?.isAdmin && <DadosMentores mentores={mentores}/>}
+      {abaInicial!=="curso" && subaba==="dados-mentores" && mentor?.isAdmin && <DadosMentores mentores={mentores} token={token}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
       {subaba==="vinculos" && <>
@@ -3631,7 +3651,20 @@ function AlertaCredenciamento({token,onAbrirProcesso}){
 // Diretório de dados dos mentores -- o que o admin sentiu falta: ver CPF,
 // SIAPE, cargo, UG, dados bancários, chefia, férias e o motivo de quem
 // recusou a mentoria, sem precisar abrir um processo novo pra cada um.
-function DadosMentores({mentores}){
+function MentorFotoThumb({token,mentorId}){
+  const [url,setUrl]=useState(null);
+  useEffect(()=>{
+    let ativo=true, objUrl=null;
+    fetch(`${API_BASE}/api/mentoria/mentores/${mentorId}/foto`,{headers:mentoriaAuthHeader(token)})
+      .then(r=>r.ok?r.blob():null)
+      .then(b=>{ if(b && ativo){ objUrl=URL.createObjectURL(b); setUrl(objUrl); } });
+    return ()=>{ ativo=false; if(objUrl) URL.revokeObjectURL(objUrl); };
+  },[token,mentorId]);
+  if(!url) return null;
+  return <img src={url} alt="Foto 3x4" style={{width:"64px",height:"84px",objectFit:"cover",borderRadius:"6px",border:`1px solid ${C.line}`}}/>;
+}
+
+function DadosMentores({mentores,token}){
   const [busca,setBusca]=useState("");
   const [abertoId,setAbertoId]=useState(null);
 
@@ -3677,6 +3710,10 @@ function DadosMentores({mentores}){
                 </div>
               </button>
               {aberto && <div style={{padding:"14px",borderTop:`1px solid ${C.line}`}}>
+                {(m.foto_nome_arquivo||m.curriculo_nome_arquivo) && <div style={{display:"flex",gap:"12px",alignItems:"flex-start",marginBottom:"12px"}}>
+                  {m.foto_nome_arquivo && <MentorFotoThumb token={token} mentorId={m.id}/>}
+                  {m.curriculo_nome_arquivo && <button onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/mentores/${m.id}/curriculo/download`,{nome_arquivo:m.curriculo_nome_arquivo})} className="px-anexo-chip" style={{cursor:"pointer"}}><Download size={11}/> {m.curriculo_nome_arquivo}</button>}
+                </div>}
                 {m.interesse_mentor===false && m.motivo_recusa && <div style={{marginBottom:"12px",fontSize:"12px",color:"#a33",background:"#fdf3f3",border:"1px solid #f0b3b3",borderRadius:"8px",padding:"9px 11px"}}>
                   <b>Motivo da recusa:</b> {m.motivo_recusa}
                 </div>}
