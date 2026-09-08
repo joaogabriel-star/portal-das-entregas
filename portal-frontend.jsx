@@ -2649,7 +2649,7 @@ function PainelMentoria({abaInicial}={}){
       </div>
       {aviso && <div className="px-anexo-erro" style={{marginBottom:"14px"}}><AlertTriangle size={12}/> {aviso}</div>}
 
-      <div style={{display:"flex",gap:"8px",marginBottom:"20px",borderBottom:`1px solid ${C.line}`,paddingBottom:"10px"}}>
+      {abaInicial!=="curso" && <div style={{display:"flex",gap:"8px",marginBottom:"20px",borderBottom:`1px solid ${C.line}`,paddingBottom:"10px"}}>
         <button className={`px-mode ${subaba==="vinculos"?"on":""}`} onClick={()=>setSubaba("vinculos")}>
           <ClipboardList size={13}/> <span className="px-mode-lbl">{mentor?.isAdmin?"Vínculos":"Minhas unidades"}</span>
         </button>
@@ -2674,15 +2674,15 @@ function PainelMentoria({abaInicial}={}){
         {mentor?.isAdmin && <button className={`px-mode ${subaba==="dados-mentores"?"on":""}`} onClick={()=>setSubaba("dados-mentores")}>
           <Users size={13}/> <span className="px-mode-lbl">Dados dos Mentores</span>
         </button>}
-      </div>
+      </div>}
 
-      {subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
-      {subaba==="documentos" && <BibliotecaDocumentos token={token} isAdmin={!!mentor?.isAdmin} eventosDoMentor={!mentor?.isAdmin}/>}
-      {subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
-      {subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
-      {subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
-      {subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores} abrirProcessoId={abrirProcessoId} onAbriu={()=>setAbrirProcessoId(null)}/>}
-      {subaba==="dados-mentores" && mentor?.isAdmin && <DadosMentores mentores={mentores}/>}
+      {abaInicial!=="curso" && subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
+      {abaInicial!=="curso" && subaba==="documentos" && <BibliotecaDocumentos token={token} isAdmin={!!mentor?.isAdmin} eventosDoMentor={!mentor?.isAdmin}/>}
+      {abaInicial!=="curso" && subaba==="documentos-oficina" && <DocumentosOficina token={token} isAdmin={!!mentor?.isAdmin}/>}
+      {abaInicial!=="curso" && subaba==="dashboard" && mentor?.isAdmin && <DashboardOrgaos token={token} mentores={mentores}/>}
+      {abaInicial!=="curso" && subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
+      {abaInicial!=="curso" && subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores} abrirProcessoId={abrirProcessoId} onAbriu={()=>setAbrirProcessoId(null)}/>}
+      {abaInicial!=="curso" && subaba==="dados-mentores" && mentor?.isAdmin && <DadosMentores mentores={mentores}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
       {subaba==="vinculos" && <>
