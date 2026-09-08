@@ -5586,7 +5586,7 @@ function CursoCronogramaAdmin({token,oficinas,onMudou}){
                 <b style={{fontSize:"11.5px",color:C.primary,width:"22px",flexShrink:0}}>#{of.numero}</b>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:"12px",fontWeight:600}}>{of.tema}</div>
-                  <div style={{fontSize:"10.5px",color:C.faint}}>{of.data?new Date(of.data+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
+                  <div style={{fontSize:"10.5px",color:C.faint}}>{of.data?new Date(of.data.slice(0,10)+"T00:00:00").toLocaleDateString("pt-BR"):"data a definir"}</div>
                 </div>
                 <button onClick={()=>abrir(of)} title="Editar" style={{border:`1px solid ${C.line}`,background:"#fff",borderRadius:"7px",padding:"5px 8px",cursor:"pointer",color:C.sub}}><Pencil size={12}/></button>
               </div>
