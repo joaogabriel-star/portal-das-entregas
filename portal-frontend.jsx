@@ -481,8 +481,11 @@ export default function PortalEntregas(){
   // navegação principal: inicio · catalogo. O #catalogo na URL permite entrar
   // direto no catálogo (é assim que a etapa 2 do fluxo aponta para cá).
   const [secao,setSecao]=useState(()=>{
-    try{ return window.location.hash==="#catalogo" ? "catalogo" : "inicio"; }
-    catch{ return "inicio"; }
+    try{
+      if(window.location.hash==="#catalogo") return "catalogo";
+      if(window.location.hash==="#banco-de-mentores") return "banco-mentores";
+      return "inicio";
+    }catch{ return "inicio"; }
   });
   const [protoAberto,setProtoAberto]=useState(false); // listinha discreta das telas em protótipo
   const [navPanel,setNavPanel]=useState(null);   // painel lateral de filtro: null · macro · categoria · servico · orgao
@@ -813,6 +816,7 @@ export default function PortalEntregas(){
 
       {secao==="mentoria" && <div className="px-wrap"><PainelMentoria irParaSecao={setSecao}/></div>}
       {secao==="curso" && <div className="px-wrap"><PainelMentoria abaInicial="curso" irParaSecao={setSecao}/></div>}
+      {secao==="banco-mentores" && <div className="px-wrap"><BancoMentoresForm/></div>}
 
       {/* botões flutuantes (apenas na seção Catálogo) */}
       {secao==="catalogo" && navPanel && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
@@ -2727,6 +2731,9 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
         {mentor?.isAdmin && <button className={`px-mode ${subaba==="dados-mentores"?"on":""}`} onClick={()=>setSubaba("dados-mentores")}>
           <Users size={13}/> <span className="px-mode-lbl">Dados dos Mentores</span>
         </button>}
+        {mentor?.isAdmin && <button className={`px-mode ${subaba==="banco-mentores"?"on":""}`} onClick={()=>setSubaba("banco-mentores")}>
+          <ClipboardList size={13}/> <span className="px-mode-lbl">Banco de Mentores</span>
+        </button>}
       </div>}
 
       {abaInicial!=="curso" && subaba==="calendario" && <CalendarioMentoria token={token} isAdmin={!!mentor?.isAdmin}/>}
@@ -2736,6 +2743,7 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
       {abaInicial!=="curso" && subaba==="dashboard-financeiro" && mentor?.isAdmin && <DashboardFinanceiro token={token} mentores={mentores}/>}
       {abaInicial!=="curso" && subaba==="credenciamento" && <Credenciamento token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId} mentores={mentores} abrirProcessoId={abrirProcessoId} onAbriu={()=>setAbrirProcessoId(null)}/>}
       {abaInicial!=="curso" && subaba==="dados-mentores" && mentor?.isAdmin && <DadosMentores mentores={mentores} token={token}/>}
+      {abaInicial!=="curso" && subaba==="banco-mentores" && mentor?.isAdmin && <BancoMentoresAdmin token={token}/>}
       {subaba==="curso" && <CursoMentores token={token} isAdmin={!!mentor?.isAdmin} mentorId={mentor?.mentorId}/>}
 
       {subaba==="vinculos" && <>
@@ -4600,6 +4608,149 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
       })()}
     </div>
   );
+}
+
+/* ---------- Banco de Mentores — formulário público e leve (sem login)
+   pra conhecer candidatos: nome, e-mail, telefone, currículo e foto.
+   Diferente do cadastro de mentor (que já exige senha e é pra quem foi
+   convidado pro credenciamento de verdade). Ver rotas-banco-mentores.js
+   / migrations/029. ---------- */
+function BancoMentoresForm(){
+  const [form,setForm]=useState({nome:"",email:"",telefone:"",curriculo:null,foto:null});
+  const [enviando,setEnviando]=useState(false);
+  const [erro,setErro]=useState("");
+  const [enviado,setEnviado]=useState(false);
+
+  async function enviar(ev){
+    ev.preventDefault();
+    if(enviando) return;
+    setEnviando(true); setErro("");
+    try{
+      const fd=new FormData();
+      fd.append("nome",form.nome); fd.append("email",form.email); fd.append("telefone",form.telefone||"");
+      if(form.curriculo) fd.append("curriculo",form.curriculo);
+      if(form.foto) fd.append("foto",form.foto);
+      const resp=await fetch(`${API_BASE}/api/mentoria/banco-mentores`,{method:"POST",body:fd});
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Erro ao enviar.");
+      setEnviado(true);
+    }catch(err){ setErro(err.message||"Não consegui enviar."); }
+    finally{ setEnviando(false); }
+  }
+
+  if(enviado){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+        <div style={{border:`1px solid ${C.line}`,borderRadius:"12px",padding:"20px",textAlign:"center"}}>
+          <CheckCircle2 size={28} color={C.green} style={{marginBottom:"10px"}}/>
+          <h3 style={{margin:"0 0 6px",fontSize:"15px",color:C.navy}}>Recebido!</h3>
+          <p style={{fontSize:"12.5px",color:C.sub,lineHeight:1.6}}>Obrigado pelo interesse. A coordenação vai guardar seus dados e entrar em contato se surgir uma oportunidade de mentoria.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+      <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Banco de Mentores</b></div>
+      <div style={{fontSize:"12.5px",lineHeight:1.5,marginBottom:"14px",color:C.sub}}>
+        Tem interesse em ser mentor(a) de Dimensionamento da Força de Trabalho? Deixe seus dados aqui — sem senha, sem compromisso. A coordenação entra em contato se surgir uma oportunidade.
+      </div>
+      <form onSubmit={enviar} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+        <input required placeholder="Nome completo" value={form.nome} onChange={e=>setForm(s=>({...s,nome:e.target.value}))}
+          style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+        <input required type="email" placeholder="E-mail" value={form.email} onChange={e=>setForm(s=>({...s,email:e.target.value}))}
+          style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+        <input placeholder="Telefone (opcional)" value={form.telefone} onChange={e=>setForm(s=>({...s,telefone:e.target.value}))}
+          style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+        <label style={{fontSize:"12px"}}>Currículo (PDF, opcional)
+          <input type="file" accept="application/pdf" onChange={e=>setForm(s=>({...s,curriculo:e.target.files?.[0]||null}))}
+            style={{display:"block",width:"100%",fontSize:"11.5px",marginTop:"4px"}}/>
+        </label>
+        <label style={{fontSize:"12px"}}>Foto 3x4 (JPEG ou PNG, opcional)
+          <input type="file" accept="image/jpeg,image/png" onChange={e=>setForm(s=>({...s,foto:e.target.files?.[0]||null}))}
+            style={{display:"block",width:"100%",fontSize:"11.5px",marginTop:"4px"}}/>
+        </label>
+        {erro && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>}
+        <button className="px-mode cta-bot" disabled={enviando} type="submit">
+          <Users size={15}/> <span className="px-mode-lbl">{enviando?"Enviando…":"Enviar"}</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function BancoMentoresAdmin({token}){
+  const [lista,setLista]=useState([]);
+  const [carregando,setCarregando]=useState(true);
+  const [busca,setBusca]=useState("");
+  const [erro,setErro]=useState("");
+
+  async function carregar(){
+    setCarregando(true);
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/banco-mentores`,{headers:mentoriaAuthHeader(token)});
+      const d=await r.json();
+      if(r.ok) setLista(d);
+    }catch{}
+    finally{ setCarregando(false); }
+  }
+  useEffect(()=>{ carregar(); },[token]); // eslint-disable-line
+
+  async function remover(id){
+    try{
+      const r=await fetch(`${API_BASE}/api/mentoria/banco-mentores/${id}`,{method:"DELETE",headers:mentoriaAuthHeader(token)});
+      if(!r.ok) throw new Error();
+      await carregar();
+    }catch{ setErro("Não consegui remover."); }
+  }
+
+  const norm2=s=>(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const filtrada=busca.trim() ? lista.filter(p=>norm2(p.nome).includes(norm2(busca))||norm2(p.email).includes(norm2(busca))) : lista;
+
+  if(carregando) return <div style={{fontSize:"12px",color:C.faint}}>Carregando…</div>;
+
+  return (
+    <div>
+      <p style={{fontSize:"12.5px",color:C.faint,marginBottom:"12px"}}>
+        Quem já demonstrou interesse pelo formulário público do Banco de Mentores — nome, contato, currículo e foto, pra facilitar entrar em contato depois.
+      </p>
+      <div style={{position:"relative",marginBottom:"14px",maxWidth:"340px"}}>
+        <Search size={13} color={C.faint} style={{position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)"}}/>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome ou e-mail…"
+          style={{width:"100%",padding:"7px 10px 7px 30px",border:`1px solid ${C.line}`,borderRadius:"999px",fontSize:"12.5px",boxSizing:"border-box"}}/>
+      </div>
+      {erro && <div className="px-anexo-erro" style={{marginBottom:"10px"}}><AlertTriangle size={12}/> {erro}</div>}
+      <div style={{fontSize:"11px",color:C.faint,marginBottom:"10px"}}>{filtrada.length} pessoa{filtrada.length===1?"":"s"}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+        {!filtrada.length && <div style={{fontSize:"12px",color:C.faint}}>Ninguém se cadastrou ainda.</div>}
+        {filtrada.map(p=>(
+          <div key={p.id} style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",border:`1px solid ${C.line}`,borderRadius:"9px"}}>
+            {p.foto_nome_arquivo && <BancoMentorFotoThumb token={token} id={p.id}/>}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:"12.5px",fontWeight:700}}>{p.nome}</div>
+              <div style={{fontSize:"10.5px",color:C.faint}}>{p.email}{p.telefone?` · ${p.telefone}`:""} · {new Date(p.criado_em).toLocaleDateString("pt-BR")}</div>
+            </div>
+            {p.curriculo_nome_arquivo && <button onClick={()=>baixarDocBiblioteca(token,`/api/mentoria/banco-mentores/${p.id}/curriculo/download`,{nome_arquivo:p.curriculo_nome_arquivo})} className="px-anexo-chip" style={{cursor:"pointer"}}><Download size={11}/> Currículo</button>}
+            <button onClick={()=>remover(p.id)} title="Remover" style={{background:"none",border:"none",cursor:"pointer",color:C.faint}}><Trash2 size={14}/></button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BancoMentorFotoThumb({token,id}){
+  const [url,setUrl]=useState(null);
+  useEffect(()=>{
+    let ativo=true, objUrl=null;
+    fetch(`${API_BASE}/api/mentoria/banco-mentores/${id}/foto`,{headers:mentoriaAuthHeader(token)})
+      .then(r=>r.ok?r.blob():null)
+      .then(b=>{ if(b && ativo){ objUrl=URL.createObjectURL(b); setUrl(objUrl); } });
+    return ()=>{ ativo=false; if(objUrl) URL.revokeObjectURL(objUrl); };
+  },[token,id]);
+  if(!url) return null;
+  return <img src={url} alt="Foto 3x4" style={{width:"40px",height:"52px",objectFit:"cover",borderRadius:"5px",border:`1px solid ${C.line}`,flexShrink:0}}/>;
 }
 
 /* ---------- Curso de Formação de Mentores — 20 oficinas síncronas,
