@@ -4663,12 +4663,12 @@ function BancoMentoresForm(){
           style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
         <input placeholder="Telefone (opcional)" value={form.telefone} onChange={e=>setForm(s=>({...s,telefone:e.target.value}))}
           style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
-        <label style={{fontSize:"12px"}}>Currículo (PDF, opcional)
-          <input type="file" accept="application/pdf" onChange={e=>setForm(s=>({...s,curriculo:e.target.files?.[0]||null}))}
+        <label style={{fontSize:"12px"}}>Currículo (PDF) *
+          <input required type="file" accept="application/pdf" onChange={e=>setForm(s=>({...s,curriculo:e.target.files?.[0]||null}))}
             style={{display:"block",width:"100%",fontSize:"11.5px",marginTop:"4px"}}/>
         </label>
-        <label style={{fontSize:"12px"}}>Foto 3x4 (JPEG ou PNG, opcional)
-          <input type="file" accept="image/jpeg,image/png" onChange={e=>setForm(s=>({...s,foto:e.target.files?.[0]||null}))}
+        <label style={{fontSize:"12px"}}>Foto 3x4 (JPEG ou PNG) *
+          <input required type="file" accept="image/jpeg,image/png" onChange={e=>setForm(s=>({...s,foto:e.target.files?.[0]||null}))}
             style={{display:"block",width:"100%",fontSize:"11.5px",marginTop:"4px"}}/>
         </label>
         {erro && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>}
