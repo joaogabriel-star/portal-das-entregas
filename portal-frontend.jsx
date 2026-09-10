@@ -2277,6 +2277,27 @@ const MENTORIA_TOKEN_KEY="px-mentoria-token";
 
 function mentoriaAuthHeader(token){ return token?{Authorization:`Bearer ${token}`}:{}; }
 
+// Sessão expirada (token velho, aba ficou aberta demais) -- em vez de
+// deixar a tela travada mostrando erro em cada chamada, intercepta toda
+// resposta 401 da API de mentoria uma vez só, limpa a sessão e recarrega
+// pra cair direto na tela de login. Registrado uma única vez por carga da
+// página (evita empilhar o patch em cada remount de componente).
+if(typeof window!=="undefined" && !window.__pxSessaoExpiradaPatch){
+  window.__pxSessaoExpiradaPatch=true;
+  const fetchOriginal=window.fetch.bind(window);
+  window.fetch=async(...args)=>{
+    const resp=await fetchOriginal(...args);
+    try{
+      const url=typeof args[0]==="string"?args[0]:(args[0]&&args[0].url)||"";
+      if(resp.status===401 && url.includes("/api/mentoria/") && localStorage.getItem(MENTORIA_TOKEN_KEY)){
+        localStorage.removeItem(MENTORIA_TOKEN_KEY);
+        window.location.reload();
+      }
+    }catch{}
+    return resp;
+  };
+}
+
 function decodificarJwt(token){
   try{
     const payload=token.split(".")[1];
