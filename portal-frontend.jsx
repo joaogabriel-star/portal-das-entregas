@@ -484,6 +484,7 @@ export default function PortalEntregas(){
     try{
       if(window.location.hash==="#catalogo") return "catalogo";
       if(window.location.hash==="#banco-de-mentores") return "banco-mentores";
+      if(window.location.hash.startsWith("#redefinir-senha")) return "redefinir-senha";
       return "inicio";
     }catch{ return "inicio"; }
   });
@@ -669,7 +670,7 @@ export default function PortalEntregas(){
       </header>
 
       {/* faixa das 4 etapas — navegação principal do portal (não faz sentido na Mentoria, que é uma seção à parte) */}
-      {secao!=="mentoria" && secao!=="curso" && secao!=="banco-mentores" && <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>}
+      {secao!=="mentoria" && secao!=="curso" && secao!=="banco-mentores" && secao!=="redefinir-senha" && <FaixaEtapas etapa={etapaAtual} completo={etapasFeitas} expandida={secao==="inicio"} ir={irParaEtapa}/>}
 
       {trocarUnidade && <ModalUnidade orgao={orgao} unidade={unidade}
         setOrgao={setOrgao} setUnidade={setUnidade} onClose={()=>setTrocarUnidade(false)}/>}
@@ -817,6 +818,7 @@ export default function PortalEntregas(){
       {secao==="mentoria" && <div className="px-wrap"><PainelMentoria irParaSecao={setSecao}/></div>}
       {secao==="curso" && <div className="px-wrap"><PainelMentoria abaInicial="curso" irParaSecao={setSecao}/></div>}
       {secao==="banco-mentores" && <div className="px-wrap"><BancoMentoresForm/></div>}
+      {secao==="redefinir-senha" && <div className="px-wrap"><RedefinirSenhaForm/></div>}
 
       {/* botões flutuantes (apenas na seção Catálogo) */}
       {secao==="catalogo" && navPanel && <button className="px-descfab" onClick={()=>setDescDrawer(true)}><ClipboardList size={16}/> Minha descrição <span>{sel.length}</span></button>}
@@ -2312,9 +2314,27 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
   const mentor=useMemo(()=>token?decodificarJwt(token):null,[token]);
   const [subaba,setSubaba]=useState(abaInicial||"vinculos"); // "vinculos" · "calendario" · "documentos" · "curso"
 
-  const [tela,setTela]=useState("login"); // "login" · "cadastro" · "admin"
+  const [tela,setTela]=useState("login"); // "login" · "cadastro" · "admin" · "esqueci-senha"
   const [email,setEmail]=useState(""); const [senha,setSenha]=useState("");
   const [erroLogin,setErroLogin]=useState(""); const [entrando,setEntrando]=useState(false);
+
+  const [emailEsqueci,setEmailEsqueci]=useState("");
+  const [erroEsqueci,setErroEsqueci]=useState(""); const [enviandoEsqueci,setEnviandoEsqueci]=useState(false);
+  const [esqueciEnviado,setEsqueciEnviado]=useState(false);
+  async function pedirRedefinicao(ev){
+    ev.preventDefault();
+    if(enviandoEsqueci) return;
+    setEnviandoEsqueci(true); setErroEsqueci("");
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/mentores/esqueci-senha`,{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:emailEsqueci}),
+      });
+      if(!resp.ok){ const d=await resp.json().catch(()=>({})); throw new Error(d.erro||"Não consegui enviar o link."); }
+      setEsqueciEnviado(true);
+    }catch(err){ setErroEsqueci(err.message||"Não consegui enviar o link."); }
+    finally{ setEnviandoEsqueci(false); }
+  }
 
   // Enquanto a próxima turma do curso não abre, a tela de login/cadastro
   // (pré-autenticação) mostra "em breve" em vez do formulário -- só faz
@@ -2554,8 +2574,36 @@ function PainelMentoria({abaInicial,irParaSecao}={}){
         <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("cadastro")}>
           <Plus size={14}/> <span className="px-mode-lbl">Ainda não é mentor? Cadastre-se</span>
         </button>
+        <button className="px-mode" style={{marginTop:"6px"}} onClick={()=>setTela("esqueci-senha")}>
+          <span className="px-mode-lbl">Esqueci minha senha</span>
+        </button>
         <button className="px-mode" style={{marginTop:"6px"}} onClick={()=>setTela("admin")}>
           <ShieldCheck size={14}/> <span className="px-mode-lbl">Sou administrador · primeiro acesso</span>
+        </button>
+      </div>
+    );
+  }
+
+  if(!token && tela==="esqueci-senha"){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"360px"}}>
+        <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"16px"}}>
+          Informe o e-mail da sua conta — se tiver cadastro ativo, mandamos um link pra você escolher uma senha nova.
+        </div>
+        {esqueciEnviado
+          ? <div className="px-anexo-erro" style={{background:C.greenSoft,borderColor:C.green,color:C.green}}>
+              <CheckCircle2 size={13}/> Se esse e-mail tiver uma conta ativa, o link já foi enviado. Confira sua caixa de entrada (e o spam).
+            </div>
+          : <form onSubmit={pedirRedefinicao} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+              <input type="email" required placeholder="E-mail" value={emailEsqueci} onChange={e=>setEmailEsqueci(e.target.value)}
+                style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+              {erroEsqueci && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erroEsqueci}</div>}
+              <button className="px-mode cta-bot" disabled={enviandoEsqueci} type="submit">
+                <span className="px-mode-lbl">{enviandoEsqueci?"Enviando…":"Enviar link"}</span>
+              </button>
+            </form>}
+        <button className="px-mode" style={{marginTop:"10px"}} onClick={()=>setTela("login")}>
+          <span className="px-mode-lbl">Voltar pro login</span>
         </button>
       </div>
     );
@@ -4636,6 +4684,78 @@ function ProcessoCredenciamentoDetalhe({processo,token,isAdmin,onMudou,onFechar}
    Diferente do cadastro de mentor (que já exige senha e é pra quem foi
    convidado pro credenciamento de verdade). Ver rotas-banco-mentores.js
    / migrations/029. ---------- */
+// Tela aberta a partir do link mandado por e-mail (#redefinir-senha?token=...).
+// Sem login -- o token no link é que autoriza a troca de senha.
+function RedefinirSenhaForm(){
+  const token=useMemo(()=>{
+    try{
+      const q=window.location.hash.split("?")[1]||"";
+      return new URLSearchParams(q).get("token")||"";
+    }catch{ return ""; }
+  },[]);
+  const [senha,setSenha]=useState(""); const [senhaConfirmar,setSenhaConfirmar]=useState("");
+  const [enviando,setEnviando]=useState(false);
+  const [erro,setErro]=useState("");
+  const [ok,setOk]=useState(false);
+
+  async function enviar(ev){
+    ev.preventDefault();
+    if(enviando) return;
+    setErro("");
+    if(senha!==senhaConfirmar){ setErro("As senhas não coincidem."); return; }
+    setEnviando(true);
+    try{
+      const resp=await fetch(`${API_BASE}/api/mentoria/mentores/redefinir-senha`,{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({token,novaSenha:senha}),
+      });
+      const dados=await resp.json();
+      if(!resp.ok) throw new Error(dados.erro||"Não consegui redefinir a senha.");
+      setOk(true);
+    }catch(err){ setErro(err.message||"Não consegui redefinir a senha."); }
+    finally{ setEnviando(false); }
+  }
+
+  if(!token){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+        <div className="px-anexo-erro"><AlertTriangle size={12}/> Link inválido. Peça um novo link de redefinição na tela de login.</div>
+      </div>
+    );
+  }
+
+  if(ok){
+    return (
+      <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+        <div className="px-anexo-erro" style={{background:C.greenSoft,borderColor:C.green,color:C.green,marginBottom:"14px"}}>
+          <CheckCircle2 size={13}/> Senha redefinida! Já pode entrar com a senha nova.
+        </div>
+        <a href="/" className="px-mode" style={{textDecoration:"none",display:"inline-flex"}}>
+          <span className="px-mode-lbl">Ir para o login</span>
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:"32px 24px",maxWidth:"420px"}}>
+      <div style={{fontSize:"13px",lineHeight:1.5,marginBottom:"6px"}}><b>Escolher nova senha</b></div>
+      <div style={{fontSize:"12.5px",lineHeight:1.5,marginBottom:"14px",color:C.sub}}>Defina uma senha nova pra sua conta.</div>
+      <form onSubmit={enviar} style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+        <input required type="password" placeholder="Nova senha" value={senha} onChange={e=>setSenha(e.target.value)}
+          style={{padding:"8px 10px",border:`1px solid ${C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+        <input required type="password" placeholder="Confirme a nova senha" value={senhaConfirmar} onChange={e=>setSenhaConfirmar(e.target.value)}
+          style={{padding:"8px 10px",border:`1px solid ${senhaConfirmar&&senha!==senhaConfirmar?"#d64545":C.line}`,borderRadius:"8px",fontSize:"12.5px"}}/>
+        {senhaConfirmar && senha!==senhaConfirmar && <div style={{fontSize:"11px",color:"#d64545"}}>As senhas não coincidem.</div>}
+        {erro && <div className="px-anexo-erro"><AlertTriangle size={12}/> {erro}</div>}
+        <button className="px-mode cta-bot" disabled={enviando} type="submit">
+          <span className="px-mode-lbl">{enviando?"Salvando…":"Salvar nova senha"}</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function BancoMentoresForm(){
   const [form,setForm]=useState({nome:"",email:"",telefone:"",curriculo:null,foto:null});
   const [enviando,setEnviando]=useState(false);
